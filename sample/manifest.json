@@ -1,6 +1,6 @@
 {
   "workflow": "elevenlabs+gemini hybrid (decision gate 2026-09-01)",
-  "generated_at": "2026-09-02T14:37:19",
+  "generated_at": "2026-09-03T12:38:43",
   "source_file": "/Users/shivangi/Documents/Claude/Audio_PII_Project/media/incoming/raw/025354f09d2dcc71517beb7553441a85.mp3",
   "source_sha256": "fee55bc5409540551954eb075078d260eeef0c7cccb2b0a4cd203fdc2fda3407",
   "profile": "medical_consult",
@@ -47,7 +47,7 @@
   "judge_audit": {
     "leak_candidates": 0,
     "findings": 0,
-    "rejected_by_verifier": 5
+    "rejected_by_verifier": 0
   },
   "languages": [
     "eng"

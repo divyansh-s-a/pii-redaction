@@ -285,6 +285,20 @@ def verify_and_fix(out_dir: Path, fid: str, original: Path, model: str,
                                for h in hs]})
                 print(f"    edge-verify: extending beep {s}-{e}ms "
                       f"(-{ds}/+{de}) — heard fragment near edge")
+        # extensions can make adjacent beeps touch; the physical audio then
+        # carries ONE continuous tone, so the written plan must merge them
+        # too or QC's orphan check sees a tone that matches no planned beep
+        # (observed 2026-09-03: two +400ms end-extensions bridged the name
+        # and org beeps and QC quarantined a clean file)
+        adjusted.sort(key=lambda x: (x[0], x[1]))
+        merged_adj = []
+        for s2, e2, c2 in adjusted:
+            if (merged_adj and c2 == merged_adj[-1][2]
+                    and s2 <= merged_adj[-1][1]):
+                merged_adj[-1][1] = max(merged_adj[-1][1], e2)
+            else:
+                merged_adj.append([s2, e2, c2])
+        adjusted = [(s2, e2, c2) for s2, e2, c2 in merged_adj]
         native = out_dir / "_ev_native.wav"
         beeped = out_dir / "_ev_beeped.wav"
         audio_utils.decode_to_wav(original, native)

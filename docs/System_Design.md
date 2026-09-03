@@ -454,6 +454,21 @@ would-be leaks (whisper heard the name as "Redya" ending 146 ms early), which
 is exactly the kind of comparative evidence the engine scorecard needs.
 snap_edges/edge_snap_ms are retired from stage D (kept as a legacy helper).
 
+### Defect class 7: extension-bridged beeps break the QC plan (2026-09-03)
+Found by the post-change validation run, not by the change being validated
+(the language-table A/B was clean on all 40 transcripts). The beep-edge
+listen check is nondeterministic across days — on this pass it heard
+fragments at two edges of the sample and extended both beeps +400 ms, which
+made adjacent beeps TOUCH; the audio then physically carries one continuous
+tone, but edge_verify wrote the two unmerged spans as the plan, so QC's
+orphan check saw a tone matching no planned beep and quarantined a clean
+file. Failure direction was safe (hold, never ship), but recurring. Fix:
+after extensions, edge_verify merges touching/overlapping same-channel beeps
+before re-rendering and records the MERGED spans in rendered_intervals — the
+plan now always describes the physical audio. Lesson appended to D-arch-2's
+principle: every writer of rendered_intervals must emit what the audio
+actually contains, not what the step intended.
+
 ### D-eval-3: LLM-judge evaluation (2026-09-01) — GT on hold, judges interim
 With human GT deferred, the Mindy pilot's judge models (gpt-5.6-sol / luna,
 reached via OpenRouter — Deccan's internal proxy is VPN-only) evaluate the
