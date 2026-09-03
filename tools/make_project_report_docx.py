@@ -336,7 +336,7 @@ for t in [
     "pilot, reached via OpenRouter) - a different model family from the production Gemini detector, so "
     "evaluation is never self-grading. Configurations using the GPT detector carry an explicit "
     "family-overlap caveat wherever their numbers appear.",
-    "Policy: the judge applies the SAME versioned policy file as the detector (detection_policy_prompt_v3). "
+    "Policy: the judge applies the SAME versioned policy file as the detector (see prompts/README for the current version). "
     "Temperature 0, strict JSON output schemas.",
     "Grounding: every leak-audit finding must literally quote text present in the transcript; non-quoting "
     "findings are dropped and counted. Observed hallucination rate across all runs: zero.",

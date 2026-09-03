@@ -37,3 +37,11 @@ financial values, and negative-calibration rule 11 harvested from 20 observed
 judge over-reaches. Shared by the stage-C detector and both judge tools.
 
 | `keyterms_india_v1.txt` | Stage B, ElevenLabs engine | Recognition-biasing vocabulary (generic Indian given names + major insurers/TPAs/hospitals) sent as repeated `keyterms` multipart fields; fixes dropped proper nouns. Not corpus-derived (see System_Design). |
+
+**v4 (2026-09-03)**: `detection_policy_prompt_v4.txt` — fiction rule redefined
+by REALITY OF REFERENTS, not format: true-crime/documentary/testimonial
+narratives are non-fiction and their personal details are PII; the fiction
+exclusion needs CLEAR fiction signals; uncertain realness defaults to REAL
+(recall-first). Trigger: user question + synthetic genre experiment showing
+an ambiguous crime narrative was treated as fiction (only the digit safety
+net caught the phone number). Shared by detector and judges.

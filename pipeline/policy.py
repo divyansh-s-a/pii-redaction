@@ -35,8 +35,9 @@ def action_for(categories, public_figure: bool, profile: str) -> str:
     return "beep"
 
 
+POLICY_PROMPT_FILE = "detection_policy_prompt_v4.txt"
 DETECTION_POLICY = (Path(__file__).resolve().parent.parent / "prompts"
-                    / "detection_policy_prompt_v3.txt").read_text()
+                    / POLICY_PROMPT_FILE).read_text()
 
 DETECTION_SCHEMA = {
     "type": "OBJECT",

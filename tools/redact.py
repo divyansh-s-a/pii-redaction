@@ -188,7 +188,8 @@ def deliver(media: Path, profile: str, outdir: Path, assurance: bool,
     shutil.copy2(src_dir / f"{fid}_redacted.txt", dst / f"{fid}_redacted.txt")
     shutil.copy2(src_dir / "qc_report.md", dst / "qc_report.md")
 
-    policy_file = "detection_policy_prompt_v3.txt"
+    import policy
+    policy_file = policy.POLICY_PROMPT_FILE
     keyterms = ROOT / "prompts" / "keyterms_india_v1.txt"
     manifest = {
         "workflow": "elevenlabs+gemini hybrid (decision gate 2026-09-01)",

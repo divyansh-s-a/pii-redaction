@@ -469,6 +469,25 @@ plan now always describes the physical audio. Lesson appended to D-arch-2's
 principle: every writer of rendered_intervals must emit what the audio
 actually contains, not what the step intended.
 
+### Policy v4: fiction decided by reality of referents (2026-09-03)
+User question: what happens on a true-crime podcast — narrative format, real
+people? Synthetic genre experiment (explicit true-crime / ambiguous crime
+narrative / declared-fiction control, same synthetic PII in each): under v3
+the EXPLICIT case detected 5/5, but the AMBIGUOUS case detected 0 — treated
+as fiction; only the digit safety net caught the phone number, and a real
+victim's name/address/age would have shipped unbeeped. The v3 rule keyed on
+FORMAT signals (narrator voice, episode framing), which true crime shares
+with drama. v4 redefines the rule: fiction is decided by the reality of the
+people and events, never the format; true-crime/documentary/news/testimonial
+are non-fiction; the exclusion requires CLEAR fiction signals (drama
+production framing, cast credits, declared invented characters); UNCERTAIN
+REALNESS DEFAULTS TO REAL (recall-first, consistent with every other
+tiebreak). Validated: synthetic cases re-run under v4 plus MP EP - 1
+re-detected to scratch (fiction control must stay 0). Corpus numbers in
+Report v2 remain v3-stamped; future runs carry v4. Policy filename is now a
+single constant (policy.POLICY_PROMPT_FILE) instead of three hardcoded
+copies.
+
 ### D-eval-3: LLM-judge evaluation (2026-09-01) — GT on hold, judges interim
 With human GT deferred, the Mindy pilot's judge models (gpt-5.6-sol / luna,
 reached via OpenRouter — Deccan's internal proxy is VPN-only) evaluate the
