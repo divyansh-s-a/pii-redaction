@@ -1,0 +1,16 @@
+Transcribe this audio completely and precisely.
+
+Rules:
+- Multiple speakers: label S1, S2, ... in order of first appearance and keep
+  labels consistent. If two people speak simultaneously, transcribe both
+  utterances and set overlaps_with on each.
+- Keep the original language and script of every word (Hindi in Devanagari,
+  Bengali in Bengali script, English in Latin). Do NOT translate. Code-switching
+  within an utterance is normal — transcribe each word as spoken.
+- Word-level timing: for EVERY word give start_ms and end_ms measured from the
+  start of THIS audio, as accurately as you can. Times must be monotonically
+  non-decreasing within an utterance and within the audio duration.
+- Spoken digits, spelled letters, and filler sounds (haan, umm) are words too.
+- lang: BCP-47-ish tag per utterance (hi, bn, or, en-IN, mixed).
+- conf: your confidence in the word transcription: high, medium or low.
+Return JSON only, matching the schema.

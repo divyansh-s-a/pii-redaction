@@ -1,0 +1,18 @@
+{
+  "model": "gemini-3.1-pro-preview",
+  "fallback_models": [
+    "gemini-3.5-flash",
+    "gemini-2.5-pro"
+  ],
+  "api_base": "https://generativelanguage.googleapis.com",
+  "profile": "medical_consult",
+  "pad_ms": 250,
+  "beep_freq_hz": 1000,
+  "beep_gain_db": -10.0,
+  "chunk_len_s": 240,
+  "chunk_step_s": 215,
+  "chunk_threshold_s": 480,
+  "edge_snap_ms": 150,
+  "value_gap_merge_ms": 700,
+  "min_pad_ms": 50
+}

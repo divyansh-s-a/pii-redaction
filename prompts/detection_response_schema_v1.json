@@ -1,0 +1,55 @@
+{
+  "type": "OBJECT",
+  "properties": {
+    "spans": {
+      "type": "ARRAY",
+      "items": {
+        "type": "OBJECT",
+        "properties": {
+          "start_word": {
+            "type": "INTEGER"
+          },
+          "end_word": {
+            "type": "INTEGER"
+          },
+          "categories": {
+            "type": "ARRAY",
+            "items": {
+              "type": "STRING"
+            }
+          },
+          "spoken_text": {
+            "type": "STRING"
+          },
+          "speaker": {
+            "type": "STRING"
+          },
+          "public_figure": {
+            "type": "BOOLEAN"
+          },
+          "confidence": {
+            "type": "STRING",
+            "enum": [
+              "high",
+              "medium",
+              "low"
+            ]
+          },
+          "reason": {
+            "type": "STRING"
+          }
+        },
+        "required": [
+          "start_word",
+          "end_word",
+          "categories",
+          "spoken_text",
+          "confidence"
+        ]
+      }
+    }
+  },
+  "required": [
+    "spans"
+  ]
+}

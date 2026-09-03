@@ -1,0 +1,59 @@
+{
+  "type": "OBJECT",
+  "properties": {
+    "utterances": {
+      "type": "ARRAY",
+      "items": {
+        "type": "OBJECT",
+        "properties": {
+          "speaker": {
+            "type": "STRING"
+          },
+          "lang": {
+            "type": "STRING"
+          },
+          "overlaps_with": {
+            "type": "STRING"
+          },
+          "words": {
+            "type": "ARRAY",
+            "items": {
+              "type": "OBJECT",
+              "properties": {
+                "w": {
+                  "type": "STRING"
+                },
+                "start_ms": {
+                  "type": "INTEGER"
+                },
+                "end_ms": {
+                  "type": "INTEGER"
+                },
+                "conf": {
+                  "type": "STRING",
+                  "enum": [
+                    "high",
+                    "medium",
+                    "low"
+                  ]
+                }
+              },
+              "required": [
+                "w",
+                "start_ms",
+                "end_ms"
+              ]
+            }
+          }
+        },
+        "required": [
+          "speaker",
+          "words"
+        ]
+      }
+    }
+  },
+  "required": [
+    "utterances"
+  ]
+}

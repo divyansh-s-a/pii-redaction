@@ -1,0 +1,3435 @@
+{
+  "config": {
+    "generated_at": "2026-09-02",
+    "judge_model": "openai/gpt-5.6-sol",
+    "verify_model": "openai/gpt-5.6-luna",
+    "profile": "medical_consult",
+    "configs": [
+      "elevenlabs",
+      "gemini",
+      "openai",
+      "elevenlabs__gpt",
+      "openai__gpt"
+    ],
+    "pred_root": "output",
+    "span_cache": "output/judge/pseudo_gt",
+    "out": "output/judge/precision_recall"
+  },
+  "caveats": [
+    "The reference is a UNION of what the two listener transcripts (elevenlabs, gemini) surfaced to the judge — a shared benchmark for comparing configurations fairly; values neither listener transcribed sit outside its scope, so human spot-checks complement these numbers.",
+    "The judge and verifier are LLMs applying the written policy; their reference is unvalidated. Human ground truth remains the calibrator and will later score the judge itself.",
+    "Configs with a __gpt detector share a model family with the judge (detector luna, judge sol). Rule-verified precision especially may flatter them; the cross-family read (Gemini detector, GPT judge) is the cleaner comparison.",
+    "Value-based matching requires a shared category between reference item and interval; purely temporal matches do not."
+  ],
+  "metric_definitions": {
+    "DETECTION RECALL": "reference items matched by the config's intervals.json / all reference items (match = temporal IoU >= 0.3 or 70% cover, OR same canonicalized value within +/-2.5 s)",
+    "DETECTION PRECISION": "intervals matching a reference item / all intervals in intervals.json (same match rule, same reference)",
+    "REDACTION RECALL": "must-beep reference items >= 95% covered by the rendered beeps / all must-beep items (channel-aware coverage)",
+    "LEAK RATE": "1 - redaction recall — the headline safety number",
+    "POLICY-VERIFIED PRECISION (supplementary)": "intervals the adversarial verifier confirms satisfy a policy include rule / all intervals; reported alongside detection precision, never instead of it"
+  },
+  "thresholds": {
+    "cluster_iou": 0.3,
+    "cluster_cover": 0.7,
+    "value_match_slop_ms": 2500,
+    "coverage_min": 0.95
+  },
+  "aggregate": {
+    "elevenlabs": {
+      "ref_items": 40,
+      "ref_matched": 35,
+      "intervals": 50,
+      "intervals_matched": 42,
+      "must_beep": 39,
+      "covered": 33,
+      "leaked": 6,
+      "annotate_only": 1,
+      "files": 8,
+      "pverify_kept": 38,
+      "pverify_total": 50,
+      "pverify_files": 8,
+      "detection_recall": 0.875,
+      "detection_precision": 0.84,
+      "redaction_recall": 0.8461538461538461,
+      "leak_rate": 0.15384615384615385,
+      "policy_verified_precision": 0.76,
+      "per_category": {
+        "FULL_NAME": {
+          "ref": 13,
+          "ref_matched": 9,
+          "iv": 12,
+          "iv_matched": 11
+        },
+        "ORGANIZATION_PERSON_LINKED": {
+          "ref": 16,
+          "ref_matched": 16,
+          "iv": 20,
+          "iv_matched": 18
+        },
+        "FINANCIAL_INFO": {
+          "ref": 6,
+          "ref_matched": 6,
+          "iv": 11,
+          "iv_matched": 8
+        },
+        "PHONE": {
+          "ref": 5,
+          "ref_matched": 5,
+          "iv": 5,
+          "iv_matched": 5
+        },
+        "HEALTH_MEDICAL_INFO": {
+          "ref": 1,
+          "ref_matched": 0,
+          "iv": 2,
+          "iv_matched": 0
+        }
+      }
+    },
+    "gemini": {
+      "ref_items": 40,
+      "ref_matched": 37,
+      "intervals": 52,
+      "intervals_matched": 45,
+      "must_beep": 39,
+      "covered": 36,
+      "leaked": 3,
+      "annotate_only": 1,
+      "files": 8,
+      "pverify_kept": 45,
+      "pverify_total": 52,
+      "pverify_files": 8,
+      "detection_recall": 0.925,
+      "detection_precision": 0.8653846153846154,
+      "redaction_recall": 0.9230769230769231,
+      "leak_rate": 0.07692307692307687,
+      "policy_verified_precision": 0.8653846153846154,
+      "per_category": {
+        "FULL_NAME": {
+          "ref": 13,
+          "ref_matched": 11,
+          "iv": 14,
+          "iv_matched": 14
+        },
+        "ORGANIZATION_PERSON_LINKED": {
+          "ref": 16,
+          "ref_matched": 15,
+          "iv": 18,
+          "iv_matched": 17
+        },
+        "FINANCIAL_INFO": {
+          "ref": 6,
+          "ref_matched": 6,
+          "iv": 11,
+          "iv_matched": 8
+        },
+        "PHONE": {
+          "ref": 5,
+          "ref_matched": 5,
+          "iv": 5,
+          "iv_matched": 5
+        },
+        "HEALTH_MEDICAL_INFO": {
+          "ref": 1,
+          "ref_matched": 1,
+          "iv": 4,
+          "iv_matched": 1
+        }
+      }
+    },
+    "openai": {
+      "ref_items": 40,
+      "ref_matched": 21,
+      "intervals": 31,
+      "intervals_matched": 25,
+      "must_beep": 39,
+      "covered": 13,
+      "leaked": 26,
+      "annotate_only": 1,
+      "files": 8,
+      "pverify_kept": 27,
+      "pverify_total": 31,
+      "pverify_files": 8,
+      "detection_recall": 0.525,
+      "detection_precision": 0.8064516129032258,
+      "redaction_recall": 0.3333333333333333,
+      "leak_rate": 0.6666666666666667,
+      "policy_verified_precision": 0.8709677419354839,
+      "per_category": {
+        "FULL_NAME": {
+          "ref": 13,
+          "ref_matched": 7,
+          "iv": 12,
+          "iv_matched": 9
+        },
+        "ORGANIZATION_PERSON_LINKED": {
+          "ref": 16,
+          "ref_matched": 10,
+          "iv": 11,
+          "iv_matched": 9
+        },
+        "FINANCIAL_INFO": {
+          "ref": 6,
+          "ref_matched": 1,
+          "iv": 4,
+          "iv_matched": 3
+        },
+        "PHONE": {
+          "ref": 5,
+          "ref_matched": 4,
+          "iv": 4,
+          "iv_matched": 4
+        },
+        "HEALTH_MEDICAL_INFO": {
+          "ref": 1,
+          "ref_matched": 0,
+          "iv": 0,
+          "iv_matched": 0
+        }
+      }
+    },
+    "elevenlabs__gpt": {
+      "ref_items": 40,
+      "ref_matched": 34,
+      "intervals": 44,
+      "intervals_matched": 38,
+      "must_beep": 39,
+      "covered": 32,
+      "leaked": 7,
+      "annotate_only": 1,
+      "files": 8,
+      "pverify_kept": 36,
+      "pverify_total": 44,
+      "pverify_files": 8,
+      "detection_recall": 0.85,
+      "detection_precision": 0.8636363636363636,
+      "redaction_recall": 0.8205128205128205,
+      "leak_rate": 0.17948717948717952,
+      "policy_verified_precision": 0.8181818181818182,
+      "per_category": {
+        "FULL_NAME": {
+          "ref": 13,
+          "ref_matched": 9,
+          "iv": 10,
+          "iv_matched": 9
+        },
+        "ORGANIZATION_PERSON_LINKED": {
+          "ref": 16,
+          "ref_matched": 14,
+          "iv": 17,
+          "iv_matched": 15
+        },
+        "FINANCIAL_INFO": {
+          "ref": 6,
+          "ref_matched": 6,
+          "iv": 11,
+          "iv_matched": 8
+        },
+        "PHONE": {
+          "ref": 5,
+          "ref_matched": 5,
+          "iv": 5,
+          "iv_matched": 5
+        },
+        "HEALTH_MEDICAL_INFO": {
+          "ref": 1,
+          "ref_matched": 1,
+          "iv": 1,
+          "iv_matched": 1
+        }
+      }
+    },
+    "openai__gpt": {
+      "ref_items": 40,
+      "ref_matched": 19,
+      "intervals": 28,
+      "intervals_matched": 23,
+      "must_beep": 39,
+      "covered": 11,
+      "leaked": 28,
+      "annotate_only": 1,
+      "files": 8,
+      "pverify_kept": 26,
+      "pverify_total": 28,
+      "pverify_files": 8,
+      "detection_recall": 0.475,
+      "detection_precision": 0.8214285714285714,
+      "redaction_recall": 0.28205128205128205,
+      "leak_rate": 0.717948717948718,
+      "policy_verified_precision": 0.9285714285714286,
+      "per_category": {
+        "FULL_NAME": {
+          "ref": 13,
+          "ref_matched": 7,
+          "iv": 12,
+          "iv_matched": 9
+        },
+        "ORGANIZATION_PERSON_LINKED": {
+          "ref": 16,
+          "ref_matched": 8,
+          "iv": 8,
+          "iv_matched": 7
+        },
+        "FINANCIAL_INFO": {
+          "ref": 6,
+          "ref_matched": 1,
+          "iv": 4,
+          "iv_matched": 3
+        },
+        "PHONE": {
+          "ref": 5,
+          "ref_matched": 4,
+          "iv": 4,
+          "iv_matched": 4
+        },
+        "HEALTH_MEDICAL_INFO": {
+          "ref": 1,
+          "ref_matched": 0,
+          "iv": 0,
+          "iv_matched": 0
+        }
+      }
+    }
+  },
+  "files": [
+    {
+      "file_id": "025354f09d2dcc71517beb7553441a85",
+      "profile": "medical_consult",
+      "items": [
+        {
+          "start_ms": 12690,
+          "end_ms": 12760,
+          "categories": [
+            "FULL_NAME"
+          ],
+          "engines": [
+            "elevenlabs"
+          ],
+          "public_figure": false,
+          "confidence": "high",
+          "spoken_text": "Ritika",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 12690,
+              "end_ms": 12760,
+              "engine": "elevenlabs",
+              "channel": null
+            }
+          ],
+          "item_id": "025354f09d2dcc71517beb7553441a85_R001",
+          "action": "beep"
+        },
+        {
+          "start_ms": 13000,
+          "end_ms": 13400,
+          "categories": [
+            "FULL_NAME"
+          ],
+          "engines": [
+            "gemini"
+          ],
+          "public_figure": false,
+          "confidence": "high",
+          "spoken_text": "Vidya",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 13000,
+              "end_ms": 13400,
+              "engine": "gemini",
+              "channel": null
+            }
+          ],
+          "item_id": "025354f09d2dcc71517beb7553441a85_R002",
+          "action": "beep"
+        },
+        {
+          "start_ms": 13380,
+          "end_ms": 14400,
+          "categories": [
+            "ORGANIZATION_PERSON_LINKED"
+          ],
+          "engines": [
+            "elevenlabs",
+            "gemini"
+          ],
+          "public_figure": false,
+          "confidence": "high",
+          "spoken_text": "KIMS Hospital",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 13380,
+              "end_ms": 13910,
+              "engine": "elevenlabs",
+              "channel": null
+            },
+            {
+              "start_ms": 13600,
+              "end_ms": 14400,
+              "engine": "gemini",
+              "channel": null
+            }
+          ],
+          "item_id": "025354f09d2dcc71517beb7553441a85_R003",
+          "action": "beep"
+        },
+        {
+          "start_ms": 95940,
+          "end_ms": 106800,
+          "categories": [
+            "FINANCIAL_INFO"
+          ],
+          "engines": [
+            "elevenlabs",
+            "gemini"
+          ],
+          "public_figure": false,
+          "confidence": "high",
+          "spoken_text": "thirty thousand six hundred and thirty-five rupees",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 95940,
+              "end_ms": 98020,
+              "engine": "elevenlabs",
+              "channel": null
+            },
+            {
+              "start_ms": 101180,
+              "end_ms": 102200,
+              "engine": "elevenlabs",
+              "channel": null
+            },
+            {
+              "start_ms": 103320,
+              "end_ms": 105240,
+              "engine": "elevenlabs",
+              "channel": null
+            },
+            {
+              "start_ms": 96800,
+              "end_ms": 99600,
+              "engine": "gemini",
+              "channel": null
+            },
+            {
+              "start_ms": 101600,
+              "end_ms": 103000,
+              "engine": "gemini",
+              "channel": null
+            },
+            {
+              "start_ms": 104000,
+              "end_ms": 106800,
+              "engine": "gemini",
+              "channel": null
+            }
+          ],
+          "item_id": "025354f09d2dcc71517beb7553441a85_R004",
+          "action": "beep"
+        }
+      ],
+      "notes": [],
+      "verifier_rejected": {
+        "elevenlabs": 0,
+        "gemini": 0
+      },
+      "configs": {
+        "elevenlabs": {
+          "ref_items": 4,
+          "ref_matched": 3,
+          "intervals": 5,
+          "intervals_matched": 5,
+          "must_beep": 4,
+          "covered": 3,
+          "leaked": 1,
+          "annotate_only": 0,
+          "rendered_missing": false,
+          "missed_item_ids": [
+            "025354f09d2dcc71517beb7553441a85_R002"
+          ],
+          "unmatched_intervals": [],
+          "per_category": {
+            "FULL_NAME": {
+              "ref": 2,
+              "ref_matched": 1,
+              "iv": 1,
+              "iv_matched": 1
+            },
+            "ORGANIZATION_PERSON_LINKED": {
+              "ref": 1,
+              "ref_matched": 1,
+              "iv": 1,
+              "iv_matched": 1
+            },
+            "FINANCIAL_INFO": {
+              "ref": 1,
+              "ref_matched": 1,
+              "iv": 3,
+              "iv_matched": 3
+            }
+          }
+        },
+        "gemini": {
+          "ref_items": 4,
+          "ref_matched": 3,
+          "intervals": 5,
+          "intervals_matched": 5,
+          "must_beep": 4,
+          "covered": 3,
+          "leaked": 1,
+          "annotate_only": 0,
+          "rendered_missing": false,
+          "missed_item_ids": [
+            "025354f09d2dcc71517beb7553441a85_R001"
+          ],
+          "unmatched_intervals": [],
+          "per_category": {
+            "FULL_NAME": {
+              "ref": 2,
+              "ref_matched": 1,
+              "iv": 1,
+              "iv_matched": 1
+            },
+            "ORGANIZATION_PERSON_LINKED": {
+              "ref": 1,
+              "ref_matched": 1,
+              "iv": 1,
+              "iv_matched": 1
+            },
+            "FINANCIAL_INFO": {
+              "ref": 1,
+              "ref_matched": 1,
+              "iv": 3,
+              "iv_matched": 3
+            }
+          }
+        },
+        "openai": {
+          "ref_items": 4,
+          "ref_matched": 3,
+          "intervals": 5,
+          "intervals_matched": 5,
+          "must_beep": 4,
+          "covered": 2,
+          "leaked": 2,
+          "annotate_only": 0,
+          "rendered_missing": false,
+          "missed_item_ids": [
+            "025354f09d2dcc71517beb7553441a85_R001"
+          ],
+          "unmatched_intervals": [],
+          "per_category": {
+            "FULL_NAME": {
+              "ref": 2,
+              "ref_matched": 1,
+              "iv": 1,
+              "iv_matched": 1
+            },
+            "ORGANIZATION_PERSON_LINKED": {
+              "ref": 1,
+              "ref_matched": 1,
+              "iv": 1,
+              "iv_matched": 1
+            },
+            "FINANCIAL_INFO": {
+              "ref": 1,
+              "ref_matched": 1,
+              "iv": 3,
+              "iv_matched": 3
+            }
+          }
+        },
+        "elevenlabs__gpt": {
+          "ref_items": 4,
+          "ref_matched": 4,
+          "intervals": 5,
+          "intervals_matched": 5,
+          "must_beep": 4,
+          "covered": 4,
+          "leaked": 0,
+          "annotate_only": 0,
+          "rendered_missing": false,
+          "missed_item_ids": [],
+          "unmatched_intervals": [],
+          "per_category": {
+            "FULL_NAME": {
+              "ref": 2,
+              "ref_matched": 2,
+              "iv": 1,
+              "iv_matched": 1
+            },
+            "ORGANIZATION_PERSON_LINKED": {
+              "ref": 1,
+              "ref_matched": 1,
+              "iv": 1,
+              "iv_matched": 1
+            },
+            "FINANCIAL_INFO": {
+              "ref": 1,
+              "ref_matched": 1,
+              "iv": 3,
+              "iv_matched": 3
+            }
+          }
+        },
+        "openai__gpt": {
+          "ref_items": 4,
+          "ref_matched": 3,
+          "intervals": 5,
+          "intervals_matched": 5,
+          "must_beep": 4,
+          "covered": 2,
+          "leaked": 2,
+          "annotate_only": 0,
+          "rendered_missing": false,
+          "missed_item_ids": [
+            "025354f09d2dcc71517beb7553441a85_R001"
+          ],
+          "unmatched_intervals": [],
+          "per_category": {
+            "FULL_NAME": {
+              "ref": 2,
+              "ref_matched": 1,
+              "iv": 1,
+              "iv_matched": 1
+            },
+            "ORGANIZATION_PERSON_LINKED": {
+              "ref": 1,
+              "ref_matched": 1,
+              "iv": 1,
+              "iv_matched": 1
+            },
+            "FINANCIAL_INFO": {
+              "ref": 1,
+              "ref_matched": 1,
+              "iv": 3,
+              "iv_matched": 3
+            }
+          }
+        }
+      },
+      "pverify": {
+        "elevenlabs": [
+          5,
+          5
+        ],
+        "gemini": [
+          5,
+          5
+        ],
+        "openai": [
+          5,
+          5
+        ],
+        "elevenlabs__gpt": [
+          5,
+          5
+        ],
+        "openai__gpt": [
+          5,
+          5
+        ]
+      },
+      "timing_offsets_ms": {
+        "n": 4,
+        "median": 680,
+        "p90": 860
+      },
+      "timing_offsets_raw": [
+        220,
+        860,
+        420,
+        680
+      ],
+      "speakers_languages": {
+        "per_listener": {
+          "elevenlabs": {
+            "speakers": 2,
+            "primary_language": "en",
+            "languages": [
+              "en"
+            ]
+          },
+          "gemini": {
+            "speakers": 2,
+            "primary_language": "en",
+            "languages": [
+              "en"
+            ]
+          }
+        },
+        "speakers_agree": true,
+        "primary_language_agree": true
+      }
+    },
+    {
+      "file_id": "06e8274b603dfddc4ff0a84ed09f1a85",
+      "profile": "medical_consult",
+      "items": [
+        {
+          "start_ms": 3400,
+          "end_ms": 4280,
+          "categories": [
+            "FULL_NAME"
+          ],
+          "engines": [
+            "elevenlabs",
+            "gemini"
+          ],
+          "public_figure": false,
+          "confidence": "high",
+          "spoken_text": "Keerthana",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 3920,
+              "end_ms": 4280,
+              "engine": "elevenlabs",
+              "channel": null
+            },
+            {
+              "start_ms": 3400,
+              "end_ms": 3800,
+              "engine": "gemini",
+              "channel": null
+            }
+          ],
+          "item_id": "06e8274b603dfddc4ff0a84ed09f1a85_R001",
+          "action": "beep"
+        },
+        {
+          "start_ms": 4700,
+          "end_ms": 6040,
+          "categories": [
+            "ORGANIZATION_PERSON_LINKED"
+          ],
+          "engines": [
+            "elevenlabs",
+            "gemini"
+          ],
+          "public_figure": false,
+          "confidence": "high",
+          "spoken_text": "Vikram Hospital",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 5120,
+              "end_ms": 6040,
+              "engine": "elevenlabs",
+              "channel": null
+            },
+            {
+              "start_ms": 4700,
+              "end_ms": 5500,
+              "engine": "gemini",
+              "channel": null
+            }
+          ],
+          "item_id": "06e8274b603dfddc4ff0a84ed09f1a85_R002",
+          "action": "beep"
+        },
+        {
+          "start_ms": 10200,
+          "end_ms": 10940,
+          "categories": [
+            "FULL_NAME"
+          ],
+          "engines": [
+            "elevenlabs",
+            "gemini"
+          ],
+          "public_figure": false,
+          "confidence": "high",
+          "spoken_text": "Praveen",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 10560,
+              "end_ms": 10940,
+              "engine": "elevenlabs",
+              "channel": null
+            },
+            {
+              "start_ms": 10200,
+              "end_ms": 10800,
+              "engine": "gemini",
+              "channel": null
+            }
+          ],
+          "item_id": "06e8274b603dfddc4ff0a84ed09f1a85_R003",
+          "action": "beep"
+        },
+        {
+          "start_ms": 51300,
+          "end_ms": 52460,
+          "categories": [
+            "ORGANIZATION_PERSON_LINKED"
+          ],
+          "engines": [
+            "elevenlabs",
+            "gemini"
+          ],
+          "public_figure": false,
+          "confidence": "high",
+          "spoken_text": "Orix",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 52280,
+              "end_ms": 52460,
+              "engine": "elevenlabs",
+              "channel": null
+            },
+            {
+              "start_ms": 51300,
+              "end_ms": 51800,
+              "engine": "gemini",
+              "channel": null
+            }
+          ],
+          "item_id": "06e8274b603dfddc4ff0a84ed09f1a85_R004",
+          "action": "beep"
+        },
+        {
+          "start_ms": 76700,
+          "end_ms": 81900,
+          "categories": [
+            "FULL_NAME"
+          ],
+          "engines": [
+            "elevenlabs",
+            "gemini"
+          ],
+          "public_figure": false,
+          "confidence": "high",
+          "spoken_text": "Shailesh",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 78080,
+              "end_ms": 78590,
+              "engine": "elevenlabs",
+              "channel": null
+            },
+            {
+              "start_ms": 81440,
+              "end_ms": 81900,
+              "engine": "elevenlabs",
+              "channel": null
+            },
+            {
+              "start_ms": 76700,
+              "end_ms": 77200,
+              "engine": "gemini",
+              "channel": null
+            },
+            {
+              "start_ms": 79300,
+              "end_ms": 79800,
+              "engine": "gemini",
+              "channel": null
+            },
+            {
+              "start_ms": 80000,
+              "end_ms": 80500,
+              "engine": "gemini",
+              "channel": null
+            }
+          ],
+          "item_id": "06e8274b603dfddc4ff0a84ed09f1a85_R005",
+          "action": "beep"
+        },
+        {
+          "start_ms": 221180,
+          "end_ms": 229300,
+          "categories": [
+            "PHONE"
+          ],
+          "engines": [
+            "elevenlabs",
+            "gemini"
+          ],
+          "public_figure": false,
+          "confidence": "high",
+          "spoken_text": "double nine eight zero one six one double three one",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 221180,
+              "end_ms": 224300,
+              "engine": "elevenlabs",
+              "channel": null
+            },
+            {
+              "start_ms": 221600,
+              "end_ms": 229300,
+              "engine": "gemini",
+              "channel": null
+            }
+          ],
+          "item_id": "06e8274b603dfddc4ff0a84ed09f1a85_R006",
+          "action": "beep"
+        },
+        {
+          "start_ms": 226800,
+          "end_ms": 237900,
+          "categories": [
+            "ORGANIZATION_PERSON_LINKED",
+            "PHONE"
+          ],
+          "engines": [
+            "elevenlabs",
+            "gemini"
+          ],
+          "public_figure": false,
+          "confidence": "high",
+          "spoken_text": "nine double zero eight three zero five six four eight",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 227420,
+              "end_ms": 230810,
+              "engine": "elevenlabs",
+              "channel": null
+            },
+            {
+              "start_ms": 232900,
+              "end_ms": 233600,
+              "engine": "elevenlabs",
+              "channel": null
+            },
+            {
+              "start_ms": 226800,
+              "end_ms": 233800,
+              "engine": "gemini",
+              "channel": null
+            },
+            {
+              "start_ms": 232300,
+              "end_ms": 237900,
+              "engine": "gemini",
+              "channel": null
+            }
+          ],
+          "item_id": "06e8274b603dfddc4ff0a84ed09f1a85_R007",
+          "action": "beep"
+        },
+        {
+          "start_ms": 239100,
+          "end_ms": 244900,
+          "categories": [
+            "ORGANIZATION_PERSON_LINKED"
+          ],
+          "engines": [
+            "elevenlabs",
+            "gemini"
+          ],
+          "public_figure": false,
+          "confidence": "high",
+          "spoken_text": "H D F C bank",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 240370,
+              "end_ms": 241040,
+              "engine": "elevenlabs",
+              "channel": null
+            },
+            {
+              "start_ms": 239100,
+              "end_ms": 244900,
+              "engine": "gemini",
+              "channel": null
+            }
+          ],
+          "item_id": "06e8274b603dfddc4ff0a84ed09f1a85_R008",
+          "action": "beep"
+        },
+        {
+          "start_ms": 252300,
+          "end_ms": 257700,
+          "categories": [
+            "ORGANIZATION_PERSON_LINKED"
+          ],
+          "engines": [
+            "elevenlabs",
+            "gemini"
+          ],
+          "public_figure": false,
+          "confidence": "high",
+          "spoken_text": "Ayush Health",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 253420,
+              "end_ms": 253860,
+              "engine": "elevenlabs",
+              "channel": null
+            },
+            {
+              "start_ms": 252300,
+              "end_ms": 257700,
+              "engine": "gemini",
+              "channel": null
+            }
+          ],
+          "item_id": "06e8274b603dfddc4ff0a84ed09f1a85_R009",
+          "action": "beep"
+        },
+        {
+          "start_ms": 321080,
+          "end_ms": 321720,
+          "categories": [
+            "ORGANIZATION_PERSON_LINKED"
+          ],
+          "engines": [
+            "elevenlabs"
+          ],
+          "public_figure": false,
+          "confidence": "high",
+          "spoken_text": "Ayu Health",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 321080,
+              "end_ms": 321720,
+              "engine": "elevenlabs",
+              "channel": null
+            }
+          ],
+          "item_id": "06e8274b603dfddc4ff0a84ed09f1a85_R010",
+          "action": "beep"
+        },
+        {
+          "start_ms": 323460,
+          "end_ms": 324140,
+          "categories": [
+            "ORGANIZATION_PERSON_LINKED"
+          ],
+          "engines": [
+            "elevenlabs"
+          ],
+          "public_figure": false,
+          "confidence": "high",
+          "spoken_text": "Medi Assist",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 323460,
+              "end_ms": 324140,
+              "engine": "elevenlabs",
+              "channel": null
+            }
+          ],
+          "item_id": "06e8274b603dfddc4ff0a84ed09f1a85_R011",
+          "action": "beep"
+        },
+        {
+          "start_ms": 381120,
+          "end_ms": 387120,
+          "categories": [
+            "FULL_NAME"
+          ],
+          "engines": [
+            "elevenlabs",
+            "gemini"
+          ],
+          "public_figure": false,
+          "confidence": "medium",
+          "spoken_text": "ಸುಧೀರ್",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 381208,
+              "end_ms": 381508,
+              "engine": "elevenlabs",
+              "channel": null
+            },
+            {
+              "start_ms": 382508,
+              "end_ms": 382868,
+              "engine": "elevenlabs",
+              "channel": null
+            },
+            {
+              "start_ms": 381120,
+              "end_ms": 386120,
+              "engine": "gemini",
+              "channel": null
+            },
+            {
+              "start_ms": 382120,
+              "end_ms": 387120,
+              "engine": "gemini",
+              "channel": null
+            }
+          ],
+          "item_id": "06e8274b603dfddc4ff0a84ed09f1a85_R012",
+          "action": "beep"
+        },
+        {
+          "start_ms": 447008,
+          "end_ms": 447558,
+          "categories": [
+            "ORGANIZATION_PERSON_LINKED"
+          ],
+          "engines": [
+            "elevenlabs"
+          ],
+          "public_figure": false,
+          "confidence": "high",
+          "spoken_text": "Medi Assist",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 447008,
+              "end_ms": 447558,
+              "engine": "elevenlabs",
+              "channel": null
+            }
+          ],
+          "item_id": "06e8274b603dfddc4ff0a84ed09f1a85_R013",
+          "action": "beep"
+        },
+        {
+          "start_ms": 449228,
+          "end_ms": 457500,
+          "categories": [
+            "ORGANIZATION_PERSON_LINKED"
+          ],
+          "engines": [
+            "elevenlabs",
+            "gemini"
+          ],
+          "public_figure": false,
+          "confidence": "high",
+          "spoken_text": "media assist",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 449228,
+              "end_ms": 449848,
+              "engine": "elevenlabs",
+              "channel": null
+            },
+            {
+              "start_ms": 451848,
+              "end_ms": 452398,
+              "engine": "elevenlabs",
+              "channel": null
+            },
+            {
+              "start_ms": 452000,
+              "end_ms": 457500,
+              "engine": "gemini",
+              "channel": null
+            }
+          ],
+          "item_id": "06e8274b603dfddc4ff0a84ed09f1a85_R014",
+          "action": "beep"
+        },
+        {
+          "start_ms": 457878,
+          "end_ms": 458248,
+          "categories": [
+            "ORGANIZATION_PERSON_LINKED"
+          ],
+          "engines": [
+            "elevenlabs"
+          ],
+          "public_figure": false,
+          "confidence": "high",
+          "spoken_text": "Ayu Health",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 457878,
+              "end_ms": 458248,
+              "engine": "elevenlabs",
+              "channel": null
+            }
+          ],
+          "item_id": "06e8274b603dfddc4ff0a84ed09f1a85_R015",
+          "action": "beep"
+        },
+        {
+          "start_ms": 458000,
+          "end_ms": 466500,
+          "categories": [
+            "ORGANIZATION_PERSON_LINKED"
+          ],
+          "engines": [
+            "elevenlabs",
+            "gemini"
+          ],
+          "public_figure": false,
+          "confidence": "medium",
+          "spoken_text": "ವಿಕ್ರಮ್",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 459228,
+              "end_ms": 459528,
+              "engine": "elevenlabs",
+              "channel": null
+            },
+            {
+              "start_ms": 461288,
+              "end_ms": 461608,
+              "engine": "elevenlabs",
+              "channel": null
+            },
+            {
+              "start_ms": 458000,
+              "end_ms": 463000,
+              "engine": "gemini",
+              "channel": null
+            },
+            {
+              "start_ms": 459000,
+              "end_ms": 464000,
+              "engine": "gemini",
+              "channel": null
+            },
+            {
+              "start_ms": 461500,
+              "end_ms": 466500,
+              "engine": "gemini",
+              "channel": null
+            }
+          ],
+          "item_id": "06e8274b603dfddc4ff0a84ed09f1a85_R016",
+          "action": "beep"
+        }
+      ],
+      "notes": [],
+      "verifier_rejected": {
+        "elevenlabs": 0,
+        "gemini": 4
+      },
+      "configs": {
+        "elevenlabs": {
+          "ref_items": 16,
+          "ref_matched": 16,
+          "intervals": 21,
+          "intervals_matched": 21,
+          "must_beep": 16,
+          "covered": 15,
+          "leaked": 1,
+          "annotate_only": 0,
+          "rendered_missing": false,
+          "missed_item_ids": [],
+          "unmatched_intervals": [],
+          "per_category": {
+            "FULL_NAME": {
+              "ref": 4,
+              "ref_matched": 4,
+              "iv": 6,
+              "iv_matched": 6
+            },
+            "ORGANIZATION_PERSON_LINKED": {
+              "ref": 11,
+              "ref_matched": 11,
+              "iv": 13,
+              "iv_matched": 13
+            },
+            "PHONE": {
+              "ref": 2,
+              "ref_matched": 2,
+              "iv": 2,
+              "iv_matched": 2
+            }
+          }
+        },
+        "gemini": {
+          "ref_items": 16,
+          "ref_matched": 15,
+          "intervals": 22,
+          "intervals_matched": 21,
+          "must_beep": 16,
+          "covered": 15,
+          "leaked": 1,
+          "annotate_only": 0,
+          "rendered_missing": false,
+          "missed_item_ids": [
+            "06e8274b603dfddc4ff0a84ed09f1a85_R015"
+          ],
+          "unmatched_intervals": [
+            {
+              "start_ms": 501000,
+              "end_ms": 506000,
+              "categories": [
+                "HEALTH_MEDICAL_INFO"
+              ],
+              "spoken_text": "delivery"
+            }
+          ],
+          "per_category": {
+            "FULL_NAME": {
+              "ref": 4,
+              "ref_matched": 4,
+              "iv": 7,
+              "iv_matched": 7
+            },
+            "ORGANIZATION_PERSON_LINKED": {
+              "ref": 11,
+              "ref_matched": 10,
+              "iv": 12,
+              "iv_matched": 12
+            },
+            "PHONE": {
+              "ref": 2,
+              "ref_matched": 2,
+              "iv": 2,
+              "iv_matched": 2
+            },
+            "HEALTH_MEDICAL_INFO": {
+              "ref": 0,
+              "ref_matched": 0,
+              "iv": 1,
+              "iv_matched": 0
+            }
+          }
+        },
+        "openai": {
+          "ref_items": 16,
+          "ref_matched": 10,
+          "intervals": 16,
+          "intervals_matched": 12,
+          "must_beep": 16,
+          "covered": 6,
+          "leaked": 10,
+          "annotate_only": 0,
+          "rendered_missing": false,
+          "missed_item_ids": [
+            "06e8274b603dfddc4ff0a84ed09f1a85_R001",
+            "06e8274b603dfddc4ff0a84ed09f1a85_R004",
+            "06e8274b603dfddc4ff0a84ed09f1a85_R011",
+            "06e8274b603dfddc4ff0a84ed09f1a85_R013",
+            "06e8274b603dfddc4ff0a84ed09f1a85_R014",
+            "06e8274b603dfddc4ff0a84ed09f1a85_R015"
+          ],
+          "unmatched_intervals": [
+            {
+              "start_ms": 4200,
+              "end_ms": 4520,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "Seetha Nagyar"
+            },
+            {
+              "start_ms": 245480,
+              "end_ms": 245820,
+              "categories": [
+                "ORGANIZATION_PERSON_LINKED"
+              ],
+              "spoken_text": "KPMC"
+            },
+            {
+              "start_ms": 380660,
+              "end_ms": 381520,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "Sujaya"
+            },
+            {
+              "start_ms": 485395,
+              "end_ms": 486660,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "Vikram"
+            }
+          ],
+          "per_category": {
+            "FULL_NAME": {
+              "ref": 4,
+              "ref_matched": 3,
+              "iv": 8,
+              "iv_matched": 5
+            },
+            "ORGANIZATION_PERSON_LINKED": {
+              "ref": 11,
+              "ref_matched": 6,
+              "iv": 6,
+              "iv_matched": 5
+            },
+            "PHONE": {
+              "ref": 2,
+              "ref_matched": 2,
+              "iv": 2,
+              "iv_matched": 2
+            }
+          }
+        },
+        "elevenlabs__gpt": {
+          "ref_items": 16,
+          "ref_matched": 13,
+          "intervals": 16,
+          "intervals_matched": 16,
+          "must_beep": 16,
+          "covered": 13,
+          "leaked": 3,
+          "annotate_only": 0,
+          "rendered_missing": false,
+          "missed_item_ids": [
+            "06e8274b603dfddc4ff0a84ed09f1a85_R008",
+            "06e8274b603dfddc4ff0a84ed09f1a85_R010",
+            "06e8274b603dfddc4ff0a84ed09f1a85_R012"
+          ],
+          "unmatched_intervals": [],
+          "per_category": {
+            "FULL_NAME": {
+              "ref": 4,
+              "ref_matched": 3,
+              "iv": 4,
+              "iv_matched": 4
+            },
+            "ORGANIZATION_PERSON_LINKED": {
+              "ref": 11,
+              "ref_matched": 9,
+              "iv": 10,
+              "iv_matched": 10
+            },
+            "PHONE": {
+              "ref": 2,
+              "ref_matched": 2,
+              "iv": 2,
+              "iv_matched": 2
+            }
+          }
+        },
+        "openai__gpt": {
+          "ref_items": 16,
+          "ref_matched": 8,
+          "intervals": 14,
+          "intervals_matched": 10,
+          "must_beep": 16,
+          "covered": 4,
+          "leaked": 12,
+          "annotate_only": 0,
+          "rendered_missing": false,
+          "missed_item_ids": [
+            "06e8274b603dfddc4ff0a84ed09f1a85_R001",
+            "06e8274b603dfddc4ff0a84ed09f1a85_R002",
+            "06e8274b603dfddc4ff0a84ed09f1a85_R004",
+            "06e8274b603dfddc4ff0a84ed09f1a85_R008",
+            "06e8274b603dfddc4ff0a84ed09f1a85_R011",
+            "06e8274b603dfddc4ff0a84ed09f1a85_R013",
+            "06e8274b603dfddc4ff0a84ed09f1a85_R014",
+            "06e8274b603dfddc4ff0a84ed09f1a85_R015"
+          ],
+          "unmatched_intervals": [
+            {
+              "start_ms": 4200,
+              "end_ms": 4520,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "Seetha Nagyar"
+            },
+            {
+              "start_ms": 156600,
+              "end_ms": 157320,
+              "categories": [
+                "ORGANIZATION_PERSON_LINKED"
+              ],
+              "spoken_text": "PPMS"
+            },
+            {
+              "start_ms": 380660,
+              "end_ms": 381520,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "Sujaya"
+            },
+            {
+              "start_ms": 485395,
+              "end_ms": 486660,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "Vikram"
+            }
+          ],
+          "per_category": {
+            "FULL_NAME": {
+              "ref": 4,
+              "ref_matched": 3,
+              "iv": 8,
+              "iv_matched": 5
+            },
+            "ORGANIZATION_PERSON_LINKED": {
+              "ref": 11,
+              "ref_matched": 4,
+              "iv": 4,
+              "iv_matched": 3
+            },
+            "PHONE": {
+              "ref": 2,
+              "ref_matched": 2,
+              "iv": 2,
+              "iv_matched": 2
+            }
+          }
+        }
+      },
+      "pverify": {
+        "elevenlabs": [
+          17,
+          21
+        ],
+        "gemini": [
+          20,
+          22
+        ],
+        "openai": [
+          12,
+          16
+        ],
+        "elevenlabs__gpt": [
+          12,
+          16
+        ],
+        "openai__gpt": [
+          12,
+          14
+        ]
+      },
+      "timing_offsets_ms": {
+        "n": 17,
+        "median": 520,
+        "p90": 1270
+      },
+      "timing_offsets_raw": [
+        520,
+        420,
+        360,
+        980,
+        1220,
+        1440,
+        420,
+        620,
+        600,
+        1270,
+        1120,
+        88,
+        388,
+        2772,
+        152,
+        228,
+        212
+      ],
+      "speakers_languages": {
+        "per_listener": {
+          "elevenlabs": {
+            "speakers": 3,
+            "primary_language": "en",
+            "languages": [
+              "en"
+            ]
+          },
+          "gemini": {
+            "speakers": 3,
+            "primary_language": "en",
+            "languages": [
+              "en",
+              "mixed"
+            ]
+          }
+        },
+        "speakers_agree": true,
+        "primary_language_agree": true
+      }
+    },
+    {
+      "file_id": "5252dea2cb5c97b14aa7dcf365211a85",
+      "profile": "medical_consult",
+      "items": [
+        {
+          "start_ms": 2960,
+          "end_ms": 3500,
+          "categories": [
+            "FULL_NAME"
+          ],
+          "engines": [
+            "elevenlabs",
+            "gemini"
+          ],
+          "public_figure": false,
+          "confidence": "high",
+          "spoken_text": "Keerthana",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 2960,
+              "end_ms": 3300,
+              "engine": "elevenlabs",
+              "channel": null
+            },
+            {
+              "start_ms": 3000,
+              "end_ms": 3500,
+              "engine": "gemini",
+              "channel": null
+            }
+          ],
+          "item_id": "5252dea2cb5c97b14aa7dcf365211a85_R001",
+          "action": "beep"
+        },
+        {
+          "start_ms": 4500,
+          "end_ms": 5600,
+          "categories": [
+            "ORGANIZATION_PERSON_LINKED"
+          ],
+          "engines": [
+            "elevenlabs",
+            "gemini"
+          ],
+          "public_figure": false,
+          "confidence": "high",
+          "spoken_text": "Dr Agarwal Hospital",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 4770,
+              "end_ms": 5540,
+              "engine": "elevenlabs",
+              "channel": null
+            },
+            {
+              "start_ms": 4500,
+              "end_ms": 5600,
+              "engine": "gemini",
+              "channel": null
+            }
+          ],
+          "item_id": "5252dea2cb5c97b14aa7dcf365211a85_R002",
+          "action": "beep"
+        },
+        {
+          "start_ms": 10200,
+          "end_ms": 11020,
+          "categories": [
+            "FULL_NAME"
+          ],
+          "engines": [
+            "elevenlabs",
+            "gemini"
+          ],
+          "public_figure": false,
+          "confidence": "high",
+          "spoken_text": "Noor Jahan",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 10420,
+              "end_ms": 11020,
+              "engine": "elevenlabs",
+              "channel": null
+            },
+            {
+              "start_ms": 10200,
+              "end_ms": 11000,
+              "engine": "gemini",
+              "channel": null
+            }
+          ],
+          "item_id": "5252dea2cb5c97b14aa7dcf365211a85_R003",
+          "action": "beep"
+        },
+        {
+          "start_ms": 29600,
+          "end_ms": 30000,
+          "categories": [
+            "FULL_NAME"
+          ],
+          "engines": [
+            "gemini"
+          ],
+          "public_figure": false,
+          "confidence": "high",
+          "spoken_text": "Anish",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 29600,
+              "end_ms": 30000,
+              "engine": "gemini",
+              "channel": null
+            }
+          ],
+          "item_id": "5252dea2cb5c97b14aa7dcf365211a85_R004",
+          "action": "beep"
+        },
+        {
+          "start_ms": 30620,
+          "end_ms": 30940,
+          "categories": [
+            "FULL_NAME"
+          ],
+          "engines": [
+            "elevenlabs"
+          ],
+          "public_figure": false,
+          "confidence": "high",
+          "spoken_text": "Haneef",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 30620,
+              "end_ms": 30940,
+              "engine": "elevenlabs",
+              "channel": null
+            }
+          ],
+          "item_id": "5252dea2cb5c97b14aa7dcf365211a85_R005",
+          "action": "beep"
+        },
+        {
+          "start_ms": 46700,
+          "end_ms": 48000,
+          "categories": [
+            "HEALTH_MEDICAL_INFO"
+          ],
+          "engines": [
+            "gemini"
+          ],
+          "public_figure": false,
+          "confidence": "high",
+          "spoken_text": "medications post-surgery",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 46700,
+              "end_ms": 48000,
+              "engine": "gemini",
+              "channel": null
+            }
+          ],
+          "item_id": "5252dea2cb5c97b14aa7dcf365211a85_R006",
+          "action": "annotate_only"
+        },
+        {
+          "start_ms": 56500,
+          "end_ms": 58280,
+          "categories": [
+            "ORGANIZATION_PERSON_LINKED"
+          ],
+          "engines": [
+            "elevenlabs",
+            "gemini"
+          ],
+          "public_figure": false,
+          "confidence": "high",
+          "spoken_text": "Medi Assist",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 57240,
+              "end_ms": 58280,
+              "engine": "elevenlabs",
+              "channel": null
+            },
+            {
+              "start_ms": 56500,
+              "end_ms": 57500,
+              "engine": "gemini",
+              "channel": null
+            }
+          ],
+          "item_id": "5252dea2cb5c97b14aa7dcf365211a85_R007",
+          "action": "beep"
+        },
+        {
+          "start_ms": 168225,
+          "end_ms": 172401,
+          "categories": [
+            "PHONE"
+          ],
+          "engines": [
+            "elevenlabs",
+            "gemini"
+          ],
+          "public_figure": false,
+          "confidence": "high",
+          "spoken_text": "nine double nine eight double zero one nine zero double seven",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 168225,
+              "end_ms": 171240,
+              "engine": "elevenlabs",
+              "channel": null
+            },
+            {
+              "start_ms": 169700,
+              "end_ms": 172401,
+              "engine": "gemini",
+              "channel": null
+            }
+          ],
+          "item_id": "5252dea2cb5c97b14aa7dcf365211a85_R008",
+          "action": "beep"
+        },
+        {
+          "start_ms": 173960,
+          "end_ms": 177531,
+          "categories": [
+            "PHONE"
+          ],
+          "engines": [
+            "elevenlabs",
+            "gemini"
+          ],
+          "public_figure": false,
+          "confidence": "high",
+          "spoken_text": "nine seven three one five four double nine zero five",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 173960,
+              "end_ms": 177531,
+              "engine": "elevenlabs",
+              "channel": null
+            },
+            {
+              "start_ms": 174500,
+              "end_ms": 177201,
+              "engine": "gemini",
+              "channel": null
+            }
+          ],
+          "item_id": "5252dea2cb5c97b14aa7dcf365211a85_R009",
+          "action": "beep"
+        },
+        {
+          "start_ms": 179640,
+          "end_ms": 182500,
+          "categories": [
+            "ORGANIZATION_PERSON_LINKED"
+          ],
+          "engines": [
+            "elevenlabs",
+            "gemini"
+          ],
+          "public_figure": false,
+          "confidence": "high",
+          "spoken_text": "Model Solutions India Private Limited Company",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 179640,
+              "end_ms": 182280,
+              "engine": "elevenlabs",
+              "channel": null
+            },
+            {
+              "start_ms": 179900,
+              "end_ms": 182500,
+              "engine": "gemini",
+              "channel": null
+            }
+          ],
+          "item_id": "5252dea2cb5c97b14aa7dcf365211a85_R010",
+          "action": "beep"
+        }
+      ],
+      "notes": [],
+      "verifier_rejected": {
+        "elevenlabs": 6,
+        "gemini": 6
+      },
+      "configs": {
+        "elevenlabs": {
+          "ref_items": 10,
+          "ref_matched": 8,
+          "intervals": 14,
+          "intervals_matched": 8,
+          "must_beep": 9,
+          "covered": 8,
+          "leaked": 1,
+          "annotate_only": 1,
+          "rendered_missing": false,
+          "missed_item_ids": [
+            "5252dea2cb5c97b14aa7dcf365211a85_R004",
+            "5252dea2cb5c97b14aa7dcf365211a85_R006"
+          ],
+          "unmatched_intervals": [
+            {
+              "start_ms": 112380,
+              "end_ms": 114840,
+              "categories": [
+                "FINANCIAL_INFO"
+              ],
+              "spoken_text": "forty-two thousand"
+            },
+            {
+              "start_ms": 186360,
+              "end_ms": 187200,
+              "categories": [
+                "ORGANIZATION_PERSON_LINKED"
+              ],
+              "spoken_text": "State Bank of India"
+            },
+            {
+              "start_ms": 284240,
+              "end_ms": 284740,
+              "categories": [
+                "HEALTH_MEDICAL_INFO"
+              ],
+              "spoken_text": "ECG"
+            },
+            {
+              "start_ms": 284820,
+              "end_ms": 285880,
+              "categories": [
+                "HEALTH_MEDICAL_INFO"
+              ],
+              "spoken_text": "X-rays"
+            },
+            {
+              "start_ms": 287000,
+              "end_ms": 287780,
+              "categories": [
+                "FINANCIAL_INFO"
+              ],
+              "spoken_text": "three thousand"
+            },
+            {
+              "start_ms": 288980,
+              "end_ms": 290510,
+              "categories": [
+                "FINANCIAL_INFO"
+              ],
+              "spoken_text": "three thousand three hundred"
+            }
+          ],
+          "per_category": {
+            "FULL_NAME": {
+              "ref": 4,
+              "ref_matched": 3,
+              "iv": 3,
+              "iv_matched": 3
+            },
+            "ORGANIZATION_PERSON_LINKED": {
+              "ref": 3,
+              "ref_matched": 3,
+              "iv": 4,
+              "iv_matched": 3
+            },
+            "HEALTH_MEDICAL_INFO": {
+              "ref": 1,
+              "ref_matched": 0,
+              "iv": 2,
+              "iv_matched": 0
+            },
+            "PHONE": {
+              "ref": 2,
+              "ref_matched": 2,
+              "iv": 2,
+              "iv_matched": 2
+            },
+            "FINANCIAL_INFO": {
+              "ref": 0,
+              "ref_matched": 0,
+              "iv": 3,
+              "iv_matched": 0
+            }
+          }
+        },
+        "gemini": {
+          "ref_items": 10,
+          "ref_matched": 9,
+          "intervals": 15,
+          "intervals_matched": 9,
+          "must_beep": 9,
+          "covered": 8,
+          "leaked": 1,
+          "annotate_only": 1,
+          "rendered_missing": false,
+          "missed_item_ids": [
+            "5252dea2cb5c97b14aa7dcf365211a85_R005"
+          ],
+          "unmatched_intervals": [
+            {
+              "start_ms": 111400,
+              "end_ms": 114000,
+              "categories": [
+                "FINANCIAL_INFO"
+              ],
+              "spoken_text": "forty-two thousand"
+            },
+            {
+              "start_ms": 187500,
+              "end_ms": 189000,
+              "categories": [
+                "ORGANIZATION_PERSON_LINKED"
+              ],
+              "spoken_text": "State Bank of India"
+            },
+            {
+              "start_ms": 282900,
+              "end_ms": 287900,
+              "categories": [
+                "HEALTH_MEDICAL_INFO"
+              ],
+              "spoken_text": "ECG"
+            },
+            {
+              "start_ms": 283600,
+              "end_ms": 288900,
+              "categories": [
+                "HEALTH_MEDICAL_INFO"
+              ],
+              "spoken_text": "blood test"
+            },
+            {
+              "start_ms": 285700,
+              "end_ms": 291100,
+              "categories": [
+                "FINANCIAL_INFO"
+              ],
+              "spoken_text": "three thousand"
+            },
+            {
+              "start_ms": 287000,
+              "end_ms": 293000,
+              "categories": [
+                "FINANCIAL_INFO"
+              ],
+              "spoken_text": "three thousand three hundred"
+            }
+          ],
+          "per_category": {
+            "FULL_NAME": {
+              "ref": 4,
+              "ref_matched": 3,
+              "iv": 3,
+              "iv_matched": 3
+            },
+            "ORGANIZATION_PERSON_LINKED": {
+              "ref": 3,
+              "ref_matched": 3,
+              "iv": 4,
+              "iv_matched": 3
+            },
+            "HEALTH_MEDICAL_INFO": {
+              "ref": 1,
+              "ref_matched": 1,
+              "iv": 3,
+              "iv_matched": 1
+            },
+            "PHONE": {
+              "ref": 2,
+              "ref_matched": 2,
+              "iv": 2,
+              "iv_matched": 2
+            },
+            "FINANCIAL_INFO": {
+              "ref": 0,
+              "ref_matched": 0,
+              "iv": 3,
+              "iv_matched": 0
+            }
+          }
+        },
+        "openai": {
+          "ref_items": 10,
+          "ref_matched": 8,
+          "intervals": 10,
+          "intervals_matched": 8,
+          "must_beep": 9,
+          "covered": 5,
+          "leaked": 4,
+          "annotate_only": 1,
+          "rendered_missing": false,
+          "missed_item_ids": [
+            "5252dea2cb5c97b14aa7dcf365211a85_R005",
+            "5252dea2cb5c97b14aa7dcf365211a85_R006"
+          ],
+          "unmatched_intervals": [
+            {
+              "start_ms": 112460,
+              "end_ms": 113600,
+              "categories": [
+                "FINANCIAL_INFO"
+              ],
+              "spoken_text": "42 000 rupees"
+            },
+            {
+              "start_ms": 186240,
+              "end_ms": 187920,
+              "categories": [
+                "ORGANIZATION_PERSON_LINKED"
+              ],
+              "spoken_text": "State Bank of India Transfer Check Unit"
+            }
+          ],
+          "per_category": {
+            "FULL_NAME": {
+              "ref": 4,
+              "ref_matched": 3,
+              "iv": 3,
+              "iv_matched": 3
+            },
+            "ORGANIZATION_PERSON_LINKED": {
+              "ref": 3,
+              "ref_matched": 3,
+              "iv": 4,
+              "iv_matched": 3
+            },
+            "HEALTH_MEDICAL_INFO": {
+              "ref": 1,
+              "ref_matched": 0,
+              "iv": 0,
+              "iv_matched": 0
+            },
+            "PHONE": {
+              "ref": 2,
+              "ref_matched": 2,
+              "iv": 2,
+              "iv_matched": 2
+            },
+            "FINANCIAL_INFO": {
+              "ref": 0,
+              "ref_matched": 0,
+              "iv": 1,
+              "iv_matched": 0
+            }
+          }
+        },
+        "elevenlabs__gpt": {
+          "ref_items": 10,
+          "ref_matched": 9,
+          "intervals": 12,
+          "intervals_matched": 9,
+          "must_beep": 9,
+          "covered": 8,
+          "leaked": 1,
+          "annotate_only": 1,
+          "rendered_missing": false,
+          "missed_item_ids": [
+            "5252dea2cb5c97b14aa7dcf365211a85_R004"
+          ],
+          "unmatched_intervals": [
+            {
+              "start_ms": 112380,
+              "end_ms": 114840,
+              "categories": [
+                "FINANCIAL_INFO"
+              ],
+              "spoken_text": "forty-two thousand"
+            },
+            {
+              "start_ms": 186360,
+              "end_ms": 187200,
+              "categories": [
+                "ORGANIZATION_PERSON_LINKED"
+              ],
+              "spoken_text": "State Bank of India"
+            },
+            {
+              "start_ms": 288980,
+              "end_ms": 290510,
+              "categories": [
+                "FINANCIAL_INFO"
+              ],
+              "spoken_text": "three thousand three hundred"
+            }
+          ],
+          "per_category": {
+            "FULL_NAME": {
+              "ref": 4,
+              "ref_matched": 3,
+              "iv": 3,
+              "iv_matched": 3
+            },
+            "ORGANIZATION_PERSON_LINKED": {
+              "ref": 3,
+              "ref_matched": 3,
+              "iv": 4,
+              "iv_matched": 3
+            },
+            "HEALTH_MEDICAL_INFO": {
+              "ref": 1,
+              "ref_matched": 1,
+              "iv": 1,
+              "iv_matched": 1
+            },
+            "PHONE": {
+              "ref": 2,
+              "ref_matched": 2,
+              "iv": 2,
+              "iv_matched": 2
+            },
+            "FINANCIAL_INFO": {
+              "ref": 0,
+              "ref_matched": 0,
+              "iv": 2,
+              "iv_matched": 0
+            }
+          }
+        },
+        "openai__gpt": {
+          "ref_items": 10,
+          "ref_matched": 8,
+          "intervals": 9,
+          "intervals_matched": 8,
+          "must_beep": 9,
+          "covered": 5,
+          "leaked": 4,
+          "annotate_only": 1,
+          "rendered_missing": false,
+          "missed_item_ids": [
+            "5252dea2cb5c97b14aa7dcf365211a85_R005",
+            "5252dea2cb5c97b14aa7dcf365211a85_R006"
+          ],
+          "unmatched_intervals": [
+            {
+              "start_ms": 112460,
+              "end_ms": 113600,
+              "categories": [
+                "FINANCIAL_INFO"
+              ],
+              "spoken_text": "42 000 rupees"
+            }
+          ],
+          "per_category": {
+            "FULL_NAME": {
+              "ref": 4,
+              "ref_matched": 3,
+              "iv": 3,
+              "iv_matched": 3
+            },
+            "ORGANIZATION_PERSON_LINKED": {
+              "ref": 3,
+              "ref_matched": 3,
+              "iv": 3,
+              "iv_matched": 3
+            },
+            "HEALTH_MEDICAL_INFO": {
+              "ref": 1,
+              "ref_matched": 0,
+              "iv": 0,
+              "iv_matched": 0
+            },
+            "PHONE": {
+              "ref": 2,
+              "ref_matched": 2,
+              "iv": 2,
+              "iv_matched": 2
+            },
+            "FINANCIAL_INFO": {
+              "ref": 0,
+              "ref_matched": 0,
+              "iv": 1,
+              "iv_matched": 0
+            }
+          }
+        }
+      },
+      "pverify": {
+        "elevenlabs": [
+          9,
+          14
+        ],
+        "gemini": [
+          10,
+          15
+        ],
+        "openai": [
+          10,
+          10
+        ],
+        "elevenlabs__gpt": [
+          9,
+          12
+        ],
+        "openai__gpt": [
+          9,
+          9
+        ]
+      },
+      "timing_offsets_ms": {
+        "n": 7,
+        "median": 270,
+        "p90": 740
+      },
+      "timing_offsets_raw": [
+        40,
+        270,
+        220,
+        740,
+        1475,
+        540,
+        260
+      ],
+      "speakers_languages": {
+        "per_listener": {
+          "elevenlabs": {
+            "speakers": 2,
+            "primary_language": "en",
+            "languages": [
+              "en"
+            ]
+          },
+          "gemini": {
+            "speakers": 2,
+            "primary_language": "en",
+            "languages": [
+              "en"
+            ]
+          }
+        },
+        "speakers_agree": true,
+        "primary_language_agree": true
+      }
+    },
+    {
+      "file_id": "EP-3",
+      "profile": "medical_consult",
+      "items": [],
+      "notes": [],
+      "verifier_rejected": {
+        "elevenlabs": 0,
+        "gemini": 0
+      },
+      "configs": {
+        "elevenlabs": {
+          "ref_items": 0,
+          "ref_matched": 0,
+          "intervals": 0,
+          "intervals_matched": 0,
+          "must_beep": 0,
+          "covered": 0,
+          "leaked": 0,
+          "annotate_only": 0,
+          "rendered_missing": false,
+          "missed_item_ids": [],
+          "unmatched_intervals": [],
+          "per_category": {}
+        },
+        "gemini": {
+          "ref_items": 0,
+          "ref_matched": 0,
+          "intervals": 0,
+          "intervals_matched": 0,
+          "must_beep": 0,
+          "covered": 0,
+          "leaked": 0,
+          "annotate_only": 0,
+          "rendered_missing": false,
+          "missed_item_ids": [],
+          "unmatched_intervals": [],
+          "per_category": {}
+        },
+        "openai": {
+          "ref_items": 0,
+          "ref_matched": 0,
+          "intervals": 0,
+          "intervals_matched": 0,
+          "must_beep": 0,
+          "covered": 0,
+          "leaked": 0,
+          "annotate_only": 0,
+          "rendered_missing": false,
+          "missed_item_ids": [],
+          "unmatched_intervals": [],
+          "per_category": {}
+        },
+        "elevenlabs__gpt": {
+          "ref_items": 0,
+          "ref_matched": 0,
+          "intervals": 0,
+          "intervals_matched": 0,
+          "must_beep": 0,
+          "covered": 0,
+          "leaked": 0,
+          "annotate_only": 0,
+          "rendered_missing": false,
+          "missed_item_ids": [],
+          "unmatched_intervals": [],
+          "per_category": {}
+        },
+        "openai__gpt": {
+          "ref_items": 0,
+          "ref_matched": 0,
+          "intervals": 0,
+          "intervals_matched": 0,
+          "must_beep": 0,
+          "covered": 0,
+          "leaked": 0,
+          "annotate_only": 0,
+          "rendered_missing": false,
+          "missed_item_ids": [],
+          "unmatched_intervals": [],
+          "per_category": {}
+        }
+      },
+      "pverify": {
+        "elevenlabs": [
+          0,
+          0
+        ],
+        "gemini": [
+          0,
+          0
+        ],
+        "openai": [
+          0,
+          0
+        ],
+        "elevenlabs__gpt": [
+          0,
+          0
+        ],
+        "openai__gpt": [
+          0,
+          0
+        ]
+      },
+      "timing_offsets_ms": {
+        "n": 0,
+        "median": null,
+        "p90": null
+      },
+      "timing_offsets_raw": [],
+      "speakers_languages": {
+        "per_listener": {
+          "elevenlabs": {
+            "speakers": 3,
+            "primary_language": "bn",
+            "languages": [
+              "bn"
+            ]
+          },
+          "gemini": {
+            "speakers": 11,
+            "primary_language": "bn",
+            "languages": [
+              "bn"
+            ]
+          }
+        },
+        "speakers_agree": false,
+        "primary_language_agree": true
+      }
+    },
+    {
+      "file_id": "EP_3",
+      "profile": "medical_consult",
+      "items": [],
+      "notes": [],
+      "verifier_rejected": {
+        "elevenlabs": 0,
+        "gemini": 0
+      },
+      "configs": {
+        "elevenlabs": {
+          "ref_items": 0,
+          "ref_matched": 0,
+          "intervals": 0,
+          "intervals_matched": 0,
+          "must_beep": 0,
+          "covered": 0,
+          "leaked": 0,
+          "annotate_only": 0,
+          "rendered_missing": false,
+          "missed_item_ids": [],
+          "unmatched_intervals": [],
+          "per_category": {}
+        },
+        "gemini": {
+          "ref_items": 0,
+          "ref_matched": 0,
+          "intervals": 0,
+          "intervals_matched": 0,
+          "must_beep": 0,
+          "covered": 0,
+          "leaked": 0,
+          "annotate_only": 0,
+          "rendered_missing": false,
+          "missed_item_ids": [],
+          "unmatched_intervals": [],
+          "per_category": {}
+        },
+        "openai": {
+          "ref_items": 0,
+          "ref_matched": 0,
+          "intervals": 0,
+          "intervals_matched": 0,
+          "must_beep": 0,
+          "covered": 0,
+          "leaked": 0,
+          "annotate_only": 0,
+          "rendered_missing": false,
+          "missed_item_ids": [],
+          "unmatched_intervals": [],
+          "per_category": {}
+        },
+        "elevenlabs__gpt": {
+          "ref_items": 0,
+          "ref_matched": 0,
+          "intervals": 0,
+          "intervals_matched": 0,
+          "must_beep": 0,
+          "covered": 0,
+          "leaked": 0,
+          "annotate_only": 0,
+          "rendered_missing": false,
+          "missed_item_ids": [],
+          "unmatched_intervals": [],
+          "per_category": {}
+        },
+        "openai__gpt": {
+          "ref_items": 0,
+          "ref_matched": 0,
+          "intervals": 0,
+          "intervals_matched": 0,
+          "must_beep": 0,
+          "covered": 0,
+          "leaked": 0,
+          "annotate_only": 0,
+          "rendered_missing": false,
+          "missed_item_ids": [],
+          "unmatched_intervals": [],
+          "per_category": {}
+        }
+      },
+      "pverify": {
+        "elevenlabs": [
+          0,
+          0
+        ],
+        "gemini": [
+          0,
+          0
+        ],
+        "openai": [
+          0,
+          0
+        ],
+        "elevenlabs__gpt": [
+          0,
+          0
+        ],
+        "openai__gpt": [
+          0,
+          0
+        ]
+      },
+      "timing_offsets_ms": {
+        "n": 0,
+        "median": null,
+        "p90": null
+      },
+      "timing_offsets_raw": [],
+      "speakers_languages": {
+        "per_listener": {
+          "elevenlabs": {
+            "speakers": 2,
+            "primary_language": "bn",
+            "languages": [
+              "bn"
+            ]
+          },
+          "gemini": {
+            "speakers": 5,
+            "primary_language": "bn",
+            "languages": [
+              "bn",
+              "mixed",
+              "en"
+            ]
+          }
+        },
+        "speakers_agree": false,
+        "primary_language_agree": true
+      }
+    },
+    {
+      "file_id": "MP_EP_-_1",
+      "profile": "medical_consult",
+      "items": [],
+      "notes": [],
+      "verifier_rejected": {
+        "elevenlabs": 0,
+        "gemini": 0
+      },
+      "configs": {
+        "elevenlabs": {
+          "ref_items": 0,
+          "ref_matched": 0,
+          "intervals": 0,
+          "intervals_matched": 0,
+          "must_beep": 0,
+          "covered": 0,
+          "leaked": 0,
+          "annotate_only": 0,
+          "rendered_missing": false,
+          "missed_item_ids": [],
+          "unmatched_intervals": [],
+          "per_category": {}
+        },
+        "gemini": {
+          "ref_items": 0,
+          "ref_matched": 0,
+          "intervals": 0,
+          "intervals_matched": 0,
+          "must_beep": 0,
+          "covered": 0,
+          "leaked": 0,
+          "annotate_only": 0,
+          "rendered_missing": false,
+          "missed_item_ids": [],
+          "unmatched_intervals": [],
+          "per_category": {}
+        },
+        "openai": {
+          "ref_items": 0,
+          "ref_matched": 0,
+          "intervals": 0,
+          "intervals_matched": 0,
+          "must_beep": 0,
+          "covered": 0,
+          "leaked": 0,
+          "annotate_only": 0,
+          "rendered_missing": false,
+          "missed_item_ids": [],
+          "unmatched_intervals": [],
+          "per_category": {}
+        },
+        "elevenlabs__gpt": {
+          "ref_items": 0,
+          "ref_matched": 0,
+          "intervals": 0,
+          "intervals_matched": 0,
+          "must_beep": 0,
+          "covered": 0,
+          "leaked": 0,
+          "annotate_only": 0,
+          "rendered_missing": false,
+          "missed_item_ids": [],
+          "unmatched_intervals": [],
+          "per_category": {}
+        },
+        "openai__gpt": {
+          "ref_items": 0,
+          "ref_matched": 0,
+          "intervals": 0,
+          "intervals_matched": 0,
+          "must_beep": 0,
+          "covered": 0,
+          "leaked": 0,
+          "annotate_only": 0,
+          "rendered_missing": false,
+          "missed_item_ids": [],
+          "unmatched_intervals": [],
+          "per_category": {}
+        }
+      },
+      "pverify": {
+        "elevenlabs": [
+          0,
+          0
+        ],
+        "gemini": [
+          0,
+          0
+        ],
+        "openai": [
+          0,
+          0
+        ],
+        "elevenlabs__gpt": [
+          0,
+          0
+        ],
+        "openai__gpt": [
+          0,
+          0
+        ]
+      },
+      "timing_offsets_ms": {
+        "n": 0,
+        "median": null,
+        "p90": null
+      },
+      "timing_offsets_raw": [],
+      "speakers_languages": {
+        "per_listener": {
+          "elevenlabs": {
+            "speakers": 2,
+            "primary_language": "bn",
+            "languages": [
+              "bn"
+            ]
+          },
+          "gemini": {
+            "speakers": 5,
+            "primary_language": "bn",
+            "languages": [
+              "bn",
+              "en"
+            ]
+          }
+        },
+        "speakers_agree": false,
+        "primary_language_agree": true
+      }
+    },
+    {
+      "file_id": "MP_EP_-_2",
+      "profile": "medical_consult",
+      "items": [],
+      "notes": [],
+      "verifier_rejected": {
+        "elevenlabs": 0,
+        "gemini": 0
+      },
+      "configs": {
+        "elevenlabs": {
+          "ref_items": 0,
+          "ref_matched": 0,
+          "intervals": 0,
+          "intervals_matched": 0,
+          "must_beep": 0,
+          "covered": 0,
+          "leaked": 0,
+          "annotate_only": 0,
+          "rendered_missing": false,
+          "missed_item_ids": [],
+          "unmatched_intervals": [],
+          "per_category": {}
+        },
+        "gemini": {
+          "ref_items": 0,
+          "ref_matched": 0,
+          "intervals": 0,
+          "intervals_matched": 0,
+          "must_beep": 0,
+          "covered": 0,
+          "leaked": 0,
+          "annotate_only": 0,
+          "rendered_missing": false,
+          "missed_item_ids": [],
+          "unmatched_intervals": [],
+          "per_category": {}
+        },
+        "openai": {
+          "ref_items": 0,
+          "ref_matched": 0,
+          "intervals": 0,
+          "intervals_matched": 0,
+          "must_beep": 0,
+          "covered": 0,
+          "leaked": 0,
+          "annotate_only": 0,
+          "rendered_missing": false,
+          "missed_item_ids": [],
+          "unmatched_intervals": [],
+          "per_category": {}
+        },
+        "elevenlabs__gpt": {
+          "ref_items": 0,
+          "ref_matched": 0,
+          "intervals": 0,
+          "intervals_matched": 0,
+          "must_beep": 0,
+          "covered": 0,
+          "leaked": 0,
+          "annotate_only": 0,
+          "rendered_missing": false,
+          "missed_item_ids": [],
+          "unmatched_intervals": [],
+          "per_category": {}
+        },
+        "openai__gpt": {
+          "ref_items": 0,
+          "ref_matched": 0,
+          "intervals": 0,
+          "intervals_matched": 0,
+          "must_beep": 0,
+          "covered": 0,
+          "leaked": 0,
+          "annotate_only": 0,
+          "rendered_missing": false,
+          "missed_item_ids": [],
+          "unmatched_intervals": [],
+          "per_category": {}
+        }
+      },
+      "pverify": {
+        "elevenlabs": [
+          0,
+          0
+        ],
+        "gemini": [
+          0,
+          0
+        ],
+        "openai": [
+          0,
+          0
+        ],
+        "elevenlabs__gpt": [
+          0,
+          0
+        ],
+        "openai__gpt": [
+          0,
+          0
+        ]
+      },
+      "timing_offsets_ms": {
+        "n": 0,
+        "median": null,
+        "p90": null
+      },
+      "timing_offsets_raw": [],
+      "speakers_languages": {
+        "per_listener": {
+          "elevenlabs": {
+            "speakers": 2,
+            "primary_language": "bn",
+            "languages": [
+              "bn"
+            ]
+          },
+          "gemini": {
+            "speakers": 4,
+            "primary_language": "bn",
+            "languages": [
+              "bn"
+            ]
+          }
+        },
+        "speakers_agree": false,
+        "primary_language_agree": true
+      }
+    },
+    {
+      "file_id": "c34897552fdcca8ae3f8d5a7015d1a85",
+      "profile": "medical_consult",
+      "items": [
+        {
+          "start_ms": 7200,
+          "end_ms": 7600,
+          "categories": [
+            "FULL_NAME"
+          ],
+          "engines": [
+            "gemini"
+          ],
+          "public_figure": false,
+          "confidence": "high",
+          "spoken_text": "నూతన్",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 7200,
+              "end_ms": 7600,
+              "engine": "gemini",
+              "channel": null
+            }
+          ],
+          "item_id": "c34897552fdcca8ae3f8d5a7015d1a85_R001",
+          "action": "beep"
+        },
+        {
+          "start_ms": 7500,
+          "end_ms": 8500,
+          "categories": [
+            "ORGANIZATION_PERSON_LINKED"
+          ],
+          "engines": [
+            "elevenlabs",
+            "gemini"
+          ],
+          "public_figure": false,
+          "confidence": "high",
+          "spoken_text": "Medicover Hospital",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 7500,
+              "end_ms": 8400,
+              "engine": "elevenlabs",
+              "channel": null
+            },
+            {
+              "start_ms": 7600,
+              "end_ms": 8500,
+              "engine": "gemini",
+              "channel": null
+            }
+          ],
+          "item_id": "c34897552fdcca8ae3f8d5a7015d1a85_R002",
+          "action": "beep"
+        },
+        {
+          "start_ms": 13500,
+          "end_ms": 14400,
+          "categories": [
+            "FULL_NAME"
+          ],
+          "engines": [
+            "gemini"
+          ],
+          "public_figure": false,
+          "confidence": "high",
+          "spoken_text": "ఎల్ పి సావిత్రి",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 13500,
+              "end_ms": 14400,
+              "engine": "gemini",
+              "channel": null
+            }
+          ],
+          "item_id": "c34897552fdcca8ae3f8d5a7015d1a85_R003",
+          "action": "beep"
+        },
+        {
+          "start_ms": 21300,
+          "end_ms": 22100,
+          "categories": [
+            "FULL_NAME"
+          ],
+          "engines": [
+            "gemini"
+          ],
+          "public_figure": false,
+          "confidence": "high",
+          "spoken_text": "రాజేంద్ర చారి",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 21300,
+              "end_ms": 22100,
+              "engine": "gemini",
+              "channel": null
+            }
+          ],
+          "item_id": "c34897552fdcca8ae3f8d5a7015d1a85_R004",
+          "action": "beep"
+        },
+        {
+          "start_ms": 81300,
+          "end_ms": 84400,
+          "categories": [
+            "PHONE"
+          ],
+          "engines": [
+            "gemini"
+          ],
+          "public_figure": false,
+          "confidence": "high",
+          "spoken_text": "ఎయిట్ వన్ టూ త్రీ సిక్స్ త్రీ ఎయిట్ జీరో ఫోర్ టూ",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 81300,
+              "end_ms": 84400,
+              "engine": "gemini",
+              "channel": null
+            }
+          ],
+          "item_id": "c34897552fdcca8ae3f8d5a7015d1a85_R005",
+          "action": "beep"
+        },
+        {
+          "start_ms": 121800,
+          "end_ms": 123600,
+          "categories": [
+            "FINANCIAL_INFO"
+          ],
+          "engines": [
+            "elevenlabs",
+            "gemini"
+          ],
+          "public_figure": false,
+          "confidence": "high",
+          "spoken_text": "ఫిఫ్టీన్ థౌసండ్ లో కట్టాము",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 121960,
+              "end_ms": 122470,
+              "engine": "elevenlabs",
+              "channel": null
+            },
+            {
+              "start_ms": 121800,
+              "end_ms": 123600,
+              "engine": "gemini",
+              "channel": null
+            }
+          ],
+          "item_id": "c34897552fdcca8ae3f8d5a7015d1a85_R006",
+          "action": "beep"
+        },
+        {
+          "start_ms": 166380,
+          "end_ms": 171500,
+          "categories": [
+            "FINANCIAL_INFO"
+          ],
+          "engines": [
+            "elevenlabs",
+            "gemini"
+          ],
+          "public_figure": false,
+          "confidence": "high",
+          "spoken_text": "రెండు లక్షల నలభై తొమ్మిది వేల నాలుగు వందల తొంభై ఐదు రూపాయలు",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 166380,
+              "end_ms": 171450,
+              "engine": "elevenlabs",
+              "channel": null
+            },
+            {
+              "start_ms": 166800,
+              "end_ms": 171500,
+              "engine": "gemini",
+              "channel": null
+            }
+          ],
+          "item_id": "c34897552fdcca8ae3f8d5a7015d1a85_R007",
+          "action": "beep"
+        },
+        {
+          "start_ms": 176500,
+          "end_ms": 180900,
+          "categories": [
+            "FINANCIAL_INFO"
+          ],
+          "engines": [
+            "elevenlabs",
+            "gemini"
+          ],
+          "public_figure": false,
+          "confidence": "high",
+          "spoken_text": "ఇరవై ఒక్క వేల రెండు వందల యాభై రూపాయలు డిస్కౌంట్ ఇచ్చారు",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 177940,
+              "end_ms": 179840,
+              "engine": "elevenlabs",
+              "channel": null
+            },
+            {
+              "start_ms": 176500,
+              "end_ms": 180900,
+              "engine": "gemini",
+              "channel": null
+            }
+          ],
+          "item_id": "c34897552fdcca8ae3f8d5a7015d1a85_R008",
+          "action": "beep"
+        },
+        {
+          "start_ms": 183000,
+          "end_ms": 186000,
+          "categories": [
+            "FINANCIAL_INFO"
+          ],
+          "engines": [
+            "elevenlabs",
+            "gemini"
+          ],
+          "public_figure": false,
+          "confidence": "high",
+          "spoken_text": "లక్ష యాభై వేలు క్యాష్ ద్వారా పే చేసాము",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 183800,
+              "end_ms": 184269,
+              "engine": "elevenlabs",
+              "channel": null
+            },
+            {
+              "start_ms": 183000,
+              "end_ms": 186000,
+              "engine": "gemini",
+              "channel": null
+            }
+          ],
+          "item_id": "c34897552fdcca8ae3f8d5a7015d1a85_R009",
+          "action": "beep"
+        },
+        {
+          "start_ms": 188200,
+          "end_ms": 193600,
+          "categories": [
+            "FINANCIAL_INFO"
+          ],
+          "engines": [
+            "elevenlabs",
+            "gemini"
+          ],
+          "public_figure": false,
+          "confidence": "high",
+          "spoken_text": "డెబ్బై ఎనిమిది వేల రెండు వందల నలభై ఐదు రూపాయలు నెఫ్ట్ ద్వారా పే చేసాము",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 188840,
+              "end_ms": 191420,
+              "engine": "elevenlabs",
+              "channel": null
+            },
+            {
+              "start_ms": 188200,
+              "end_ms": 193600,
+              "engine": "gemini",
+              "channel": null
+            }
+          ],
+          "item_id": "c34897552fdcca8ae3f8d5a7015d1a85_R010",
+          "action": "beep"
+        }
+      ],
+      "notes": [],
+      "verifier_rejected": {
+        "elevenlabs": 1,
+        "gemini": 1
+      },
+      "configs": {
+        "elevenlabs": {
+          "ref_items": 10,
+          "ref_matched": 8,
+          "intervals": 10,
+          "intervals_matched": 8,
+          "must_beep": 10,
+          "covered": 7,
+          "leaked": 3,
+          "annotate_only": 0,
+          "rendered_missing": false,
+          "missed_item_ids": [
+            "c34897552fdcca8ae3f8d5a7015d1a85_R003",
+            "c34897552fdcca8ae3f8d5a7015d1a85_R004"
+          ],
+          "unmatched_intervals": [
+            {
+              "start_ms": 20620,
+              "end_ms": 21620,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "రాజేందర్ శారి"
+            },
+            {
+              "start_ms": 101600,
+              "end_ms": 102070,
+              "categories": [
+                "ORGANIZATION_PERSON_LINKED"
+              ],
+              "spoken_text": "Ayu Health"
+            }
+          ],
+          "per_category": {
+            "FULL_NAME": {
+              "ref": 3,
+              "ref_matched": 1,
+              "iv": 2,
+              "iv_matched": 1
+            },
+            "ORGANIZATION_PERSON_LINKED": {
+              "ref": 1,
+              "ref_matched": 1,
+              "iv": 2,
+              "iv_matched": 1
+            },
+            "PHONE": {
+              "ref": 1,
+              "ref_matched": 1,
+              "iv": 1,
+              "iv_matched": 1
+            },
+            "FINANCIAL_INFO": {
+              "ref": 5,
+              "ref_matched": 5,
+              "iv": 5,
+              "iv_matched": 5
+            }
+          }
+        },
+        "gemini": {
+          "ref_items": 10,
+          "ref_matched": 10,
+          "intervals": 10,
+          "intervals_matched": 10,
+          "must_beep": 10,
+          "covered": 10,
+          "leaked": 0,
+          "annotate_only": 0,
+          "rendered_missing": false,
+          "missed_item_ids": [],
+          "unmatched_intervals": [],
+          "per_category": {
+            "FULL_NAME": {
+              "ref": 3,
+              "ref_matched": 3,
+              "iv": 3,
+              "iv_matched": 3
+            },
+            "ORGANIZATION_PERSON_LINKED": {
+              "ref": 1,
+              "ref_matched": 1,
+              "iv": 1,
+              "iv_matched": 1
+            },
+            "PHONE": {
+              "ref": 1,
+              "ref_matched": 1,
+              "iv": 1,
+              "iv_matched": 1
+            },
+            "FINANCIAL_INFO": {
+              "ref": 5,
+              "ref_matched": 5,
+              "iv": 5,
+              "iv_matched": 5
+            }
+          }
+        },
+        "openai": {
+          "ref_items": 10,
+          "ref_matched": 0,
+          "intervals": 0,
+          "intervals_matched": 0,
+          "must_beep": 10,
+          "covered": 0,
+          "leaked": 10,
+          "annotate_only": 0,
+          "rendered_missing": false,
+          "missed_item_ids": [
+            "c34897552fdcca8ae3f8d5a7015d1a85_R001",
+            "c34897552fdcca8ae3f8d5a7015d1a85_R002",
+            "c34897552fdcca8ae3f8d5a7015d1a85_R003",
+            "c34897552fdcca8ae3f8d5a7015d1a85_R004",
+            "c34897552fdcca8ae3f8d5a7015d1a85_R005",
+            "c34897552fdcca8ae3f8d5a7015d1a85_R006",
+            "c34897552fdcca8ae3f8d5a7015d1a85_R007",
+            "c34897552fdcca8ae3f8d5a7015d1a85_R008",
+            "c34897552fdcca8ae3f8d5a7015d1a85_R009",
+            "c34897552fdcca8ae3f8d5a7015d1a85_R010"
+          ],
+          "unmatched_intervals": [],
+          "per_category": {
+            "FULL_NAME": {
+              "ref": 3,
+              "ref_matched": 0,
+              "iv": 0,
+              "iv_matched": 0
+            },
+            "ORGANIZATION_PERSON_LINKED": {
+              "ref": 1,
+              "ref_matched": 0,
+              "iv": 0,
+              "iv_matched": 0
+            },
+            "PHONE": {
+              "ref": 1,
+              "ref_matched": 0,
+              "iv": 0,
+              "iv_matched": 0
+            },
+            "FINANCIAL_INFO": {
+              "ref": 5,
+              "ref_matched": 0,
+              "iv": 0,
+              "iv_matched": 0
+            }
+          }
+        },
+        "elevenlabs__gpt": {
+          "ref_items": 10,
+          "ref_matched": 8,
+          "intervals": 11,
+          "intervals_matched": 8,
+          "must_beep": 10,
+          "covered": 7,
+          "leaked": 3,
+          "annotate_only": 0,
+          "rendered_missing": false,
+          "missed_item_ids": [
+            "c34897552fdcca8ae3f8d5a7015d1a85_R003",
+            "c34897552fdcca8ae3f8d5a7015d1a85_R004"
+          ],
+          "unmatched_intervals": [
+            {
+              "start_ms": 20620,
+              "end_ms": 21620,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "రాజేందర్ శారి"
+            },
+            {
+              "start_ms": 101600,
+              "end_ms": 102070,
+              "categories": [
+                "ORGANIZATION_PERSON_LINKED"
+              ],
+              "spoken_text": "Ayu Health"
+            },
+            {
+              "start_ms": 210500,
+              "end_ms": 211680,
+              "categories": [
+                "FINANCIAL_INFO"
+              ],
+              "spoken_text": "online ఒక్క రూపాయి కూడా కట్టలేదని"
+            }
+          ],
+          "per_category": {
+            "FULL_NAME": {
+              "ref": 3,
+              "ref_matched": 1,
+              "iv": 2,
+              "iv_matched": 1
+            },
+            "ORGANIZATION_PERSON_LINKED": {
+              "ref": 1,
+              "ref_matched": 1,
+              "iv": 2,
+              "iv_matched": 1
+            },
+            "PHONE": {
+              "ref": 1,
+              "ref_matched": 1,
+              "iv": 1,
+              "iv_matched": 1
+            },
+            "FINANCIAL_INFO": {
+              "ref": 5,
+              "ref_matched": 5,
+              "iv": 6,
+              "iv_matched": 5
+            }
+          }
+        },
+        "openai__gpt": {
+          "ref_items": 10,
+          "ref_matched": 0,
+          "intervals": 0,
+          "intervals_matched": 0,
+          "must_beep": 10,
+          "covered": 0,
+          "leaked": 10,
+          "annotate_only": 0,
+          "rendered_missing": false,
+          "missed_item_ids": [
+            "c34897552fdcca8ae3f8d5a7015d1a85_R001",
+            "c34897552fdcca8ae3f8d5a7015d1a85_R002",
+            "c34897552fdcca8ae3f8d5a7015d1a85_R003",
+            "c34897552fdcca8ae3f8d5a7015d1a85_R004",
+            "c34897552fdcca8ae3f8d5a7015d1a85_R005",
+            "c34897552fdcca8ae3f8d5a7015d1a85_R006",
+            "c34897552fdcca8ae3f8d5a7015d1a85_R007",
+            "c34897552fdcca8ae3f8d5a7015d1a85_R008",
+            "c34897552fdcca8ae3f8d5a7015d1a85_R009",
+            "c34897552fdcca8ae3f8d5a7015d1a85_R010"
+          ],
+          "unmatched_intervals": [],
+          "per_category": {
+            "FULL_NAME": {
+              "ref": 3,
+              "ref_matched": 0,
+              "iv": 0,
+              "iv_matched": 0
+            },
+            "ORGANIZATION_PERSON_LINKED": {
+              "ref": 1,
+              "ref_matched": 0,
+              "iv": 0,
+              "iv_matched": 0
+            },
+            "PHONE": {
+              "ref": 1,
+              "ref_matched": 0,
+              "iv": 0,
+              "iv_matched": 0
+            },
+            "FINANCIAL_INFO": {
+              "ref": 5,
+              "ref_matched": 0,
+              "iv": 0,
+              "iv_matched": 0
+            }
+          }
+        }
+      },
+      "pverify": {
+        "elevenlabs": [
+          7,
+          10
+        ],
+        "gemini": [
+          10,
+          10
+        ],
+        "openai": [
+          0,
+          0
+        ],
+        "elevenlabs__gpt": [
+          10,
+          11
+        ],
+        "openai__gpt": [
+          0,
+          0
+        ]
+      },
+      "timing_offsets_ms": {
+        "n": 6,
+        "median": 420,
+        "p90": 800
+      },
+      "timing_offsets_raw": [
+        100,
+        160,
+        420,
+        1440,
+        800,
+        640
+      ],
+      "speakers_languages": {
+        "per_listener": {
+          "elevenlabs": {
+            "speakers": 2,
+            "primary_language": "te",
+            "languages": [
+              "te"
+            ]
+          },
+          "gemini": {
+            "speakers": 2,
+            "primary_language": "te",
+            "languages": [
+              "te"
+            ]
+          }
+        },
+        "speakers_agree": true,
+        "primary_language_agree": true
+      }
+    }
+  ]
+}

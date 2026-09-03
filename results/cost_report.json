@@ -1,0 +1,60 @@
+{
+  "per_config": {
+    "elevenlabs": {
+      "label": "ElevenLabs + Gemini (production)",
+      "transcription_usd": 0.3085578833333333,
+      "detection_usd": 0.5057400000000001,
+      "total_usd": 0.8142978833333334,
+      "per_audio_hour_usd": 0.6966792647617662
+    },
+    "gemini": {
+      "label": "Gemini end-to-end",
+      "transcription_usd": 18.498496000000003,
+      "detection_usd": 0.5090560000000001,
+      "total_usd": 19.007552000000004,
+      "per_audio_hour_usd": 16.2620677559349
+    },
+    "openai": {
+      "label": "Whisper + Gemini",
+      "transcription_usd": 0.5049128999999999,
+      "detection_usd": 0.330148,
+      "total_usd": 0.8350608999999999,
+      "per_audio_hour_usd": 0.7144432347801535
+    },
+    "elevenlabs__gpt": {
+      "label": "ElevenLabs + GPT detector",
+      "transcription_usd": 0.3085578833333333,
+      "detection_usd": 0.0293448,
+      "total_usd": 0.3379026833333333,
+      "per_audio_hour_usd": 0.2890954254013815
+    },
+    "openai__gpt": {
+      "label": "Whisper + GPT detector",
+      "transcription_usd": 0.5049128999999999,
+      "detection_usd": 0.016865849999999998,
+      "total_usd": 0.5217787499999998,
+      "per_audio_hour_usd": 0.44641210957134375
+    }
+  },
+  "gates_usd": {
+    "edge_verify": 0.27762499999999996,
+    "audit": 0.5368080000000001,
+    "judge_other": 1.0700589199999997,
+    "pverify": 0.035973599999999994
+  },
+  "gates_total_usd": 0.8504065999999999,
+  "audio_hours": 1.1688275000000001,
+  "hours_by_file": {
+    "025354f09d2dcc71517beb7553441a85": 0.04144,
+    "06e8274b603dfddc4ff0a84ed09f1a85": 0.1636,
+    "5252dea2cb5c97b14aa7dcf365211a85": 0.0833,
+    "EP-3": 0.14199083333333334,
+    "EP_3": 0.24355916666666666,
+    "MP_EP_-_1": 0.20979944444444446,
+    "MP_EP_-_2": 0.21913805555555554,
+    "c34897552fdcca8ae3f8d5a7015d1a85": 0.066
+  },
+  "estimated_rows": 0,
+  "measured_rows": 145,
+  "gates_per_audio_hour_usd": 0.7275723748799543
+}

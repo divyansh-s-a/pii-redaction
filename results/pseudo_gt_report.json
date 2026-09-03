@@ -1,0 +1,2346 @@
+{
+  "config": {
+    "generated_at": "2026-09-02",
+    "judge_model": "openai/gpt-5.6-sol",
+    "profile": "medical_consult",
+    "engines": [
+      "gemini",
+      "elevenlabs",
+      "openai"
+    ],
+    "pred_root": "output",
+    "out": "output/judge/pseudo_gt",
+    "verify": true,
+    "verify_model": "openai/gpt-5.6-luna"
+  },
+  "caveats": [
+    "Pseudo-GT is a UNION of what the engines' transcripts surfaced. PII that EVERY engine failed to transcribe (or the judge missed on all of them) is INVISIBLE here — it appears in no denominator.",
+    "All rates are measured against this reference: a 0% pseudo leak rate means nothing the reference contains leaked; human spot-checks complement it for values outside the reference.",
+    "The judge applies the same written policy as stage C but is itself an LLM; its spans are unvalidated. Human ground truth remains the arbiter and will later be used to score the judge itself.",
+    "Items surfaced by only one engine are transcription-dependent: the other engines never wrote the value down, so their detectors never had a chance — leaks on such items measure the whole engine pipeline, not the detector alone."
+  ],
+  "thresholds": {
+    "cluster_iou": 0.3,
+    "cluster_cover": 0.7,
+    "coverage_min": 0.95,
+    "judge_chunk_words": 4500
+  },
+  "aggregate": {
+    "per_engine": {
+      "gemini": {
+        "must_beep": 42,
+        "leaked": 6,
+        "covered": 36,
+        "agree": 37,
+        "agree_eval": 43,
+        "verifier_rejected": 11,
+        "pseudo_leak_rate": 0.14285714285714285,
+        "coverage": 0.8571428571428571,
+        "agreement": 0.8604651162790697
+      },
+      "elevenlabs": {
+        "must_beep": 42,
+        "leaked": 8,
+        "covered": 34,
+        "agree": 36,
+        "agree_eval": 43,
+        "verifier_rejected": 7,
+        "pseudo_leak_rate": 0.19047619047619047,
+        "coverage": 0.8095238095238095,
+        "agreement": 0.8372093023255814
+      },
+      "openai": {
+        "must_beep": 42,
+        "leaked": 17,
+        "covered": 25,
+        "agree": 23,
+        "agree_eval": 43,
+        "verifier_rejected": 4,
+        "pseudo_leak_rate": 0.40476190476190477,
+        "coverage": 0.5952380952380952,
+        "agreement": 0.5348837209302325
+      }
+    },
+    "surfaced_by": {
+      "1": {
+        "items": 15,
+        "must_beep": 14,
+        "leaked_any": 12
+      },
+      "2": {
+        "items": 15,
+        "must_beep": 15,
+        "leaked_any": 11
+      },
+      "3": {
+        "items": 13,
+        "must_beep": 13,
+        "leaked_any": 0
+      }
+    },
+    "unique_by_engine": {
+      "gemini": {
+        "items": 5,
+        "must_beep": 4
+      },
+      "elevenlabs": {
+        "items": 6,
+        "must_beep": 6
+      },
+      "openai": {
+        "items": 4,
+        "must_beep": 4
+      }
+    },
+    "totals": {
+      "items": 43,
+      "must_beep": 42,
+      "annotate_only": 1
+    }
+  },
+  "files": [
+    {
+      "file_id": "025354f09d2dcc71517beb7553441a85",
+      "items": [
+        {
+          "start_ms": 12690,
+          "end_ms": 12760,
+          "categories": [
+            "FULL_NAME"
+          ],
+          "engines": [
+            "elevenlabs"
+          ],
+          "public_figure": false,
+          "confidence": "high",
+          "spoken_text": "Ritika",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 12690,
+              "end_ms": 12760,
+              "engine": "elevenlabs",
+              "channel": null
+            }
+          ],
+          "item_id": "025354f09d2dcc71517beb7553441a85_P001",
+          "action": "beep",
+          "leaked_by": [
+            "gemini"
+          ],
+          "covered_by": [
+            "elevenlabs",
+            "openai"
+          ],
+          "agreed_by": [
+            "elevenlabs"
+          ]
+        },
+        {
+          "start_ms": 12960,
+          "end_ms": 13400,
+          "categories": [
+            "FULL_NAME"
+          ],
+          "engines": [
+            "gemini",
+            "openai"
+          ],
+          "public_figure": false,
+          "confidence": "high",
+          "spoken_text": "Vidya",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 13000,
+              "end_ms": 13400,
+              "engine": "gemini",
+              "channel": null
+            },
+            {
+              "start_ms": 12960,
+              "end_ms": 13120,
+              "engine": "openai",
+              "channel": null
+            }
+          ],
+          "item_id": "025354f09d2dcc71517beb7553441a85_P002",
+          "action": "beep",
+          "leaked_by": [
+            "elevenlabs"
+          ],
+          "covered_by": [
+            "gemini",
+            "openai"
+          ],
+          "agreed_by": [
+            "gemini",
+            "openai"
+          ]
+        },
+        {
+          "start_ms": 13360,
+          "end_ms": 14760,
+          "categories": [
+            "ORGANIZATION_PERSON_LINKED"
+          ],
+          "engines": [
+            "elevenlabs",
+            "gemini",
+            "openai"
+          ],
+          "public_figure": false,
+          "confidence": "high",
+          "spoken_text": "KIMS hospital",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 13600,
+              "end_ms": 14400,
+              "engine": "gemini",
+              "channel": null
+            },
+            {
+              "start_ms": 13380,
+              "end_ms": 13910,
+              "engine": "elevenlabs",
+              "channel": null
+            },
+            {
+              "start_ms": 13360,
+              "end_ms": 14760,
+              "engine": "openai",
+              "channel": null
+            }
+          ],
+          "item_id": "025354f09d2dcc71517beb7553441a85_P003",
+          "action": "beep",
+          "leaked_by": [],
+          "covered_by": [
+            "gemini",
+            "elevenlabs",
+            "openai"
+          ],
+          "agreed_by": [
+            "gemini",
+            "elevenlabs",
+            "openai"
+          ]
+        },
+        {
+          "start_ms": 95940,
+          "end_ms": 106800,
+          "categories": [
+            "FINANCIAL_INFO"
+          ],
+          "engines": [
+            "elevenlabs",
+            "gemini",
+            "openai"
+          ],
+          "public_figure": false,
+          "confidence": "high",
+          "spoken_text": "thirty thousand six hundred and thirty five rupees",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 96800,
+              "end_ms": 99600,
+              "engine": "gemini",
+              "channel": null
+            },
+            {
+              "start_ms": 101600,
+              "end_ms": 103000,
+              "engine": "gemini",
+              "channel": null
+            },
+            {
+              "start_ms": 104000,
+              "end_ms": 106800,
+              "engine": "gemini",
+              "channel": null
+            },
+            {
+              "start_ms": 95940,
+              "end_ms": 98020,
+              "engine": "elevenlabs",
+              "channel": null
+            },
+            {
+              "start_ms": 101180,
+              "end_ms": 102200,
+              "engine": "elevenlabs",
+              "channel": null
+            },
+            {
+              "start_ms": 103320,
+              "end_ms": 105240,
+              "engine": "elevenlabs",
+              "channel": null
+            },
+            {
+              "start_ms": 95940,
+              "end_ms": 97960,
+              "engine": "openai",
+              "channel": null
+            },
+            {
+              "start_ms": 101120,
+              "end_ms": 102060,
+              "engine": "openai",
+              "channel": null
+            },
+            {
+              "start_ms": 103840,
+              "end_ms": 105200,
+              "engine": "openai",
+              "channel": null
+            }
+          ],
+          "item_id": "025354f09d2dcc71517beb7553441a85_P004",
+          "action": "beep",
+          "leaked_by": [],
+          "covered_by": [
+            "gemini",
+            "elevenlabs",
+            "openai"
+          ],
+          "agreed_by": [
+            "gemini",
+            "elevenlabs",
+            "openai"
+          ]
+        }
+      ],
+      "engines": {
+        "gemini": {
+          "items": 4,
+          "must_beep": 4,
+          "annotate_only": 0,
+          "leaked": 1,
+          "covered": 3,
+          "agree": 3,
+          "agree_eval": 4
+        },
+        "elevenlabs": {
+          "items": 4,
+          "must_beep": 4,
+          "annotate_only": 0,
+          "leaked": 1,
+          "covered": 3,
+          "agree": 3,
+          "agree_eval": 4
+        },
+        "openai": {
+          "items": 4,
+          "must_beep": 4,
+          "annotate_only": 0,
+          "leaked": 0,
+          "covered": 4,
+          "agree": 3,
+          "agree_eval": 4
+        }
+      },
+      "verifier_rejected": {
+        "gemini": 0,
+        "elevenlabs": 0,
+        "openai": 0
+      },
+      "notes": []
+    },
+    {
+      "file_id": "06e8274b603dfddc4ff0a84ed09f1a85",
+      "items": [
+        {
+          "start_ms": 3400,
+          "end_ms": 4280,
+          "categories": [
+            "FULL_NAME"
+          ],
+          "engines": [
+            "elevenlabs",
+            "gemini"
+          ],
+          "public_figure": false,
+          "confidence": "high",
+          "spoken_text": "Keerthana",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 3400,
+              "end_ms": 3800,
+              "engine": "gemini",
+              "channel": null
+            },
+            {
+              "start_ms": 3920,
+              "end_ms": 4280,
+              "engine": "elevenlabs",
+              "channel": null
+            }
+          ],
+          "item_id": "06e8274b603dfddc4ff0a84ed09f1a85_P001",
+          "action": "beep",
+          "leaked_by": [],
+          "covered_by": [
+            "gemini",
+            "elevenlabs",
+            "openai"
+          ],
+          "agreed_by": [
+            "gemini",
+            "elevenlabs"
+          ]
+        },
+        {
+          "start_ms": 4200,
+          "end_ms": 4520,
+          "categories": [
+            "FULL_NAME"
+          ],
+          "engines": [
+            "openai"
+          ],
+          "public_figure": false,
+          "confidence": "medium",
+          "spoken_text": "Seetha Nagyar",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 4200,
+              "end_ms": 4520,
+              "engine": "openai",
+              "channel": null
+            }
+          ],
+          "item_id": "06e8274b603dfddc4ff0a84ed09f1a85_P002",
+          "action": "beep",
+          "leaked_by": [
+            "gemini",
+            "elevenlabs"
+          ],
+          "covered_by": [
+            "openai"
+          ],
+          "agreed_by": [
+            "openai"
+          ]
+        },
+        {
+          "start_ms": 4700,
+          "end_ms": 6040,
+          "categories": [
+            "ORGANIZATION_PERSON_LINKED"
+          ],
+          "engines": [
+            "elevenlabs",
+            "gemini"
+          ],
+          "public_figure": false,
+          "confidence": "high",
+          "spoken_text": "Vikram Hospital",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 4700,
+              "end_ms": 5500,
+              "engine": "gemini",
+              "channel": null
+            },
+            {
+              "start_ms": 5120,
+              "end_ms": 6040,
+              "engine": "elevenlabs",
+              "channel": null
+            }
+          ],
+          "item_id": "06e8274b603dfddc4ff0a84ed09f1a85_P003",
+          "action": "beep",
+          "leaked_by": [],
+          "covered_by": [
+            "gemini",
+            "elevenlabs",
+            "openai"
+          ],
+          "agreed_by": [
+            "gemini",
+            "elevenlabs",
+            "openai"
+          ]
+        },
+        {
+          "start_ms": 10200,
+          "end_ms": 11001,
+          "categories": [
+            "FULL_NAME"
+          ],
+          "engines": [
+            "elevenlabs",
+            "gemini",
+            "openai"
+          ],
+          "public_figure": false,
+          "confidence": "high",
+          "spoken_text": "Praveen",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 10200,
+              "end_ms": 10800,
+              "engine": "gemini",
+              "channel": null
+            },
+            {
+              "start_ms": 10560,
+              "end_ms": 10940,
+              "engine": "elevenlabs",
+              "channel": null
+            },
+            {
+              "start_ms": 11000,
+              "end_ms": 11001,
+              "engine": "openai",
+              "channel": null
+            }
+          ],
+          "item_id": "06e8274b603dfddc4ff0a84ed09f1a85_P004",
+          "action": "beep",
+          "leaked_by": [],
+          "covered_by": [
+            "gemini",
+            "elevenlabs",
+            "openai"
+          ],
+          "agreed_by": [
+            "gemini",
+            "elevenlabs",
+            "openai"
+          ]
+        },
+        {
+          "start_ms": 51300,
+          "end_ms": 52460,
+          "categories": [
+            "ORGANIZATION_PERSON_LINKED"
+          ],
+          "engines": [
+            "elevenlabs",
+            "gemini"
+          ],
+          "public_figure": false,
+          "confidence": "high",
+          "spoken_text": "Orix",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 51300,
+              "end_ms": 51800,
+              "engine": "gemini",
+              "channel": null
+            },
+            {
+              "start_ms": 52280,
+              "end_ms": 52460,
+              "engine": "elevenlabs",
+              "channel": null
+            }
+          ],
+          "item_id": "06e8274b603dfddc4ff0a84ed09f1a85_P005",
+          "action": "beep",
+          "leaked_by": [
+            "openai"
+          ],
+          "covered_by": [
+            "gemini",
+            "elevenlabs"
+          ],
+          "agreed_by": [
+            "gemini",
+            "elevenlabs"
+          ]
+        },
+        {
+          "start_ms": 76700,
+          "end_ms": 81900,
+          "categories": [
+            "FULL_NAME"
+          ],
+          "engines": [
+            "elevenlabs",
+            "gemini",
+            "openai"
+          ],
+          "public_figure": false,
+          "confidence": "high",
+          "spoken_text": "Shailesh",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 76700,
+              "end_ms": 77200,
+              "engine": "gemini",
+              "channel": null
+            },
+            {
+              "start_ms": 79300,
+              "end_ms": 79800,
+              "engine": "gemini",
+              "channel": null
+            },
+            {
+              "start_ms": 80000,
+              "end_ms": 80500,
+              "engine": "gemini",
+              "channel": null
+            },
+            {
+              "start_ms": 78080,
+              "end_ms": 78590,
+              "engine": "elevenlabs",
+              "channel": null
+            },
+            {
+              "start_ms": 81440,
+              "end_ms": 81900,
+              "engine": "elevenlabs",
+              "channel": null
+            },
+            {
+              "start_ms": 78140,
+              "end_ms": 78480,
+              "engine": "openai",
+              "channel": null
+            },
+            {
+              "start_ms": 81460,
+              "end_ms": 81860,
+              "engine": "openai",
+              "channel": null
+            }
+          ],
+          "item_id": "06e8274b603dfddc4ff0a84ed09f1a85_P006",
+          "action": "beep",
+          "leaked_by": [],
+          "covered_by": [
+            "gemini",
+            "elevenlabs",
+            "openai"
+          ],
+          "agreed_by": [
+            "gemini",
+            "elevenlabs",
+            "openai"
+          ]
+        },
+        {
+          "start_ms": 221180,
+          "end_ms": 237900,
+          "categories": [
+            "ORGANIZATION_PERSON_LINKED",
+            "PHONE"
+          ],
+          "engines": [
+            "elevenlabs",
+            "gemini",
+            "openai"
+          ],
+          "public_figure": false,
+          "confidence": "high",
+          "spoken_text": "nine double zero eight three zero five six four eight",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 221600,
+              "end_ms": 229300,
+              "engine": "gemini",
+              "channel": null
+            },
+            {
+              "start_ms": 226800,
+              "end_ms": 233800,
+              "engine": "gemini",
+              "channel": null
+            },
+            {
+              "start_ms": 232300,
+              "end_ms": 237900,
+              "engine": "gemini",
+              "channel": null
+            },
+            {
+              "start_ms": 221180,
+              "end_ms": 224300,
+              "engine": "elevenlabs",
+              "channel": null
+            },
+            {
+              "start_ms": 227420,
+              "end_ms": 230810,
+              "engine": "elevenlabs",
+              "channel": null
+            },
+            {
+              "start_ms": 232900,
+              "end_ms": 233600,
+              "engine": "elevenlabs",
+              "channel": null
+            },
+            {
+              "start_ms": 221260,
+              "end_ms": 223700,
+              "engine": "openai",
+              "channel": null
+            },
+            {
+              "start_ms": 226960,
+              "end_ms": 230200,
+              "engine": "openai",
+              "channel": null
+            },
+            {
+              "start_ms": 232880,
+              "end_ms": 233980,
+              "engine": "openai",
+              "channel": null
+            }
+          ],
+          "item_id": "06e8274b603dfddc4ff0a84ed09f1a85_P007",
+          "action": "beep",
+          "leaked_by": [],
+          "covered_by": [
+            "gemini",
+            "elevenlabs",
+            "openai"
+          ],
+          "agreed_by": [
+            "gemini",
+            "elevenlabs",
+            "openai"
+          ]
+        },
+        {
+          "start_ms": 239100,
+          "end_ms": 244900,
+          "categories": [
+            "ORGANIZATION_PERSON_LINKED"
+          ],
+          "engines": [
+            "elevenlabs",
+            "gemini"
+          ],
+          "public_figure": false,
+          "confidence": "high",
+          "spoken_text": "H D F C bank",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 239100,
+              "end_ms": 244900,
+              "engine": "gemini",
+              "channel": null
+            },
+            {
+              "start_ms": 240370,
+              "end_ms": 241040,
+              "engine": "elevenlabs",
+              "channel": null
+            }
+          ],
+          "item_id": "06e8274b603dfddc4ff0a84ed09f1a85_P008",
+          "action": "beep",
+          "leaked_by": [],
+          "covered_by": [
+            "gemini",
+            "elevenlabs",
+            "openai"
+          ],
+          "agreed_by": [
+            "gemini",
+            "elevenlabs",
+            "openai"
+          ]
+        },
+        {
+          "start_ms": 245480,
+          "end_ms": 245820,
+          "categories": [
+            "ORGANIZATION_PERSON_LINKED"
+          ],
+          "engines": [
+            "openai"
+          ],
+          "public_figure": false,
+          "confidence": "medium",
+          "spoken_text": "KPMC",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 245480,
+              "end_ms": 245820,
+              "engine": "openai",
+              "channel": null
+            }
+          ],
+          "item_id": "06e8274b603dfddc4ff0a84ed09f1a85_P009",
+          "action": "beep",
+          "leaked_by": [
+            "gemini",
+            "elevenlabs"
+          ],
+          "covered_by": [
+            "openai"
+          ],
+          "agreed_by": [
+            "openai"
+          ]
+        },
+        {
+          "start_ms": 252300,
+          "end_ms": 257700,
+          "categories": [
+            "ORGANIZATION_PERSON_LINKED"
+          ],
+          "engines": [
+            "elevenlabs",
+            "gemini"
+          ],
+          "public_figure": false,
+          "confidence": "high",
+          "spoken_text": "Ayush Health",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 252300,
+              "end_ms": 257700,
+              "engine": "gemini",
+              "channel": null
+            },
+            {
+              "start_ms": 253420,
+              "end_ms": 253860,
+              "engine": "elevenlabs",
+              "channel": null
+            }
+          ],
+          "item_id": "06e8274b603dfddc4ff0a84ed09f1a85_P010",
+          "action": "beep",
+          "leaked_by": [
+            "openai"
+          ],
+          "covered_by": [
+            "gemini",
+            "elevenlabs"
+          ],
+          "agreed_by": [
+            "gemini",
+            "elevenlabs",
+            "openai"
+          ]
+        },
+        {
+          "start_ms": 321080,
+          "end_ms": 321720,
+          "categories": [
+            "ORGANIZATION_PERSON_LINKED"
+          ],
+          "engines": [
+            "elevenlabs"
+          ],
+          "public_figure": false,
+          "confidence": "high",
+          "spoken_text": "Ayu Health",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 321080,
+              "end_ms": 321720,
+              "engine": "elevenlabs",
+              "channel": null
+            }
+          ],
+          "item_id": "06e8274b603dfddc4ff0a84ed09f1a85_P011",
+          "action": "beep",
+          "leaked_by": [],
+          "covered_by": [
+            "gemini",
+            "elevenlabs",
+            "openai"
+          ],
+          "agreed_by": [
+            "gemini",
+            "elevenlabs",
+            "openai"
+          ]
+        },
+        {
+          "start_ms": 323460,
+          "end_ms": 324140,
+          "categories": [
+            "ORGANIZATION_PERSON_LINKED"
+          ],
+          "engines": [
+            "elevenlabs"
+          ],
+          "public_figure": false,
+          "confidence": "high",
+          "spoken_text": "Medi Assist",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 323460,
+              "end_ms": 324140,
+              "engine": "elevenlabs",
+              "channel": null
+            }
+          ],
+          "item_id": "06e8274b603dfddc4ff0a84ed09f1a85_P012",
+          "action": "beep",
+          "leaked_by": [
+            "openai"
+          ],
+          "covered_by": [
+            "gemini",
+            "elevenlabs"
+          ],
+          "agreed_by": [
+            "gemini",
+            "elevenlabs"
+          ]
+        },
+        {
+          "start_ms": 380660,
+          "end_ms": 387120,
+          "categories": [
+            "FULL_NAME"
+          ],
+          "engines": [
+            "elevenlabs",
+            "gemini",
+            "openai"
+          ],
+          "public_figure": false,
+          "confidence": "medium",
+          "spoken_text": "ಸುಧೀರ್",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 381120,
+              "end_ms": 386120,
+              "engine": "gemini",
+              "channel": null
+            },
+            {
+              "start_ms": 382120,
+              "end_ms": 387120,
+              "engine": "gemini",
+              "channel": null
+            },
+            {
+              "start_ms": 381208,
+              "end_ms": 381508,
+              "engine": "elevenlabs",
+              "channel": null
+            },
+            {
+              "start_ms": 382508,
+              "end_ms": 382868,
+              "engine": "elevenlabs",
+              "channel": null
+            },
+            {
+              "start_ms": 380660,
+              "end_ms": 381520,
+              "engine": "openai",
+              "channel": null
+            },
+            {
+              "start_ms": 382540,
+              "end_ms": 383280,
+              "engine": "openai",
+              "channel": null
+            }
+          ],
+          "item_id": "06e8274b603dfddc4ff0a84ed09f1a85_P013",
+          "action": "beep",
+          "leaked_by": [],
+          "covered_by": [
+            "gemini",
+            "elevenlabs",
+            "openai"
+          ],
+          "agreed_by": [
+            "gemini",
+            "elevenlabs",
+            "openai"
+          ]
+        },
+        {
+          "start_ms": 447008,
+          "end_ms": 447558,
+          "categories": [
+            "ORGANIZATION_PERSON_LINKED"
+          ],
+          "engines": [
+            "elevenlabs"
+          ],
+          "public_figure": false,
+          "confidence": "high",
+          "spoken_text": "Medi Assist",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 447008,
+              "end_ms": 447558,
+              "engine": "elevenlabs",
+              "channel": null
+            }
+          ],
+          "item_id": "06e8274b603dfddc4ff0a84ed09f1a85_P014",
+          "action": "beep",
+          "leaked_by": [
+            "openai"
+          ],
+          "covered_by": [
+            "gemini",
+            "elevenlabs"
+          ],
+          "agreed_by": [
+            "gemini",
+            "elevenlabs"
+          ]
+        },
+        {
+          "start_ms": 449228,
+          "end_ms": 457500,
+          "categories": [
+            "ORGANIZATION_PERSON_LINKED"
+          ],
+          "engines": [
+            "elevenlabs",
+            "gemini"
+          ],
+          "public_figure": false,
+          "confidence": "high",
+          "spoken_text": "media assist",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 452000,
+              "end_ms": 457500,
+              "engine": "gemini",
+              "channel": null
+            },
+            {
+              "start_ms": 449228,
+              "end_ms": 449848,
+              "engine": "elevenlabs",
+              "channel": null
+            },
+            {
+              "start_ms": 451848,
+              "end_ms": 452398,
+              "engine": "elevenlabs",
+              "channel": null
+            }
+          ],
+          "item_id": "06e8274b603dfddc4ff0a84ed09f1a85_P015",
+          "action": "beep",
+          "leaked_by": [
+            "openai"
+          ],
+          "covered_by": [
+            "gemini",
+            "elevenlabs"
+          ],
+          "agreed_by": [
+            "gemini",
+            "elevenlabs"
+          ]
+        },
+        {
+          "start_ms": 457878,
+          "end_ms": 458248,
+          "categories": [
+            "ORGANIZATION_PERSON_LINKED"
+          ],
+          "engines": [
+            "elevenlabs"
+          ],
+          "public_figure": false,
+          "confidence": "high",
+          "spoken_text": "Ayu Health",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 457878,
+              "end_ms": 458248,
+              "engine": "elevenlabs",
+              "channel": null
+            }
+          ],
+          "item_id": "06e8274b603dfddc4ff0a84ed09f1a85_P016",
+          "action": "beep",
+          "leaked_by": [
+            "gemini",
+            "elevenlabs",
+            "openai"
+          ],
+          "covered_by": [],
+          "agreed_by": [
+            "elevenlabs"
+          ]
+        },
+        {
+          "start_ms": 458000,
+          "end_ms": 466500,
+          "categories": [
+            "FULL_NAME",
+            "ORGANIZATION_PERSON_LINKED"
+          ],
+          "engines": [
+            "elevenlabs",
+            "gemini",
+            "openai"
+          ],
+          "public_figure": false,
+          "confidence": "medium",
+          "spoken_text": "ವಿಕ್ರಮ್",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 458000,
+              "end_ms": 463000,
+              "engine": "gemini",
+              "channel": null
+            },
+            {
+              "start_ms": 459000,
+              "end_ms": 464000,
+              "engine": "gemini",
+              "channel": null
+            },
+            {
+              "start_ms": 461500,
+              "end_ms": 466500,
+              "engine": "gemini",
+              "channel": null
+            },
+            {
+              "start_ms": 459228,
+              "end_ms": 459528,
+              "engine": "elevenlabs",
+              "channel": null
+            },
+            {
+              "start_ms": 461288,
+              "end_ms": 461608,
+              "engine": "elevenlabs",
+              "channel": null
+            },
+            {
+              "start_ms": 459637,
+              "end_ms": 460109,
+              "engine": "openai",
+              "channel": null
+            }
+          ],
+          "item_id": "06e8274b603dfddc4ff0a84ed09f1a85_P017",
+          "action": "beep",
+          "leaked_by": [],
+          "covered_by": [
+            "gemini",
+            "elevenlabs",
+            "openai"
+          ],
+          "agreed_by": [
+            "gemini",
+            "elevenlabs",
+            "openai"
+          ]
+        },
+        {
+          "start_ms": 485395,
+          "end_ms": 486660,
+          "categories": [
+            "FULL_NAME"
+          ],
+          "engines": [
+            "openai"
+          ],
+          "public_figure": false,
+          "confidence": "medium",
+          "spoken_text": "Vikram",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 485395,
+              "end_ms": 486660,
+              "engine": "openai",
+              "channel": null
+            }
+          ],
+          "item_id": "06e8274b603dfddc4ff0a84ed09f1a85_P018",
+          "action": "beep",
+          "leaked_by": [
+            "gemini",
+            "elevenlabs"
+          ],
+          "covered_by": [
+            "openai"
+          ],
+          "agreed_by": [
+            "openai"
+          ]
+        }
+      ],
+      "engines": {
+        "gemini": {
+          "items": 18,
+          "must_beep": 18,
+          "annotate_only": 0,
+          "leaked": 4,
+          "covered": 14,
+          "agree": 14,
+          "agree_eval": 18
+        },
+        "elevenlabs": {
+          "items": 18,
+          "must_beep": 18,
+          "annotate_only": 0,
+          "leaked": 4,
+          "covered": 14,
+          "agree": 15,
+          "agree_eval": 18
+        },
+        "openai": {
+          "items": 18,
+          "must_beep": 18,
+          "annotate_only": 0,
+          "leaked": 6,
+          "covered": 12,
+          "agree": 12,
+          "agree_eval": 18
+        }
+      },
+      "verifier_rejected": {
+        "gemini": 4,
+        "elevenlabs": 0,
+        "openai": 3
+      },
+      "notes": [
+        "gemini: 4 span(s) rejected by verifier (over-reach)",
+        "openai: 3 span(s) rejected by verifier (over-reach)"
+      ]
+    },
+    {
+      "file_id": "5252dea2cb5c97b14aa7dcf365211a85",
+      "items": [
+        {
+          "start_ms": 2960,
+          "end_ms": 3500,
+          "categories": [
+            "FULL_NAME"
+          ],
+          "engines": [
+            "elevenlabs",
+            "gemini",
+            "openai"
+          ],
+          "public_figure": false,
+          "confidence": "high",
+          "spoken_text": "Keerthana",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 3000,
+              "end_ms": 3500,
+              "engine": "gemini",
+              "channel": null
+            },
+            {
+              "start_ms": 2960,
+              "end_ms": 3300,
+              "engine": "elevenlabs",
+              "channel": null
+            },
+            {
+              "start_ms": 2980,
+              "end_ms": 3080,
+              "engine": "openai",
+              "channel": null
+            }
+          ],
+          "item_id": "5252dea2cb5c97b14aa7dcf365211a85_P001",
+          "action": "beep",
+          "leaked_by": [],
+          "covered_by": [
+            "gemini",
+            "elevenlabs",
+            "openai"
+          ],
+          "agreed_by": [
+            "gemini",
+            "elevenlabs",
+            "openai"
+          ]
+        },
+        {
+          "start_ms": 4400,
+          "end_ms": 5600,
+          "categories": [
+            "ORGANIZATION_PERSON_LINKED"
+          ],
+          "engines": [
+            "elevenlabs",
+            "gemini",
+            "openai"
+          ],
+          "public_figure": false,
+          "confidence": "high",
+          "spoken_text": "Dr Agarwal Hospital",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 4500,
+              "end_ms": 5600,
+              "engine": "gemini",
+              "channel": null
+            },
+            {
+              "start_ms": 4770,
+              "end_ms": 5540,
+              "engine": "elevenlabs",
+              "channel": null
+            },
+            {
+              "start_ms": 4400,
+              "end_ms": 5560,
+              "engine": "openai",
+              "channel": null
+            }
+          ],
+          "item_id": "5252dea2cb5c97b14aa7dcf365211a85_P002",
+          "action": "beep",
+          "leaked_by": [],
+          "covered_by": [
+            "gemini",
+            "elevenlabs",
+            "openai"
+          ],
+          "agreed_by": [
+            "gemini",
+            "elevenlabs",
+            "openai"
+          ]
+        },
+        {
+          "start_ms": 10200,
+          "end_ms": 11020,
+          "categories": [
+            "FULL_NAME"
+          ],
+          "engines": [
+            "elevenlabs",
+            "gemini"
+          ],
+          "public_figure": false,
+          "confidence": "high",
+          "spoken_text": "Noor Jahan",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 10200,
+              "end_ms": 11000,
+              "engine": "gemini",
+              "channel": null
+            },
+            {
+              "start_ms": 10420,
+              "end_ms": 11020,
+              "engine": "elevenlabs",
+              "channel": null
+            }
+          ],
+          "item_id": "5252dea2cb5c97b14aa7dcf365211a85_P003",
+          "action": "beep",
+          "leaked_by": [
+            "openai"
+          ],
+          "covered_by": [
+            "gemini",
+            "elevenlabs"
+          ],
+          "agreed_by": [
+            "gemini",
+            "elevenlabs"
+          ]
+        },
+        {
+          "start_ms": 29600,
+          "end_ms": 30960,
+          "categories": [
+            "FULL_NAME"
+          ],
+          "engines": [
+            "gemini",
+            "openai"
+          ],
+          "public_figure": false,
+          "confidence": "high",
+          "spoken_text": "Hanish",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 29600,
+              "end_ms": 30000,
+              "engine": "gemini",
+              "channel": null
+            },
+            {
+              "start_ms": 30920,
+              "end_ms": 30960,
+              "engine": "openai",
+              "channel": null
+            }
+          ],
+          "item_id": "5252dea2cb5c97b14aa7dcf365211a85_P004",
+          "action": "beep",
+          "leaked_by": [],
+          "covered_by": [
+            "gemini",
+            "elevenlabs",
+            "openai"
+          ],
+          "agreed_by": [
+            "gemini",
+            "elevenlabs",
+            "openai"
+          ]
+        },
+        {
+          "start_ms": 30620,
+          "end_ms": 30940,
+          "categories": [
+            "FULL_NAME"
+          ],
+          "engines": [
+            "elevenlabs"
+          ],
+          "public_figure": false,
+          "confidence": "high",
+          "spoken_text": "Haneef",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 30620,
+              "end_ms": 30940,
+              "engine": "elevenlabs",
+              "channel": null
+            }
+          ],
+          "item_id": "5252dea2cb5c97b14aa7dcf365211a85_P005",
+          "action": "beep",
+          "leaked_by": [
+            "gemini"
+          ],
+          "covered_by": [
+            "elevenlabs",
+            "openai"
+          ],
+          "agreed_by": [
+            "elevenlabs"
+          ]
+        },
+        {
+          "start_ms": 46700,
+          "end_ms": 48000,
+          "categories": [
+            "HEALTH_MEDICAL_INFO"
+          ],
+          "engines": [
+            "gemini"
+          ],
+          "public_figure": false,
+          "confidence": "high",
+          "spoken_text": "medications post-surgery",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 46700,
+              "end_ms": 48000,
+              "engine": "gemini",
+              "channel": null
+            }
+          ],
+          "item_id": "5252dea2cb5c97b14aa7dcf365211a85_P006",
+          "action": "annotate_only",
+          "leaked_by": [],
+          "covered_by": [],
+          "agreed_by": [
+            "gemini"
+          ]
+        },
+        {
+          "start_ms": 56500,
+          "end_ms": 58280,
+          "categories": [
+            "ORGANIZATION_PERSON_LINKED"
+          ],
+          "engines": [
+            "elevenlabs",
+            "gemini",
+            "openai"
+          ],
+          "public_figure": false,
+          "confidence": "high",
+          "spoken_text": "Medi Assist",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 56500,
+              "end_ms": 57500,
+              "engine": "gemini",
+              "channel": null
+            },
+            {
+              "start_ms": 57240,
+              "end_ms": 58280,
+              "engine": "elevenlabs",
+              "channel": null
+            },
+            {
+              "start_ms": 57400,
+              "end_ms": 57920,
+              "engine": "openai",
+              "channel": null
+            }
+          ],
+          "item_id": "5252dea2cb5c97b14aa7dcf365211a85_P007",
+          "action": "beep",
+          "leaked_by": [],
+          "covered_by": [
+            "gemini",
+            "elevenlabs",
+            "openai"
+          ],
+          "agreed_by": [
+            "gemini",
+            "elevenlabs",
+            "openai"
+          ]
+        },
+        {
+          "start_ms": 112460,
+          "end_ms": 113600,
+          "categories": [
+            "FINANCIAL_INFO"
+          ],
+          "engines": [
+            "openai"
+          ],
+          "public_figure": false,
+          "confidence": "high",
+          "spoken_text": "42 000 rupees",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 112460,
+              "end_ms": 113600,
+              "engine": "openai",
+              "channel": null
+            }
+          ],
+          "item_id": "5252dea2cb5c97b14aa7dcf365211a85_P008",
+          "action": "beep",
+          "leaked_by": [],
+          "covered_by": [
+            "gemini",
+            "elevenlabs",
+            "openai"
+          ],
+          "agreed_by": [
+            "gemini",
+            "elevenlabs",
+            "openai"
+          ]
+        },
+        {
+          "start_ms": 168160,
+          "end_ms": 172401,
+          "categories": [
+            "PHONE"
+          ],
+          "engines": [
+            "elevenlabs",
+            "gemini",
+            "openai"
+          ],
+          "public_figure": false,
+          "confidence": "high",
+          "spoken_text": "nine double nine eight double zero one nine zero double seven",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 169700,
+              "end_ms": 172401,
+              "engine": "gemini",
+              "channel": null
+            },
+            {
+              "start_ms": 168225,
+              "end_ms": 171240,
+              "engine": "elevenlabs",
+              "channel": null
+            },
+            {
+              "start_ms": 168160,
+              "end_ms": 171140,
+              "engine": "openai",
+              "channel": null
+            }
+          ],
+          "item_id": "5252dea2cb5c97b14aa7dcf365211a85_P009",
+          "action": "beep",
+          "leaked_by": [],
+          "covered_by": [
+            "gemini",
+            "elevenlabs",
+            "openai"
+          ],
+          "agreed_by": [
+            "gemini",
+            "elevenlabs",
+            "openai"
+          ]
+        },
+        {
+          "start_ms": 173820,
+          "end_ms": 177531,
+          "categories": [
+            "PHONE"
+          ],
+          "engines": [
+            "elevenlabs",
+            "gemini",
+            "openai"
+          ],
+          "public_figure": false,
+          "confidence": "high",
+          "spoken_text": "nine seven three one five four double nine zero five",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 174500,
+              "end_ms": 177201,
+              "engine": "gemini",
+              "channel": null
+            },
+            {
+              "start_ms": 173960,
+              "end_ms": 177531,
+              "engine": "elevenlabs",
+              "channel": null
+            },
+            {
+              "start_ms": 173820,
+              "end_ms": 177040,
+              "engine": "openai",
+              "channel": null
+            }
+          ],
+          "item_id": "5252dea2cb5c97b14aa7dcf365211a85_P010",
+          "action": "beep",
+          "leaked_by": [],
+          "covered_by": [
+            "gemini",
+            "elevenlabs",
+            "openai"
+          ],
+          "agreed_by": [
+            "gemini",
+            "elevenlabs",
+            "openai"
+          ]
+        },
+        {
+          "start_ms": 179580,
+          "end_ms": 182500,
+          "categories": [
+            "ORGANIZATION_PERSON_LINKED"
+          ],
+          "engines": [
+            "elevenlabs",
+            "gemini",
+            "openai"
+          ],
+          "public_figure": false,
+          "confidence": "high",
+          "spoken_text": "Mortar Solutions India Private Limited Company",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 179900,
+              "end_ms": 182500,
+              "engine": "gemini",
+              "channel": null
+            },
+            {
+              "start_ms": 179640,
+              "end_ms": 182280,
+              "engine": "elevenlabs",
+              "channel": null
+            },
+            {
+              "start_ms": 179580,
+              "end_ms": 182200,
+              "engine": "openai",
+              "channel": null
+            }
+          ],
+          "item_id": "5252dea2cb5c97b14aa7dcf365211a85_P011",
+          "action": "beep",
+          "leaked_by": [],
+          "covered_by": [
+            "gemini",
+            "elevenlabs",
+            "openai"
+          ],
+          "agreed_by": [
+            "gemini",
+            "elevenlabs",
+            "openai"
+          ]
+        }
+      ],
+      "engines": {
+        "gemini": {
+          "items": 11,
+          "must_beep": 10,
+          "annotate_only": 1,
+          "leaked": 1,
+          "covered": 9,
+          "agree": 10,
+          "agree_eval": 11
+        },
+        "elevenlabs": {
+          "items": 11,
+          "must_beep": 10,
+          "annotate_only": 1,
+          "leaked": 0,
+          "covered": 10,
+          "agree": 10,
+          "agree_eval": 11
+        },
+        "openai": {
+          "items": 11,
+          "must_beep": 10,
+          "annotate_only": 1,
+          "leaked": 1,
+          "covered": 9,
+          "agree": 8,
+          "agree_eval": 11
+        }
+      },
+      "verifier_rejected": {
+        "gemini": 6,
+        "elevenlabs": 6,
+        "openai": 1
+      },
+      "notes": [
+        "gemini: 6 span(s) rejected by verifier (over-reach)",
+        "elevenlabs: 6 span(s) rejected by verifier (over-reach)",
+        "openai: 1 span(s) rejected by verifier (over-reach)"
+      ]
+    },
+    {
+      "file_id": "EP-3",
+      "items": [],
+      "engines": {
+        "gemini": {
+          "items": 0,
+          "must_beep": 0,
+          "annotate_only": 0,
+          "leaked": 0,
+          "covered": 0,
+          "agree": 0,
+          "agree_eval": 0
+        },
+        "elevenlabs": {
+          "items": 0,
+          "must_beep": 0,
+          "annotate_only": 0,
+          "leaked": 0,
+          "covered": 0,
+          "agree": 0,
+          "agree_eval": 0
+        },
+        "openai": {
+          "items": 0,
+          "must_beep": 0,
+          "annotate_only": 0,
+          "leaked": 0,
+          "covered": 0,
+          "agree": 0,
+          "agree_eval": 0
+        }
+      },
+      "verifier_rejected": {
+        "gemini": 0,
+        "elevenlabs": 0,
+        "openai": 0
+      },
+      "notes": []
+    },
+    {
+      "file_id": "EP_3",
+      "items": [],
+      "engines": {
+        "gemini": {
+          "items": 0,
+          "must_beep": 0,
+          "annotate_only": 0,
+          "leaked": 0,
+          "covered": 0,
+          "agree": 0,
+          "agree_eval": 0
+        },
+        "elevenlabs": {
+          "items": 0,
+          "must_beep": 0,
+          "annotate_only": 0,
+          "leaked": 0,
+          "covered": 0,
+          "agree": 0,
+          "agree_eval": 0
+        },
+        "openai": {
+          "items": 0,
+          "must_beep": 0,
+          "annotate_only": 0,
+          "leaked": 0,
+          "covered": 0,
+          "agree": 0,
+          "agree_eval": 0
+        }
+      },
+      "verifier_rejected": {
+        "gemini": 0,
+        "elevenlabs": 0,
+        "openai": 0
+      },
+      "notes": []
+    },
+    {
+      "file_id": "MP_EP_-_1",
+      "items": [],
+      "engines": {
+        "gemini": {
+          "items": 0,
+          "must_beep": 0,
+          "annotate_only": 0,
+          "leaked": 0,
+          "covered": 0,
+          "agree": 0,
+          "agree_eval": 0
+        },
+        "elevenlabs": {
+          "items": 0,
+          "must_beep": 0,
+          "annotate_only": 0,
+          "leaked": 0,
+          "covered": 0,
+          "agree": 0,
+          "agree_eval": 0
+        },
+        "openai": {
+          "items": 0,
+          "must_beep": 0,
+          "annotate_only": 0,
+          "leaked": 0,
+          "covered": 0,
+          "agree": 0,
+          "agree_eval": 0
+        }
+      },
+      "verifier_rejected": {
+        "gemini": 0,
+        "elevenlabs": 0,
+        "openai": 0
+      },
+      "notes": []
+    },
+    {
+      "file_id": "MP_EP_-_2",
+      "items": [],
+      "engines": {
+        "gemini": {
+          "items": 0,
+          "must_beep": 0,
+          "annotate_only": 0,
+          "leaked": 0,
+          "covered": 0,
+          "agree": 0,
+          "agree_eval": 0
+        },
+        "elevenlabs": {
+          "items": 0,
+          "must_beep": 0,
+          "annotate_only": 0,
+          "leaked": 0,
+          "covered": 0,
+          "agree": 0,
+          "agree_eval": 0
+        },
+        "openai": {
+          "items": 0,
+          "must_beep": 0,
+          "annotate_only": 0,
+          "leaked": 0,
+          "covered": 0,
+          "agree": 0,
+          "agree_eval": 0
+        }
+      },
+      "verifier_rejected": {
+        "gemini": 0,
+        "elevenlabs": 0,
+        "openai": 0
+      },
+      "notes": []
+    },
+    {
+      "file_id": "c34897552fdcca8ae3f8d5a7015d1a85",
+      "items": [
+        {
+          "start_ms": 7200,
+          "end_ms": 7600,
+          "categories": [
+            "FULL_NAME"
+          ],
+          "engines": [
+            "gemini"
+          ],
+          "public_figure": false,
+          "confidence": "high",
+          "spoken_text": "నూతన్",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 7200,
+              "end_ms": 7600,
+              "engine": "gemini",
+              "channel": null
+            }
+          ],
+          "item_id": "c34897552fdcca8ae3f8d5a7015d1a85_P001",
+          "action": "beep",
+          "leaked_by": [
+            "openai"
+          ],
+          "covered_by": [
+            "gemini",
+            "elevenlabs"
+          ],
+          "agreed_by": [
+            "gemini",
+            "elevenlabs"
+          ]
+        },
+        {
+          "start_ms": 7500,
+          "end_ms": 8500,
+          "categories": [
+            "ORGANIZATION_PERSON_LINKED"
+          ],
+          "engines": [
+            "elevenlabs",
+            "gemini"
+          ],
+          "public_figure": false,
+          "confidence": "high",
+          "spoken_text": "మెడికవర్ హాస్పిటల్",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 7600,
+              "end_ms": 8500,
+              "engine": "gemini",
+              "channel": null
+            },
+            {
+              "start_ms": 7500,
+              "end_ms": 8400,
+              "engine": "elevenlabs",
+              "channel": null
+            }
+          ],
+          "item_id": "c34897552fdcca8ae3f8d5a7015d1a85_P002",
+          "action": "beep",
+          "leaked_by": [
+            "openai"
+          ],
+          "covered_by": [
+            "gemini",
+            "elevenlabs"
+          ],
+          "agreed_by": [
+            "gemini",
+            "elevenlabs"
+          ]
+        },
+        {
+          "start_ms": 13500,
+          "end_ms": 14400,
+          "categories": [
+            "FULL_NAME"
+          ],
+          "engines": [
+            "gemini"
+          ],
+          "public_figure": false,
+          "confidence": "high",
+          "spoken_text": "ఎల్ పి సావిత్రి",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 13500,
+              "end_ms": 14400,
+              "engine": "gemini",
+              "channel": null
+            }
+          ],
+          "item_id": "c34897552fdcca8ae3f8d5a7015d1a85_P003",
+          "action": "beep",
+          "leaked_by": [
+            "elevenlabs",
+            "openai"
+          ],
+          "covered_by": [
+            "gemini"
+          ],
+          "agreed_by": [
+            "gemini"
+          ]
+        },
+        {
+          "start_ms": 21300,
+          "end_ms": 22100,
+          "categories": [
+            "FULL_NAME"
+          ],
+          "engines": [
+            "gemini"
+          ],
+          "public_figure": false,
+          "confidence": "high",
+          "spoken_text": "రాజేంద్ర చారి",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 21300,
+              "end_ms": 22100,
+              "engine": "gemini",
+              "channel": null
+            }
+          ],
+          "item_id": "c34897552fdcca8ae3f8d5a7015d1a85_P004",
+          "action": "beep",
+          "leaked_by": [
+            "elevenlabs",
+            "openai"
+          ],
+          "covered_by": [
+            "gemini"
+          ],
+          "agreed_by": [
+            "gemini"
+          ]
+        },
+        {
+          "start_ms": 81300,
+          "end_ms": 84400,
+          "categories": [
+            "PHONE"
+          ],
+          "engines": [
+            "gemini"
+          ],
+          "public_figure": false,
+          "confidence": "high",
+          "spoken_text": "ఎయిట్ వన్ టూ త్రీ సిక్స్ త్రీ ఎయిట్ జీరో ఫోర్ టూ",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 81300,
+              "end_ms": 84400,
+              "engine": "gemini",
+              "channel": null
+            }
+          ],
+          "item_id": "c34897552fdcca8ae3f8d5a7015d1a85_P005",
+          "action": "beep",
+          "leaked_by": [
+            "elevenlabs",
+            "openai"
+          ],
+          "covered_by": [
+            "gemini"
+          ],
+          "agreed_by": [
+            "gemini",
+            "elevenlabs"
+          ]
+        },
+        {
+          "start_ms": 121800,
+          "end_ms": 123600,
+          "categories": [
+            "FINANCIAL_INFO"
+          ],
+          "engines": [
+            "elevenlabs",
+            "gemini"
+          ],
+          "public_figure": false,
+          "confidence": "high",
+          "spoken_text": "ఫిఫ్టీన్ థౌసండ్ లో కట్టాము",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 121800,
+              "end_ms": 123600,
+              "engine": "gemini",
+              "channel": null
+            },
+            {
+              "start_ms": 121960,
+              "end_ms": 122470,
+              "engine": "elevenlabs",
+              "channel": null
+            }
+          ],
+          "item_id": "c34897552fdcca8ae3f8d5a7015d1a85_P006",
+          "action": "beep",
+          "leaked_by": [
+            "openai"
+          ],
+          "covered_by": [
+            "gemini",
+            "elevenlabs"
+          ],
+          "agreed_by": [
+            "gemini",
+            "elevenlabs"
+          ]
+        },
+        {
+          "start_ms": 166380,
+          "end_ms": 171500,
+          "categories": [
+            "FINANCIAL_INFO"
+          ],
+          "engines": [
+            "elevenlabs",
+            "gemini"
+          ],
+          "public_figure": false,
+          "confidence": "high",
+          "spoken_text": "రెండు లక్షల నలభై తొమ్మిది వేల నాలుగు వందల తొంభై ఐదు రూపాయలు",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 166800,
+              "end_ms": 171500,
+              "engine": "gemini",
+              "channel": null
+            },
+            {
+              "start_ms": 166380,
+              "end_ms": 171450,
+              "engine": "elevenlabs",
+              "channel": null
+            }
+          ],
+          "item_id": "c34897552fdcca8ae3f8d5a7015d1a85_P007",
+          "action": "beep",
+          "leaked_by": [
+            "openai"
+          ],
+          "covered_by": [
+            "gemini",
+            "elevenlabs"
+          ],
+          "agreed_by": [
+            "gemini",
+            "elevenlabs"
+          ]
+        },
+        {
+          "start_ms": 176500,
+          "end_ms": 180900,
+          "categories": [
+            "FINANCIAL_INFO"
+          ],
+          "engines": [
+            "elevenlabs",
+            "gemini"
+          ],
+          "public_figure": false,
+          "confidence": "high",
+          "spoken_text": "ఇరవై ఒక్క వేల రెండు వందల యాభై రూపాయలు డిస్కౌంట్ ఇచ్చారు",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 176500,
+              "end_ms": 180900,
+              "engine": "gemini",
+              "channel": null
+            },
+            {
+              "start_ms": 177940,
+              "end_ms": 179840,
+              "engine": "elevenlabs",
+              "channel": null
+            }
+          ],
+          "item_id": "c34897552fdcca8ae3f8d5a7015d1a85_P008",
+          "action": "beep",
+          "leaked_by": [
+            "openai"
+          ],
+          "covered_by": [
+            "gemini",
+            "elevenlabs"
+          ],
+          "agreed_by": [
+            "gemini",
+            "elevenlabs"
+          ]
+        },
+        {
+          "start_ms": 183000,
+          "end_ms": 186000,
+          "categories": [
+            "FINANCIAL_INFO"
+          ],
+          "engines": [
+            "elevenlabs",
+            "gemini"
+          ],
+          "public_figure": false,
+          "confidence": "high",
+          "spoken_text": "లక్ష యాభై వేలు క్యాష్ ద్వారా పే చేసాము",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 183000,
+              "end_ms": 186000,
+              "engine": "gemini",
+              "channel": null
+            },
+            {
+              "start_ms": 183800,
+              "end_ms": 184269,
+              "engine": "elevenlabs",
+              "channel": null
+            }
+          ],
+          "item_id": "c34897552fdcca8ae3f8d5a7015d1a85_P009",
+          "action": "beep",
+          "leaked_by": [
+            "openai"
+          ],
+          "covered_by": [
+            "gemini",
+            "elevenlabs"
+          ],
+          "agreed_by": [
+            "gemini",
+            "elevenlabs"
+          ]
+        },
+        {
+          "start_ms": 188200,
+          "end_ms": 193600,
+          "categories": [
+            "FINANCIAL_INFO"
+          ],
+          "engines": [
+            "elevenlabs",
+            "gemini"
+          ],
+          "public_figure": false,
+          "confidence": "high",
+          "spoken_text": "డెబ్బై ఎనిమిది వేల రెండు వందల నలభై ఐదు రూపాయలు నెఫ్ట్ ద్వారా పే చేసాము",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 188200,
+              "end_ms": 193600,
+              "engine": "gemini",
+              "channel": null
+            },
+            {
+              "start_ms": 188840,
+              "end_ms": 191420,
+              "engine": "elevenlabs",
+              "channel": null
+            }
+          ],
+          "item_id": "c34897552fdcca8ae3f8d5a7015d1a85_P010",
+          "action": "beep",
+          "leaked_by": [
+            "openai"
+          ],
+          "covered_by": [
+            "gemini",
+            "elevenlabs"
+          ],
+          "agreed_by": [
+            "gemini",
+            "elevenlabs"
+          ]
+        }
+      ],
+      "engines": {
+        "gemini": {
+          "items": 10,
+          "must_beep": 10,
+          "annotate_only": 0,
+          "leaked": 0,
+          "covered": 10,
+          "agree": 10,
+          "agree_eval": 10
+        },
+        "elevenlabs": {
+          "items": 10,
+          "must_beep": 10,
+          "annotate_only": 0,
+          "leaked": 3,
+          "covered": 7,
+          "agree": 8,
+          "agree_eval": 10
+        },
+        "openai": {
+          "items": 10,
+          "must_beep": 10,
+          "annotate_only": 0,
+          "leaked": 10,
+          "covered": 0,
+          "agree": 0,
+          "agree_eval": 10
+        }
+      },
+      "verifier_rejected": {
+        "gemini": 1,
+        "elevenlabs": 1,
+        "openai": 0
+      },
+      "notes": [
+        "gemini: 1 span(s) rejected by verifier (over-reach)",
+        "elevenlabs: 1 span(s) rejected by verifier (over-reach)"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,111 @@
+# AudioPII-QC — Audio PII Redaction Workflow (Deccan.ai pilot)
+
+> **Private repository.** Sample outputs are redacted recordings of real
+> calls; voices remain recognizable even with PII beeped. Do not mirror or
+> re-share outside the team.
+
+Removes spoken personal information (PII) from audio: every detected PII value
+is replaced by a 1 kHz beep in the audio and a `<CATEGORY REDACTED>` marker in
+the transcript. Handles any language/accent (validated on Indian English,
+Hindi, Bengali, Odia, Telugu incl. code-switching), multiple speakers, and
+telephone-quality recordings. Full design record: `docs/System_Design.md`;
+final results: `outputs/Audio_PII_Project_Report_v2.docx`.
+
+## Requirements
+
+- Python >= 3.9 (standard library only — no pip installs)
+- An audio converter: macOS ships `afconvert` (nothing to install);
+  Linux/Windows need `ffmpeg` on PATH. NOTE: the ffmpeg branch is written to
+  produce identical formats but has not yet been exercised on a Linux box —
+  run the self-tests below on first use.
+- YOUR OWN API keys (see Setup). Keys are personal; never commit them.
+
+## Setup
+
+    cp .env.example .env
+    # edit .env and paste YOUR OWN keys (never share or commit this file):
+    #   GEMINI_API_KEY        Google AI Studio
+    #   ELEVEN_LABS_API_KEY   ElevenLabs
+    #   OPENROUTER_API_KEY    OpenRouter (judges / GPT detector / whisper)
+
+## Redact a file (the production workflow)
+
+    python3 tools/redact.py path/to/audio.mp3
+
+One command per file (multiple paths allowed). Stages: prepare -> transcribe
+(ElevenLabs scribe_v2 + keyterms; automatic Gemini fallback) -> detect (Gemini,
+policy v3, 31 categories + spoken-digit safety net) -> redact (word-aware
+1 kHz beeps + redacted transcript from ONE interval list) -> gates: signal QC,
+beep-edge listen check, independent judge audit (all default ON; --no-audit
+opts out of the audit).
+
+- PASS -> `deliveries/<file_id>/`: beeped .m4a, redacted .txt, qc_report.md,
+  manifest.json (models, prompt hashes, source sha, gate outcomes).
+- Any unresolved gate -> `quarantine/<file_id>/` for human review. Nothing
+  ships silently.
+- Profiles: `--profile strict|medical_consult` (Action Matrix; extensible).
+- High-risk content: `--assurance` unions a second listener's detections into
+  the beeps.
+
+## Local web app (upload + quarantine review)
+
+    python3 tools/webapp.py          # -> http://127.0.0.1:8788 (localhost only)
+
+Two views: **Upload & Redact** (drop an audio file, the full gated workflow
+runs, download the redacted outputs) and **Review quarantine** (per held
+file: every flagged beep edge with an audio snippet player, an Extend-beep
+button that re-renders the audio, and Approve-&-release / Keep-held with a
+mandatory reviewer note — every action is recorded in the manifest).
+CLI equivalent: `python3 tools/release.py extend|release|keep ...`.
+
+![Upload & Redact](docs/screenshots/upload_redact.png)
+![Review quarantine](docs/screenshots/review_quarantine.png)
+
+Triage tips: cross-script mishearings (the listener writing Devanagari where
+the transcript romanized) are the most common false flag; spoken digit words
+or value-token hits at an amount boundary deserve real ears — see the report.
+
+## Evaluation harness (rerunnable on any corpus, no human annotation needed)
+
+    python3 pipeline/run_pipeline.py --engine elevenlabs|gemini|openai \
+                                     [--detector gemini|gpt]      # any config
+    python3 tools/judge_precision_recall.py \
+        --configs elevenlabs,gemini,openai,elevenlabs__gpt,openai__gpt
+    python3 tools/judge_leak_audit.py       # text-leak audit of redacted outputs
+    python3 tools/transcription_bench.py    # WER/CER vs human references (if present)
+    python3 tools/cost_report.py            # measured $/audio-hour per config
+    python3 tools/fresh_run.py [--dry-run]  # archive + rerun EVERYTHING from scratch
+
+Self-tests (run after install, especially on Linux):
+
+    python3 tools/judge_precision_recall.py --self-test
+    python3 tools/judge_pseudo_gt.py --self-test
+    python3 tools/judge_leak_audit.py --self-test
+    python3 tools/cost_report.py --self-test
+    python3 pipeline/detect_pii.py
+
+## Changing policy (no code changes)
+
+Behavior lives in versioned files: `prompts/detection_policy_prompt_v3.txt`
+(shared by detector AND judges), `outputs/Audio_PII_Taxonomy_v0.2.md`,
+`pipeline/policy.py` (profiles / Action Matrix), `prompts/keyterms_india_v1.txt`.
+Edit, bump the version, re-run with `--force detect`.
+
+## Repo layout
+
+    pipeline/   the 5-stage pipeline (orchestrator, engines, detector, render,
+                QC, edge listen check, judge client)
+    tools/      production workflow, evaluation harness, report generators
+    prompts/    versioned prompts + keyterms (see prompts/README.md)
+    docs/       System_Design.md — every decision, defect class and defense
+    outputs/    deliverable documents (taxonomy, schema, reports, figures)
+    results/    fresh-run evaluation reports (markdown + json)
+    sample/     one REDACTED example output (no original audio by policy)
+
+## Privacy & security notes
+
+- Deliverables of real calls are still sensitive recordings — handle
+  `deliveries/` under the same access rules as the source audio.
+- Raw transcripts and detection intervals contain PII and stay in `output/`
+  (gitignored); they never enter deliveries or this repo.
+- `.env` is gitignored; each user brings their own keys.

@@ -1,0 +1,40 @@
+[00:00:01.60 - 00:00:04.18] S1 - name and reason for calling. I'll see person is-
+[00:00:07.00 - 00:00:07.34] S2 - Hello.
+[00:00:09.54 - 00:00:09.80] S2 - Hello.
+[00:00:10.10 - 00:00:11.04] S1 - Yeah, who is this?
+[00:00:11.70 - 00:00:14.72] S2 - Also good evening, sir. This is <NAME REDACTED> from <ORGANIZATION REDACTED> Insurance Team.
+[00:00:15.70 - 00:00:16.78] S1 - Okay. Yeah. Tell me.
+[00:00:17.27 - 00:00:24.50] S2 - Yeah. So I have, I have called you to explain the discharge process, sir. So it will take, uh, two to three minutes. So you are the policyholder, no?
+[00:00:25.90 - 00:00:29.66] S1 - Uh, no, I'm not the policyholder, but, uh, she's my sister-in-law.
+[00:00:31.06 - 00:00:36.59] S2 - Okay, sir. Uh, uh, is it okay if I explain to you and you will convey the same to her, no?
+[00:00:37.96 - 00:00:42.57] S1 - Um, just allow me a minute. I'm in, I'm in my office and, uh-
+[00:00:42.57 - 00:00:42.99] S2 - Okay, sure.
+[00:00:42.99 - 00:00:45.24] S1 - I have stepped, stepped a bit. One minute.
+[00:00:45.30 - 00:00:48.28] S2 - You can, you can just tell me the details, sir. I'll arrange the call back at that time.
+[00:00:50.18 - 00:00:54.66] S1 - Um, no, you're okay to talk. Uh, I just stepped away from my workstation. Tell me.
+[00:00:55.34 - 00:00:57.70] S2 - Yeah. So the thing is, no-
+[00:00:59.14 - 00:00:59.58] S1 - Yeah.
+[00:00:59.84 - 00:01:02.08] S2 - Only she... Is it, uh, okay, no? Can I talk now?
+[00:01:02.80 - 00:01:04.18] S1 - Yeah, yeah. Go ahead.
+[00:01:04.32 - 00:01:11.73] S2 - Okay. So, so, uh, the documents are in dispatch process. So, uh, you will be getting the claim ID from your insurance company within two to three days.
+[00:01:12.40 - 00:01:12.64] S1 - Okay.
+[00:01:13.12 - 00:01:17.14] S2 - So for some cases, no teams will call to you. You have to provide the claim ID.
+[00:01:17.30 - 00:01:17.54] S1 - Okay.
+[00:01:18.64 - 00:01:23.03] S2 - And, uh, you will also get a verification call from your insurance company. So you have-
+[00:01:23.13 - 00:01:23.13] S1 - Okay.
+[00:01:23.16 - 00:01:30.64] S2 - -to tell them that you have only paid the complete amount to the hospital and you have applied for the insurance to start the investment process.
+[00:01:30.68 - 00:01:30.80] S1 - Sure. Sure. Sure.
+[00:01:30.72 - 00:01:39.42] S2 - Okay. Uh, and sir if they're asking about total money and mode of payment made, you can tell them that it was <FINANCIAL_INFO REDACTED> and completely paid by cash.
+[00:01:40.80 - 00:01:43.04] S1 - Okay. <FINANCIAL_INFO REDACTED> right?
+[00:01:43.12 - 00:01:45.73] S2 - Yeah, <FINANCIAL_INFO REDACTED> sir.
+[00:01:45.78 - 00:01:47.24] S1 - Okay. Okay. Yeah.
+[00:01:47.34 - 00:01:57.74] S2 - Okay, no? And sir, you can tell them that, uh, the hospital team has, uh, helped you through the verification process and don't inform third party names, sir. So there must be chance of getting delayed or so further because of that.
+[00:01:57.82 - 00:02:06.86] S1 - Sure, sure. I will not inform third party is involved. Uh, I'll say I just paid from my pocket and I'm, I'm reimbursement. Uh, I just, uh, raised a claim for reimbursement.
+[00:02:06.94 - 00:02:18.42] S2 - Yeah, yeah. Sure. Okay. It will be fine. So, uh, all the documents are being sub-- are being submitted to the insurance company. If any requirement is there, no, so we'll, uh, call you. So, uh, we need your complete support in getting it done.
+[00:02:18.50 - 00:02:19.25] S1 - Sure. Definitely.
+[00:02:20.12 - 00:02:21.03] S2 - Okay, sir.
+[00:02:21.03 - 00:02:21.03] S1 - Yeah.
+[00:02:21.10 - 00:02:23.43] S2 - So everything is clear to you, no, the amount and all?
+[00:02:24.36 - 00:02:25.68] S1 - Yeah, yeah, it is clear.
+[00:02:25.82 - 00:02:27.37] S2 - Okay, sir. Thank you.
+[00:02:27.44 - 00:02:28.30] S1 - Okay. Thank you.
