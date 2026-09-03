@@ -7,10 +7,12 @@ Two detectors, merged:
    (OpenRouter chat completions via the judge_client transport, default model
    openai/gpt-5.6-luna) — SAME policy prompt, SAME word-index schema, so
    detector models compare fairly.
-2. Deterministic safety net: long spoken digit/letter sequences (English,
-   Hindi/Bengali/Telugu number words, Devanagari/Bengali/Telugu/Latin digits,
-   double/triple constructions) that the LLM missed become recall-first
-   intervals flagged needs_review.
+2. Deterministic safety net: long spoken digit/letter sequences that the
+   LLM missed become recall-first intervals flagged needs_review. Digit words
+   cover English + 9 Indian languages (Hindi, Bengali, Telugu, Tamil,
+   Malayalam, Kannada, Odia, Marathi, Gujarati, Punjabi — native + romanized);
+   numerals of ALL scripts count (Unicode isdigit + a combined normalization
+   table); double/triple constructions understood.
 
 intervals.json is the single source of truth for BOTH audio beeps and
 transcript redaction.
@@ -46,13 +48,63 @@ DIGIT_WORDS = {
     "సున్న": "0", "సున్నా": "0", "ఒకటి": "1", "రెండు": "2", "మూడు": "3",
     "నాలుగు": "4", "ఐదు": "5", "ఆరు": "6", "ఏడు": "7", "ఎనిమిది": "8",
     "తొమ్మిది": "9",
+    # Tamil (native + Latin; several romanizations shared with Malayalam)
+    "பூஜ்ஜியம்": "0", "ஒன்று": "1", "இரண்டு": "2", "மூன்று": "3",
+    "நான்கு": "4", "ஐந்து": "5", "ஆறு": "6", "ஏழு": "7", "எட்டு": "8",
+    "ஒன்பது": "9",
+    "poojiyam": "0", "pujjiyam": "0", "onru": "1", "ondru": "1", "onnu": "1",
+    "moonu": "3", "moondru": "3", "naalu": "4", "nangu": "4", "ainthu": "5",
+    "anju": "5", "ezhu": "7", "elu": "7", "ettu": "8", "onbathu": "9",
+    "onpathu": "9", "ombathu": "9",
+    # Malayalam (native; Latin forms above are shared)
+    "പൂജ്യം": "0", "ഒന്ന്": "1", "രണ്ട്": "2", "മൂന്ന്": "3", "നാല്": "4",
+    "അഞ്ച്": "5", "ആറ്": "6", "ഏഴ്": "7", "എട്ട്": "8", "ഒൻപത്": "9",
+    "ഒമ്പത്": "9", "randu": "2", "nalu": "4",
+    # Kannada (native + Latin)
+    "ಸೊನ್ನೆ": "0", "ಒಂದು": "1", "ಎರಡು": "2", "ಮೂರು": "3", "ನಾಲ್ಕು": "4",
+    "ಐದು": "5", "ಆರು": "6", "ಏಳು": "7", "ಎಂಟು": "8", "ಒಂಬತ್ತು": "9",
+    "sonne": "0", "ondu": "1", "eradu": "2", "mooru": "3", "nalku": "4",
+    "naalku": "4", "eelu": "7", "entu": "8", "ombattu": "9",
+    # Odia (native + Latin; "shunya"/"sat" shared with Hindi)
+    "ଶୂନ": "0", "ଏକ": "1", "ଦୁଇ": "2", "ତିନି": "3", "ଚାରି": "4", "ପାଞ୍ଚ": "5",
+    "ଛଅ": "6", "ସାତ": "7", "ଆଠ": "8", "ନଅ": "9",
+    "eka": "1", "dui": "2", "tini": "3", "chari": "4", "pancha": "5",
+    "chhaa": "6", "sata": "7", "atha": "8", "nao": "9",
+    # Marathi (Devanagari forms not shared with Hindi + Latin)
+    "दोन": "2", "पाच": "5", "सहा": "6", "नऊ": "9",
+    "don": "2", "pach": "5", "saha": "6",
+    # Gujarati (native + Latin). Romanized "be" (2) is deliberately OMITTED:
+    # it is a ubiquitous English word and would corrupt digit runs in
+    # code-switched speech; the native form and the LLM detector cover it.
+    "શૂન્ય": "0", "એક": "1", "બે": "2", "ત્રણ": "3", "ચાર": "4", "પાંચ": "5",
+    "છ": "6", "સાત": "7", "આઠ": "8", "નવ": "9",
+    "tran": "3", "nav": "9",
+    # Punjabi (Gurmukhi + Latin; do/char/che shared with Hindi)
+    "ਸਿਫ਼ਰ": "0", "ਇੱਕ": "1", "ਦੋ": "2", "ਤਿੰਨ": "3", "ਚਾਰ": "4", "ਪੰਜ": "5",
+    "ਛੇ": "6", "ਸੱਤ": "7", "ਅੱਠ": "8", "ਨੌਂ": "9",
+    "sifar": "0", "ikk": "1", "tinn": "3", "panj": "5", "satt": "7",
+    "atth": "8", "naun": "9",
 }
-MULTIPLIERS = {"double": 2, "triple": 3, "quadruple": 4}
+MULTIPLIERS = {"double": 2, "triple": 3, "quadruple": 4,
+               # Hinglish transcripts often write these in Devanagari
+               "डबल": 2, "ट्रिपल": 3}
 FILLERS = {"umm", "um", "uh", "haan", "haa", "ha", "hmm", "hm", "acha",
-           "accha", "जी", "हाँ", "हं", "आज্ঞা", "আজ্ঞা", "and", "aur", "और"}
-DEV_DIGITS = str.maketrans("०१२३४५६७८९", "0123456789")
-BEN_DIGITS = str.maketrans("০১২৩৪৫৬৭৮৯", "0123456789")
-TEL_DIGITS = str.maketrans("౦౧౨౩౪౫౬౭౮౯", "0123456789")
+           "accha", "जी", "हाँ", "हं", "आज্ঞা", "আজ্ঞা", "and", "aur", "और",
+           "ok", "okay", "ji", "haanji", "ho", "हो",
+           "aama", "ஆமா", "howdu", "ಹೌದು", "athe", "അതെ", "avunu", "అవును",
+           "ହଁ", "હા", "ਹਾਂ"}
+# one combined numeral table: Devanagari, Bengali, Telugu, Tamil, Odia,
+# Gujarati, Kannada, Malayalam, Gurmukhi -> ASCII (norm_digit's isdigit()
+# check already accepts any Unicode numeral; translating normalizes them so
+# length/prefix classification like startswith("91") works uniformly)
+INDIC_DIGITS = str.maketrans(
+    "०१२३४५६७८९" "০১২৩৪৫৬৭৮৯" "౦౧౨౩౪౫౬౭౮౯" "௦௧௨௩௪௫௬௭௮௯"
+    "୦୧୨୩୪୫୬୭୮୯" "૦૧૨૩૪૫૬૭૮૯" "೦೧೨೩೪೫೬೭೮೯" "൦൧൨൩൪൫൬൭൮൯"
+    "੦੧੨੩੪੫੬੭੮੯",
+    "0123456789" * 9)
+# aliases kept for compatibility (tools/score_run.py chains them; chaining
+# the same table twice is a no-op)
+DEV_DIGITS = BEN_DIGITS = TEL_DIGITS = INDIC_DIGITS
 
 
 def flatten_words(transcript):
@@ -161,8 +213,7 @@ def llm_detect(model, words, backend="gemini"):
 
 
 def norm_digit(token: str):
-    t = (token.strip().lower().strip(".,;:!?-")
-         .translate(DEV_DIGITS).translate(BEN_DIGITS).translate(TEL_DIGITS))
+    t = token.strip().lower().strip(".,;:!?-").translate(INDIC_DIGITS)
     if t.isdigit():
         return t
     return DIGIT_WORDS.get(t)
@@ -318,4 +369,21 @@ if __name__ == "__main__":
     assert norm_digit("নয়") == "9"         # Bengali unchanged
     assert norm_digit("seven") == "7"      # English unchanged
     assert norm_digit("hello") is None
-    print("detect_pii self-test OK")
+    # 2026-09-03 language extension: Tamil/Kannada/Malayalam/Odia/Marathi/
+    # Gujarati/Punjabi digit words + all-script numeral normalization
+    assert norm_digit("ஒன்பது") == "9"      # Tamil word
+    assert norm_digit("moondru") == "3"     # Tamil (Latin)
+    assert norm_digit("ombattu") == "9"     # Kannada (Latin)
+    assert norm_digit("രണ്ട്") == "2"        # Malayalam word
+    assert norm_digit("pancha") == "5"      # Odia (Latin)
+    assert norm_digit("दोन") == "2"          # Marathi word
+    assert norm_digit("tran") == "3"        # Gujarati (Latin)
+    assert norm_digit("ਪੰਜ") == "5"          # Punjabi word
+    assert norm_digit("௧") == "1"           # Tamil numeral
+    assert norm_digit("୫୬") == "56"         # Odia numerals
+    assert norm_digit("૯") == "9"           # Gujarati numeral
+    assert norm_digit("೪") == "4"           # Kannada numeral
+    assert norm_digit("൮") == "8"           # Malayalam numeral
+    assert norm_digit("੭") == "7"           # Gurmukhi numeral
+    assert norm_digit("be") is None         # deliberately excluded (English)
+    print("detect_pii self-test OK (incl. 7-language extension)")

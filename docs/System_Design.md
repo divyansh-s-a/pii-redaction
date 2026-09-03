@@ -99,6 +99,21 @@ category guessed from length (10–11 → PHONE, 12 → GOVERNMENT_ID/Aadhaar-sh
 15–16 → PAYMENT_CARD_NUMBER, else OTHER), confidence low, `needs_review: true`,
 `source: "safety_net"`. A missed phone number is worse than an extra beep.
 
+### D-arch-4a: safety-net language coverage extended (2026-09-03)
+User question ("what if the language is outside DIGIT_WORDS?") led to a
+coverage review. Findings: numerals of ANY script were already counted
+(Python's Unicode isdigit) — only digit WORDS were allowlist-bound; and on
+the fresh corpus run the net contributed 0 of 358 intervals (the LLM detector
+caught every digit sequence itself — the net is genuine belt-and-braces).
+Extension: DIGIT_WORDS now covers Tamil, Malayalam, Kannada, Odia, Marathi,
+Gujarati and Punjabi (native + romanized) alongside the original
+English/Hindi/Bengali/Telugu; one combined 9-script numeral table replaces
+the three per-script ones; Devanagari double/triple multipliers and
+multi-language yes-fillers added. Deliberate exclusion, documented in code:
+romanized Gujarati "be" (2) — a ubiquitous English word that would corrupt
+digit runs in code-switched speech. Inline self-test asserts one word and one
+numeral per new language plus the "be" exclusion.
+
 ### D-arch-5: overlapping speakers — the mono-mix limitation, and the split-channel mode
 
 **Limitation (mixed audio).** When all voices share one mixed track (mono, or
