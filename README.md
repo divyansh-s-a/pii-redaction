@@ -8,8 +8,8 @@ Removes spoken personal information (PII) from audio: every detected PII value
 is replaced by a 1 kHz beep in the audio and a `<CATEGORY REDACTED>` marker in
 the transcript. Handles any language/accent (validated on Indian English,
 Hindi, Bengali, Odia, Telugu incl. code-switching), multiple speakers, and
-telephone-quality recordings. Full design record: `docs/System_Design.md`;
-final results: `outputs/Audio_PII_Project_Report_v2.docx`.
+telephone-quality recordings. Full results:
+`outputs/Audio_PII_Project_Report_v2.docx`.
 
 ## Requirements
 
@@ -97,7 +97,7 @@ Edit, bump the version, re-run with `--force detect`.
                 QC, edge listen check, judge client)
     tools/      production workflow, evaluation harness, report generators
     prompts/    versioned prompts + keyterms (see prompts/README.md)
-    docs/       System_Design.md — every decision, defect class and defense
+    docs/       screenshots used by this README
     outputs/    deliverable documents (taxonomy, schema, reports, figures)
     results/    fresh-run evaluation reports (markdown + json)
     sample/     one REDACTED example output (no original audio by policy)

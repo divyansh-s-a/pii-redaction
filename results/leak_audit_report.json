@@ -1,21 +1,25 @@
 {
-  "generated_at": "2026-09-02",
+  "generated_at": "2026-09-03",
   "judge_model": "openai/gpt-5.6-sol",
   "out_dir": "/Users/shivangi/Documents/Claude/Audio_PII_Project/output/judge/leak_audit",
   "engines": {
     "gemini": {
       "summary": {
         "files_audited": 8,
-        "total_findings": 1,
-        "leak_candidates": 0,
+        "total_findings": 2,
+        "leak_candidates": 1,
         "profile_dependent": 1,
         "dropped_hallucinated": 0,
         "dropped_no_valid_category": 0,
-        "findings_rejected_by_verifier": 12,
+        "findings_rejected_by_verifier": 17,
         "per_category": {
           "HEALTH_MEDICAL_INFO": {
             "findings": 1,
             "leak_candidates": 0
+          },
+          "FINANCIAL_INFO": {
+            "findings": 1,
+            "leak_candidates": 1
           }
         }
       },
@@ -26,10 +30,10 @@
           "n_lines": 34,
           "judge_model": "openai/gpt-5.6-sol",
           "transcript_language_ok": true,
-          "notes": "No unredacted PII values survived. References to a claim ID contain no identifier value; hospital and insurance-company mentions are generic; payment amounts are redacted.",
+          "notes": "The transcript is coherent enough to audit. Redaction markers and claim-ID labels without visible identifier values were excluded.",
           "validation": {
-            "raw": 0,
-            "kept": 0,
+            "raw": 3,
+            "kept": 3,
             "dropped_hallucinated": 0,
             "dropped_no_valid_category": 0,
             "categories_removed": 0
@@ -37,9 +41,37 @@
           "verification": {
             "enabled": true,
             "model": "openai/gpt-5.6-luna",
-            "checked": 0,
-            "rejected": 0,
-            "rejected_findings": []
+            "checked": 3,
+            "rejected": 3,
+            "rejected_findings": [
+              {
+                "line": 21,
+                "quoted_text": "paid the complete amount to the hospital",
+                "categories": [
+                  "FINANCIAL_INFO"
+                ],
+                "profile_dependent": false,
+                "reason": "This states a concrete, person-linked financial transaction: the person fully paid a hospital charge."
+              },
+              {
+                "line": 23,
+                "quoted_text": "completely paid by cash",
+                "categories": [
+                  "FINANCIAL_INFO"
+                ],
+                "profile_dependent": false,
+                "reason": "This reveals the person-linked payment status and mode for the hospital expense."
+              },
+              {
+                "line": 28,
+                "quoted_text": "paid from my pocket",
+                "categories": [
+                  "FINANCIAL_INFO"
+                ],
+                "profile_dependent": false,
+                "reason": "This is a first-person disclosure that the expense was paid using the speaker's own funds."
+              }
+            ]
           },
           "findings": []
         },
@@ -48,10 +80,10 @@
           "n_lines": 94,
           "judge_model": "openai/gpt-5.6-sol",
           "transcript_language_ok": true,
-          "notes": "No unredacted concrete PII values survived. Remaining references such as Aadhaar, bank details, OTP, medical loan ID, and insurance information are labels or topics without visible values; the mention of delivery patients is generic rather than an identified person’s medical fact.",
+          "notes": "The English–Kannada code-switching is coherent enough to audit. Redaction markers, labels without identifier values, and generic references to Aadhaar, bank details, OTPs, and a medical loan ID were not reported.",
           "validation": {
-            "raw": 0,
-            "kept": 0,
+            "raw": 1,
+            "kept": 1,
             "dropped_hallucinated": 0,
             "dropped_no_valid_category": 0,
             "categories_removed": 0
@@ -59,9 +91,19 @@
           "verification": {
             "enabled": true,
             "model": "openai/gpt-5.6-luna",
-            "checked": 0,
-            "rejected": 0,
-            "rejected_findings": []
+            "checked": 1,
+            "rejected": 1,
+            "rejected_findings": [
+              {
+                "line": 86,
+                "quoted_text": "delivery patients",
+                "categories": [
+                  "HEALTH_MEDICAL_INFO"
+                ],
+                "profile_dependent": true,
+                "reason": "In context, this identifies the patient associated with the claim as receiving maternity/delivery-related care."
+              }
+            ]
           },
           "findings": []
         },
@@ -70,10 +112,10 @@
           "n_lines": 59,
           "judge_model": "openai/gpt-5.6-sol",
           "transcript_language_ok": true,
-          "notes": "Only surviving health/medical information was found. These findings may legitimately remain audible under the medical_consult profile.",
+          "notes": "The transcript is coherent enough to audit. All surviving findings are medical information and may legitimately remain audible under the medical_consult profile.",
           "validation": {
-            "raw": 5,
-            "kept": 5,
+            "raw": 6,
+            "kept": 6,
             "dropped_hallucinated": 0,
             "dropped_no_valid_category": 0,
             "categories_removed": 0
@@ -81,17 +123,17 @@
           "verification": {
             "enabled": true,
             "model": "openai/gpt-5.6-luna",
-            "checked": 5,
-            "rejected": 4,
+            "checked": 6,
+            "rejected": 5,
             "rejected_findings": [
               {
                 "line": 12,
-                "quoted_text": "pre-tests",
+                "quoted_text": "all my pre-tests",
                 "categories": [
                   "HEALTH_MEDICAL_INFO"
                 ],
                 "profile_dependent": true,
-                "reason": "The speaker identifies medical tests as their own in a reimbursement discussion."
+                "reason": "States that the identified speaker has personal medical tests associated with the reimbursement request."
               },
               {
                 "line": 53,
@@ -100,7 +142,7 @@
                   "HEALTH_MEDICAL_INFO"
                 ],
                 "profile_dependent": true,
-                "reason": "The speaker refers to their medical testing while asking about submitting related bills."
+                "reason": "Refers to the identified speaker's personal medical testing in the context of submitting bills."
               },
               {
                 "line": 55,
@@ -109,28 +151,37 @@
                   "HEALTH_MEDICAL_INFO"
                 ],
                 "profile_dependent": true,
-                "reason": "This states that the speaker's medical testing has been completed."
+                "reason": "Explicitly states that the identified speaker completed medical tests."
               },
               {
                 "line": 55,
-                "quoted_text": "ECG blood test",
+                "quoted_text": "ECG",
                 "categories": [
                   "HEALTH_MEDICAL_INFO"
                 ],
                 "profile_dependent": true,
-                "reason": "This identifies specific medical tests completed by the speaker."
+                "reason": "Names a medical test completed by the identified speaker."
+              },
+              {
+                "line": 55,
+                "quoted_text": "blood test",
+                "categories": [
+                  "HEALTH_MEDICAL_INFO"
+                ],
+                "profile_dependent": true,
+                "reason": "Names another medical test completed by the identified speaker."
               }
             ]
           },
           "findings": [
             {
               "line": 12,
-              "quoted_text": "medications post-surgery",
+              "quoted_text": "all the medications post-surgery",
               "categories": [
                 "HEALTH_MEDICAL_INFO"
               ],
               "profile_dependent": true,
-              "reason": "This discloses the speaker's medication and surgical-treatment context.",
+              "reason": "Discloses the identified speaker's medication and surgical-treatment context.",
               "kept_by_profile": true
             }
           ]
@@ -140,7 +191,7 @@
           "n_lines": 50,
           "judge_model": "openai/gpt-5.6-sol",
           "transcript_language_ok": true,
-          "notes": "The transcript is coherent Bengali narrated fiction with episode framing and character dialogue. Under the policy, names and personal details within the story are excluded.",
+          "notes": "The transcript is coherent Bengali narrated fiction, explicitly framed as “পর্ব তিন” (Episode Three), with character narration and dialogue. Under the fictional/story-content exclusion, character names and personal details are not reportable PII.",
           "validation": {
             "raw": 0,
             "kept": 0,
@@ -162,7 +213,7 @@
           "n_lines": 156,
           "judge_model": "openai/gpt-5.6-sol",
           "transcript_language_ok": true,
-          "notes": "The transcript is coherent Bengali narrated fiction with episode framing, character dialogue, and a next-episode outro. Under the fictional/story-content exclusion, character names and personal or medical details are not findings.",
+          "notes": "The transcript is coherent Bengali narrated fiction with episode framing, character dialogue, and a next-episode outro. Under the policy, character names and personal details within narrated fiction are excluded.",
           "validation": {
             "raw": 0,
             "kept": 0,
@@ -184,7 +235,7 @@
           "n_lines": 86,
           "judge_model": "openai/gpt-5.6-sol",
           "transcript_language_ok": true,
-          "notes": "The transcript is coherent narrated fiction with character dialogue and a next-episode outro. Under the fictional/story-content exclusion, character names, ages, and personal details are not findings.",
+          "notes": "The transcript is framed as narrated fiction with character dialogue and a next-episode outro. Under the fictional/story-content exclusion, character names, the stated age, injuries, and other character details are not reportable PII.",
           "validation": {
             "raw": 0,
             "kept": 0,
@@ -206,7 +257,7 @@
           "n_lines": 27,
           "judge_model": "openai/gpt-5.6-sol",
           "transcript_language_ok": true,
-          "notes": "The transcript is clearly narrated fiction with episode framing, character dialogue, and a next-episode outro. Under the policy, character names and personal details within narrated fiction are excluded.",
+          "notes": "The transcript is coherent Bengali narrated fiction with episode framing, character dialogue, and a next-episode outro. Under the fictional/story-content exclusion, character names and personal details are not reportable PII. No real production-credit names or other surviving PII values appear.",
           "validation": {
             "raw": 0,
             "kept": 0,
@@ -228,10 +279,10 @@
           "n_lines": 50,
           "judge_model": "openai/gpt-5.6-sol",
           "transcript_language_ok": true,
-          "notes": "The Telugu transcript is coherent enough to audit. Redaction markers and non-value labels were not reported.",
+          "notes": "The Telugu transcript is coherent enough to audit. Medical findings are marked profile-dependent as required.",
           "validation": {
-            "raw": 8,
-            "kept": 8,
+            "raw": 9,
+            "kept": 9,
             "dropped_hallucinated": 0,
             "dropped_no_valid_category": 0,
             "categories_removed": 0
@@ -239,7 +290,7 @@
           "verification": {
             "enabled": true,
             "model": "openai/gpt-5.6-luna",
-            "checked": 8,
+            "checked": 9,
             "rejected": 8,
             "rejected_findings": [
               {
@@ -249,7 +300,7 @@
                   "HEALTH_MEDICAL_INFO"
                 ],
                 "profile_dependent": true,
-                "reason": "States that the identified patient was hospitalized and discharged, which is personal treatment information."
+                "reason": "States that the identified patient was hospitalized and discharged."
               },
               {
                 "line": 35,
@@ -258,7 +309,7 @@
                   "FINANCIAL_INFO"
                 ],
                 "profile_dependent": false,
-                "reason": "Expresses a person-linked substantive financial fact that the entire payment was made in cash."
+                "reason": "Communicates a personal hospital-payment fact: the entire amount was paid in cash."
               },
               {
                 "line": 41,
@@ -267,7 +318,7 @@
                   "FINANCIAL_INFO"
                 ],
                 "profile_dependent": false,
-                "reason": "Discloses that part of the person-linked hospital payment was made in cash."
+                "reason": "States a personal payment method for part of the hospital bill."
               },
               {
                 "line": 41,
@@ -276,7 +327,16 @@
                   "FINANCIAL_INFO"
                 ],
                 "profile_dependent": false,
-                "reason": "Discloses that the remaining person-linked hospital payment was made through NEFT."
+                "reason": "States a personal payment method for the remaining hospital-bill amount."
+              },
+              {
+                "line": 43,
+                "quoted_text": "పేమెంట్ మొత్తం మీరే పే చేసి",
+                "categories": [
+                  "FINANCIAL_INFO"
+                ],
+                "profile_dependent": false,
+                "reason": "States that the identified person personally paid the entire payment."
               },
               {
                 "line": 43,
@@ -285,7 +345,7 @@
                   "HEALTH_MEDICAL_INFO"
                 ],
                 "profile_dependent": true,
-                "reason": "States that the person was discharged, revealing personal treatment information."
+                "reason": "States that the identified person was discharged from medical care."
               },
               {
                 "line": 44,
@@ -294,7 +354,7 @@
                   "FINANCIAL_INFO"
                 ],
                 "profile_dependent": false,
-                "reason": "States that the entire person-linked payment was made in cash."
+                "reason": "Communicates that the entire hospital payment was made in cash."
               },
               {
                 "line": 44,
@@ -303,20 +363,22 @@
                   "FINANCIAL_INFO"
                 ],
                 "profile_dependent": false,
-                "reason": "Repeated disclosure that the entire person-linked payment was made in cash."
-              },
-              {
-                "line": 44,
-                "quoted_text": "ఆన్లైన్ ఒక్క రూపాయి కూడా కట్టలేదు",
-                "categories": [
-                  "FINANCIAL_INFO"
-                ],
-                "profile_dependent": false,
-                "reason": "Discloses the substantive financial fact that no portion of the payment was made online."
+                "reason": "Repeated disclosure that the entire hospital payment was made in cash."
               }
             ]
           },
-          "findings": []
+          "findings": [
+            {
+              "line": 44,
+              "quoted_text": "ఆన్లైన్ ఒక్క రూపాయి కూడా కట్టలేదు",
+              "categories": [
+                "FINANCIAL_INFO"
+              ],
+              "profile_dependent": false,
+              "reason": "States that none of the personal hospital payment was made online.",
+              "kept_by_profile": false
+            }
+          ]
         }
       ]
     },
@@ -328,7 +390,7 @@
         "profile_dependent": 0,
         "dropped_hallucinated": 0,
         "dropped_no_valid_category": 0,
-        "findings_rejected_by_verifier": 6,
+        "findings_rejected_by_verifier": 16,
         "per_category": {}
       },
       "missing_redacted": [],
@@ -338,10 +400,10 @@
           "n_lines": 40,
           "judge_model": "openai/gpt-5.6-sol",
           "transcript_language_ok": true,
-          "notes": "No readable values remaining in the transcript meet the detection policy. Redaction markers, generic insurance/claim references, relationship terms, and payment-mode statements without a surviving substantive financial value are not findings.",
+          "notes": "The redaction markers themselves were not audited as findings. Mentions of a claim ID contain no visible identifier value.",
           "validation": {
-            "raw": 0,
-            "kept": 0,
+            "raw": 3,
+            "kept": 3,
             "dropped_hallucinated": 0,
             "dropped_no_valid_category": 0,
             "categories_removed": 0
@@ -349,9 +411,37 @@
           "verification": {
             "enabled": true,
             "model": "openai/gpt-5.6-luna",
-            "checked": 0,
-            "rejected": 0,
-            "rejected_findings": []
+            "checked": 3,
+            "rejected": 3,
+            "rejected_findings": [
+              {
+                "line": 25,
+                "quoted_text": "you have only paid the complete amount to the hospital",
+                "categories": [
+                  "FINANCIAL_INFO"
+                ],
+                "profile_dependent": false,
+                "reason": "This states a person-linked substantive financial fact: the hospital amount was paid in full."
+              },
+              {
+                "line": 27,
+                "quoted_text": "completely paid by cash",
+                "categories": [
+                  "FINANCIAL_INFO"
+                ],
+                "profile_dependent": false,
+                "reason": "This reveals the person-linked payment status and mode for the hospital expense."
+              },
+              {
+                "line": 32,
+                "quoted_text": "I just paid from my pocket",
+                "categories": [
+                  "FINANCIAL_INFO"
+                ],
+                "profile_dependent": false,
+                "reason": "This is a first-person substantive financial fact stating that the speaker personally funded the payment."
+              }
+            ]
           },
           "findings": []
         },
@@ -360,7 +450,7 @@
           "n_lines": 104,
           "judge_model": "openai/gpt-5.6-sol",
           "transcript_language_ok": true,
-          "notes": "No readable PII values survived redaction. References to Aadhaar, bank accounts, debit cards, OTPs, loans, email, and insurance are labels or general process descriptions without concrete identifier, credential, account, or financial values.",
+          "notes": "No concrete surviving PII values were found. References to Aadhaar, bank accounts, email, OTP, loans, and medical processes are labels or general process descriptions without visible identifiers or substantive personal values; all explicit names, phone numbers, and organizations are redacted.",
           "validation": {
             "raw": 0,
             "kept": 0,
@@ -382,7 +472,7 @@
           "n_lines": 71,
           "judge_model": "openai/gpt-5.6-sol",
           "transcript_language_ok": true,
-          "notes": "Only surviving health/medical information was found; these findings are profile-dependent under the medical_consult exception.",
+          "notes": "The transcript is coherent enough to audit. All surviving findings are medical information that may legitimately remain audible under the medical_consult profile.",
           "validation": {
             "raw": 5,
             "kept": 5,
@@ -403,7 +493,7 @@
                   "HEALTH_MEDICAL_INFO"
                 ],
                 "profile_dependent": true,
-                "reason": "The speaker refers to her own medical pretesting in the insurance-coverage context."
+                "reason": "The speaker identifies this as her own medical testing."
               },
               {
                 "line": 17,
@@ -412,7 +502,7 @@
                   "HEALTH_MEDICAL_INFO"
                 ],
                 "profile_dependent": true,
-                "reason": "This identifies the speaker's post-surgical medication/treatment."
+                "reason": "This discloses the speaker's medication and surgical-treatment context."
               },
               {
                 "line": 65,
@@ -421,7 +511,7 @@
                   "HEALTH_MEDICAL_INFO"
                 ],
                 "profile_dependent": true,
-                "reason": "The speaker again refers to her personal medical pretesting through the associated bills."
+                "reason": "The speaker refers to bills for her personal medical testing."
               },
               {
                 "line": 67,
@@ -430,7 +520,7 @@
                   "HEALTH_MEDICAL_INFO"
                 ],
                 "profile_dependent": true,
-                "reason": "This explicitly states that the speaker's medical pretesting was completed."
+                "reason": "This states that the speaker's medical testing has been completed."
               },
               {
                 "line": 67,
@@ -450,7 +540,7 @@
           "n_lines": 60,
           "judge_model": "openai/gpt-5.6-sol",
           "transcript_language_ok": true,
-          "notes": "The transcript is framed as a fictional episodic story (including an episode opening, narration, character dialogue, and next-episode outro). Under the policy, character names and personal details within narrated fiction are excluded.",
+          "notes": "The transcript is clearly framed as a fictional serialized story (including episode framing, narration, character dialogue, and a next-episode outro). Under the narrated-fiction exclusion, character names and personal details are not reportable PII.",
           "validation": {
             "raw": 0,
             "kept": 0,
@@ -472,7 +562,7 @@
           "n_lines": 56,
           "judge_model": "openai/gpt-5.6-sol",
           "transcript_language_ok": true,
-          "notes": "The transcript is coherent Bengali narrated fiction with episode framing and character dialogue. Under the fictional/story-content exclusion, character names and personal details are not reportable PII.",
+          "notes": "The transcript is coherent Bengali narrated fiction with explicit episode framing (“পর্ব তিন” and a next-episode outro). Under the fictional/story-content exclusion, character names and personal details are not reportable PII.",
           "validation": {
             "raw": 0,
             "kept": 0,
@@ -494,7 +584,7 @@
           "n_lines": 70,
           "judge_model": "openai/gpt-5.6-sol",
           "transcript_language_ok": true,
-          "notes": "No surviving PII findings. The transcript is clearly narrated fictional/story content with character dialogue and next-episode framing, so character names, ages, and personal details are excluded under the policy.",
+          "notes": "The transcript is coherent narrated fiction with character dialogue and a next-episode outro. Under the fictional/story-content exclusion, character names, ages, and personal details are not findings.",
           "validation": {
             "raw": 0,
             "kept": 0,
@@ -516,7 +606,7 @@
           "n_lines": 51,
           "judge_model": "openai/gpt-5.6-sol",
           "transcript_language_ok": true,
-          "notes": "The transcript is coherent Bengali narrated fiction with episode framing and a next-episode outro. Under the policy, character names, ages, locations, and personal details within the story are excluded.",
+          "notes": "The transcript is coherent Bengali narrated fiction with episode framing and a next-episode outro. Under the fictional/story-content exclusion, character names, ages, locations, and personal details are not findings.",
           "validation": {
             "raw": 0,
             "kept": 0,
@@ -538,10 +628,10 @@
           "n_lines": 54,
           "judge_model": "openai/gpt-5.6-sol",
           "transcript_language_ok": true,
-          "notes": "The Telugu-English code-switched transcript is coherent enough to audit. Redaction markers and generic claim/payment-process statements were not reported.",
+          "notes": "The Telugu-English code-switched transcript is coherent enough to audit. Redaction markers and non-value labels were excluded.",
           "validation": {
-            "raw": 1,
-            "kept": 1,
+            "raw": 8,
+            "kept": 8,
             "dropped_hallucinated": 0,
             "dropped_no_valid_category": 0,
             "categories_removed": 0
@@ -549,8 +639,8 @@
           "verification": {
             "enabled": true,
             "model": "openai/gpt-5.6-luna",
-            "checked": 1,
-            "rejected": 1,
+            "checked": 8,
+            "rejected": 8,
             "rejected_findings": [
               {
                 "line": 5,
@@ -559,7 +649,70 @@
                   "HEALTH_MEDICAL_INFO"
                 ],
                 "profile_dependent": true,
-                "reason": "States that the identified patient was admitted to and discharged from a hospital, which is person-linked medical treatment information."
+                "reason": "States that the identified patient was hospitalized and subsequently discharged."
+              },
+              {
+                "line": 27,
+                "quoted_text": "మీ కడ నుంచి already ఆ health కి match అయ్యే money అనేది pay చేసేశారు",
+                "categories": [
+                  "FINANCIAL_INFO"
+                ],
+                "profile_dependent": false,
+                "reason": "States the personal financial fact that the listener has already made the relevant payment."
+              },
+              {
+                "line": 36,
+                "quoted_text": "మొత్తం cash కట్టానేమో",
+                "categories": [
+                  "FINANCIAL_INFO"
+                ],
+                "profile_dependent": false,
+                "reason": "Expresses a person-linked claim that the entire payment was made in cash."
+              },
+              {
+                "line": 48,
+                "quoted_text": "payment మొత్తం మీరే pay చేసి",
+                "categories": [
+                  "FINANCIAL_INFO"
+                ],
+                "profile_dependent": false,
+                "reason": "Expresses the person-linked financial claim that the listener paid the entire amount."
+              },
+              {
+                "line": 48,
+                "quoted_text": "discharge అయ్యారని",
+                "categories": [
+                  "HEALTH_MEDICAL_INFO"
+                ],
+                "profile_dependent": true,
+                "reason": "States that the identified listener was discharged following medical care."
+              },
+              {
+                "line": 49,
+                "quoted_text": "మొత్తం cash ఏ కట్టాం",
+                "categories": [
+                  "FINANCIAL_INFO"
+                ],
+                "profile_dependent": false,
+                "reason": "States that the entire payment was made in cash."
+              },
+              {
+                "line": 49,
+                "quoted_text": "మొత్తం cash ఏ కట్టమని",
+                "categories": [
+                  "FINANCIAL_INFO"
+                ],
+                "profile_dependent": false,
+                "reason": "Repeats the person-linked representation that the entire payment was made in cash."
+              },
+              {
+                "line": 49,
+                "quoted_text": "online ఒక్క రూపాయి కూడా కట్టలేదని",
+                "categories": [
+                  "FINANCIAL_INFO"
+                ],
+                "profile_dependent": false,
+                "reason": "States the substantive personal financial fact that no amount was paid online."
               }
             ]
           },
@@ -575,7 +728,7 @@
         "profile_dependent": 0,
         "dropped_hallucinated": 0,
         "dropped_no_valid_category": 0,
-        "findings_rejected_by_verifier": 2,
+        "findings_rejected_by_verifier": 0,
         "per_category": {}
       },
       "missing_redacted": [],
@@ -585,7 +738,7 @@
           "n_lines": 8,
           "judge_model": "openai/gpt-5.6-sol",
           "transcript_language_ok": true,
-          "notes": "No readable values meet the detection policy. The visible payment-method reference (“paid by cash”) is not a substantive personal financial fact, and all specific financial values are already redacted.",
+          "notes": "No unredacted PII values qualifying under the policy survived.",
           "validation": {
             "raw": 0,
             "kept": 0,
@@ -607,7 +760,7 @@
           "n_lines": 27,
           "judge_model": "openai/gpt-5.6-sol",
           "transcript_language_ok": true,
-          "notes": "No readable PII values survived redaction. References to Aadhaar, bank accounts, debit cards, medical loans, OTPs, hospitals, and insurance are labels or general process descriptions without concrete identifying or sensitive values.",
+          "notes": "No readable PII values survived redaction. References to Aadhaar, bank accounts, debit cards, OTPs, insurance, and a medical loan ID are labels or process descriptions without concrete values.",
           "validation": {
             "raw": 0,
             "kept": 0,
@@ -629,10 +782,10 @@
           "n_lines": 6,
           "judge_model": "openai/gpt-5.6-sol",
           "transcript_language_ok": true,
-          "notes": "The transcript contains some awkward or garbled phrasing but remains coherent enough to audit.",
+          "notes": "No unredacted concrete PII values survived. References to tests, medications, reimbursement, and insurance processes are generic and do not disclose a specific medical condition, treatment, identifier, or substantive financial value.",
           "validation": {
-            "raw": 2,
-            "kept": 2,
+            "raw": 0,
+            "kept": 0,
             "dropped_hallucinated": 0,
             "dropped_no_valid_category": 0,
             "categories_removed": 0
@@ -640,28 +793,9 @@
           "verification": {
             "enabled": true,
             "model": "openai/gpt-5.6-luna",
-            "checked": 2,
-            "rejected": 2,
-            "rejected_findings": [
-              {
-                "line": 2,
-                "quoted_text": "my pre tests",
-                "categories": [
-                  "HEALTH_MEDICAL_INFO"
-                ],
-                "profile_dependent": true,
-                "reason": "First-person reference to medical tests associated with the speaker."
-              },
-              {
-                "line": 2,
-                "quoted_text": "all the medications post consumption",
-                "categories": [
-                  "HEALTH_MEDICAL_INFO"
-                ],
-                "profile_dependent": true,
-                "reason": "Person-linked disclosure of medication use in the context of the speaker's reimbursement claim."
-              }
-            ]
+            "checked": 0,
+            "rejected": 0,
+            "rejected_findings": []
           },
           "findings": []
         },
@@ -670,7 +804,7 @@
           "n_lines": 18,
           "judge_model": "openai/gpt-5.6-sol",
           "transcript_language_ok": true,
-          "notes": "The transcript is narrated fictional/story content with character dialogue and a continuation teaser. Under the fictional-content exclusion, character names and personal details are not reportable PII.",
+          "notes": "The transcript is narrated fictional/story content with character dialogue and an episode-style outro. Under the policy, character names and personal details within the story are excluded.",
           "validation": {
             "raw": 0,
             "kept": 0,
@@ -692,7 +826,7 @@
           "n_lines": 29,
           "judge_model": "openai/gpt-5.6-sol",
           "transcript_language_ok": true,
-          "notes": "No surviving PII. The transcript is narrated fictional/story content, indicated by episode framing and a next-episode-style outro, so character names and personal details are excluded under the policy.",
+          "notes": "No surviving PII. The transcript is narrated fiction with episode framing and a next-episode-style outro, so character names and personal details are excluded under the fictional/story-content rule.",
           "validation": {
             "raw": 0,
             "kept": 0,
@@ -714,7 +848,7 @@
           "n_lines": 28,
           "judge_model": "openai/gpt-5.6-sol",
           "transcript_language_ok": true,
-          "notes": "No surviving PII qualifies. The transcript is narrated fictional/story content with character dialogue and an episode-style outro, so character names and personal details are excluded. City mentions such as Chennai and Mumbai are also not address-level PII.",
+          "notes": "The transcript appears to be narrated fictional/story content. Character names and personal details within the story are excluded under the policy; no surviving real-person PII was found.",
           "validation": {
             "raw": 0,
             "kept": 0,
@@ -735,8 +869,8 @@
           "file_id": "MP_EP_-_2",
           "n_lines": 27,
           "judge_model": "openai/gpt-5.6-sol",
-          "transcript_language_ok": true,
-          "notes": "No surviving PII values are visible. The repeated phrases appear to be episode/segment wording and do not qualify under any category.",
+          "transcript_language_ok": false,
+          "notes": "The transcript consists almost entirely of repetitive, phonetically rendered fragments and is too garbled to interpret reliably. No readable surviving PII values are present.",
           "validation": {
             "raw": 0,
             "kept": 0,
@@ -758,7 +892,7 @@
           "n_lines": 9,
           "judge_model": "openai/gpt-5.6-sol",
           "transcript_language_ok": false,
-          "notes": "The transcript is largely incoherent/garbled and contains no clearly readable surviving PII values that can be identified under the policy.",
+          "notes": "The transcript is largely garbled or incoherent and contains no clearly readable surviving PII values that can be identified under the policy.",
           "validation": {
             "raw": 0,
             "kept": 0,
@@ -778,5 +912,15 @@
       ]
     }
   },
-  "detector_misses_review_queue": []
+  "detector_misses_review_queue": [
+    {
+      "file_id": "c34897552fdcca8ae3f8d5a7015d1a85",
+      "line": 44,
+      "categories": [
+        "FINANCIAL_INFO"
+      ],
+      "quoted_text": "ఆన్లైన్ ఒక్క రూపాయి కూడా కట్టలేదు",
+      "reason": "States that none of the personal hospital payment was made online."
+    }
+  ]
 }

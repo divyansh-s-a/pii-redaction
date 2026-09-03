@@ -12,7 +12,7 @@ transcript never enter version control.
 2. Gemini applied detection policy v3 (Taxonomy v0.2) to the
    canonicalized word stream and found 5 PII intervals:
    - FULL_NAME at 0:12.69-0:12.76
-   - ORGANIZATION_PERSON_LINKED at 0:13.38-0:13.91
+   - ORGANIZATION_PERSON_LINKED at 0:13.38-0:14.72
    - FINANCIAL_INFO at 1:35.94-1:38.02
    - FINANCIAL_INFO at 1:41.18-1:42.20
    - FINANCIAL_INFO at 1:43.32-1:45.24
@@ -23,7 +23,7 @@ transcript never enter version control.
    audible while the values are fully covered. The transcript
    gets <CATEGORY REDACTED> markers from the SAME intervals.
 4. Gates (all default): signal QC PASS; beep-edge listen check
-   clean (1 rounds, no unresolved or unchecked edges); judge
+   clean (0 rounds, no unresolved or unchecked edges); judge
    audit 0 leak candidates. Full provenance in manifest.json
    (models, prompt hashes, source sha, gate outcomes).
 

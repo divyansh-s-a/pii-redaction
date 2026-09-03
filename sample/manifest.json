@@ -1,6 +1,6 @@
 {
   "workflow": "elevenlabs+gemini hybrid (decision gate 2026-09-01)",
-  "generated_at": "2026-09-03T12:38:43",
+  "generated_at": "2026-09-03T13:29:41",
   "source_file": "/Users/shivangi/Documents/Claude/Audio_PII_Project/media/incoming/raw/025354f09d2dcc71517beb7553441a85.mp3",
   "source_sha256": "fee55bc5409540551954eb075078d260eeef0c7cccb2b0a4cd203fdc2fda3407",
   "profile": "medical_consult",
@@ -13,8 +13,8 @@
   },
   "detection": {
     "model": "gemini-3.1-pro-preview",
-    "policy_prompt": "detection_policy_prompt_v3.txt",
-    "policy_sha256": "59847046df7bbd574ef388850191d29a10e9bc86b0c049c9d9bc62224b5e248c",
+    "policy_prompt": "detection_policy_prompt_v4.txt",
+    "policy_sha256": "a615ae08d42bfe684fa3cec8ba96ecf06dbcd190a41bbac089eaa39726cea2d4",
     "taxonomy_version": "0.2",
     "input": "canonicalized words"
   },
@@ -22,22 +22,8 @@
   "assurance_extra_beeps": [],
   "qc_status": "PASS",
   "edge_verification": {
-    "rounds": 1,
-    "extensions": [
-      {
-        "beep": [
-          13280,
-          14080
-        ],
-        "grew": [
-          0,
-          400
-        ],
-        "heard": [
-          "13"
-        ]
-      }
-    ],
+    "rounds": 0,
+    "extensions": [],
     "clean": true,
     "unchecked": []
   },

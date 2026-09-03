@@ -1,12 +1,11 @@
 {
   "config": {
-    "generated_at": "2026-09-02",
+    "generated_at": "2026-09-03",
     "judge_model": "openai/gpt-5.6-sol",
     "profile": "medical_consult",
     "engines": [
       "gemini",
-      "elevenlabs",
-      "openai"
+      "elevenlabs"
     ],
     "pred_root": "output",
     "out": "output/judge/pseudo_gt",
@@ -28,73 +27,53 @@
   "aggregate": {
     "per_engine": {
       "gemini": {
-        "must_beep": 42,
+        "must_beep": 38,
         "leaked": 6,
-        "covered": 36,
-        "agree": 37,
-        "agree_eval": 43,
-        "verifier_rejected": 11,
-        "pseudo_leak_rate": 0.14285714285714285,
-        "coverage": 0.8571428571428571,
-        "agreement": 0.8604651162790697
+        "covered": 32,
+        "agree": 36,
+        "agree_eval": 39,
+        "verifier_rejected": 5,
+        "pseudo_leak_rate": 0.15789473684210525,
+        "coverage": 0.8421052631578947,
+        "agreement": 0.9230769230769231
       },
       "elevenlabs": {
-        "must_beep": 42,
-        "leaked": 8,
-        "covered": 34,
+        "must_beep": 38,
+        "leaked": 7,
+        "covered": 31,
         "agree": 36,
-        "agree_eval": 43,
-        "verifier_rejected": 7,
-        "pseudo_leak_rate": 0.19047619047619047,
-        "coverage": 0.8095238095238095,
-        "agreement": 0.8372093023255814
-      },
-      "openai": {
-        "must_beep": 42,
-        "leaked": 17,
-        "covered": 25,
-        "agree": 23,
-        "agree_eval": 43,
-        "verifier_rejected": 4,
-        "pseudo_leak_rate": 0.40476190476190477,
-        "coverage": 0.5952380952380952,
-        "agreement": 0.5348837209302325
+        "agree_eval": 39,
+        "verifier_rejected": 11,
+        "pseudo_leak_rate": 0.18421052631578946,
+        "coverage": 0.8157894736842105,
+        "agreement": 0.9230769230769231
       }
     },
     "surfaced_by": {
       "1": {
-        "items": 15,
-        "must_beep": 14,
-        "leaked_any": 12
+        "items": 10,
+        "must_beep": 10,
+        "leaked_any": 9
       },
       "2": {
-        "items": 15,
-        "must_beep": 15,
-        "leaked_any": 11
-      },
-      "3": {
-        "items": 13,
-        "must_beep": 13,
-        "leaked_any": 0
+        "items": 29,
+        "must_beep": 28,
+        "leaked_any": 3
       }
     },
     "unique_by_engine": {
       "gemini": {
-        "items": 5,
-        "must_beep": 4
+        "items": 8,
+        "must_beep": 8
       },
       "elevenlabs": {
-        "items": 6,
-        "must_beep": 6
-      },
-      "openai": {
-        "items": 4,
-        "must_beep": 4
+        "items": 2,
+        "must_beep": 2
       }
     },
     "totals": {
-      "items": 43,
-      "must_beep": 42,
+      "items": 39,
+      "must_beep": 38,
       "annotate_only": 1
     }
   },
@@ -103,51 +82,16 @@
       "file_id": "025354f09d2dcc71517beb7553441a85",
       "items": [
         {
-          "start_ms": 12690,
-          "end_ms": 12760,
-          "categories": [
-            "FULL_NAME"
-          ],
-          "engines": [
-            "elevenlabs"
-          ],
-          "public_figure": false,
-          "confidence": "high",
-          "spoken_text": "Ritika",
-          "channel": null,
-          "source_spans": [
-            {
-              "start_ms": 12690,
-              "end_ms": 12760,
-              "engine": "elevenlabs",
-              "channel": null
-            }
-          ],
-          "item_id": "025354f09d2dcc71517beb7553441a85_P001",
-          "action": "beep",
-          "leaked_by": [
-            "gemini"
-          ],
-          "covered_by": [
-            "elevenlabs",
-            "openai"
-          ],
-          "agreed_by": [
-            "elevenlabs"
-          ]
-        },
-        {
-          "start_ms": 12960,
+          "start_ms": 13000,
           "end_ms": 13400,
           "categories": [
             "FULL_NAME"
           ],
           "engines": [
-            "gemini",
-            "openai"
+            "gemini"
           ],
           "public_figure": false,
-          "confidence": "high",
+          "confidence": "medium",
           "spoken_text": "Vidya",
           "channel": null,
           "source_spans": [
@@ -156,38 +100,28 @@
               "end_ms": 13400,
               "engine": "gemini",
               "channel": null
-            },
-            {
-              "start_ms": 12960,
-              "end_ms": 13120,
-              "engine": "openai",
-              "channel": null
             }
           ],
-          "item_id": "025354f09d2dcc71517beb7553441a85_P002",
+          "item_id": "025354f09d2dcc71517beb7553441a85_P001",
           "action": "beep",
           "leaked_by": [
             "elevenlabs"
           ],
           "covered_by": [
-            "gemini",
-            "openai"
+            "gemini"
           ],
           "agreed_by": [
-            "gemini",
-            "openai"
+            "gemini"
           ]
         },
         {
-          "start_ms": 13360,
-          "end_ms": 14760,
+          "start_ms": 13600,
+          "end_ms": 14400,
           "categories": [
             "ORGANIZATION_PERSON_LINKED"
           ],
           "engines": [
-            "elevenlabs",
-            "gemini",
-            "openai"
+            "gemini"
           ],
           "public_figure": false,
           "confidence": "high",
@@ -199,32 +133,18 @@
               "end_ms": 14400,
               "engine": "gemini",
               "channel": null
-            },
-            {
-              "start_ms": 13380,
-              "end_ms": 13910,
-              "engine": "elevenlabs",
-              "channel": null
-            },
-            {
-              "start_ms": 13360,
-              "end_ms": 14760,
-              "engine": "openai",
-              "channel": null
             }
           ],
-          "item_id": "025354f09d2dcc71517beb7553441a85_P003",
+          "item_id": "025354f09d2dcc71517beb7553441a85_P002",
           "action": "beep",
           "leaked_by": [],
           "covered_by": [
             "gemini",
-            "elevenlabs",
-            "openai"
+            "elevenlabs"
           ],
           "agreed_by": [
             "gemini",
-            "elevenlabs",
-            "openai"
+            "elevenlabs"
           ]
         },
         {
@@ -235,8 +155,7 @@
           ],
           "engines": [
             "elevenlabs",
-            "gemini",
-            "openai"
+            "gemini"
           ],
           "public_figure": false,
           "confidence": "high",
@@ -246,12 +165,6 @@
             {
               "start_ms": 96800,
               "end_ms": 99600,
-              "engine": "gemini",
-              "channel": null
-            },
-            {
-              "start_ms": 101600,
-              "end_ms": 103000,
               "engine": "gemini",
               "channel": null
             },
@@ -278,76 +191,49 @@
               "end_ms": 105240,
               "engine": "elevenlabs",
               "channel": null
-            },
-            {
-              "start_ms": 95940,
-              "end_ms": 97960,
-              "engine": "openai",
-              "channel": null
-            },
-            {
-              "start_ms": 101120,
-              "end_ms": 102060,
-              "engine": "openai",
-              "channel": null
-            },
-            {
-              "start_ms": 103840,
-              "end_ms": 105200,
-              "engine": "openai",
-              "channel": null
             }
           ],
-          "item_id": "025354f09d2dcc71517beb7553441a85_P004",
+          "item_id": "025354f09d2dcc71517beb7553441a85_P003",
           "action": "beep",
           "leaked_by": [],
           "covered_by": [
             "gemini",
-            "elevenlabs",
-            "openai"
+            "elevenlabs"
           ],
           "agreed_by": [
             "gemini",
-            "elevenlabs",
-            "openai"
+            "elevenlabs"
           ]
         }
       ],
       "engines": {
         "gemini": {
-          "items": 4,
-          "must_beep": 4,
-          "annotate_only": 0,
-          "leaked": 1,
-          "covered": 3,
-          "agree": 3,
-          "agree_eval": 4
-        },
-        "elevenlabs": {
-          "items": 4,
-          "must_beep": 4,
-          "annotate_only": 0,
-          "leaked": 1,
-          "covered": 3,
-          "agree": 3,
-          "agree_eval": 4
-        },
-        "openai": {
-          "items": 4,
-          "must_beep": 4,
+          "items": 3,
+          "must_beep": 3,
           "annotate_only": 0,
           "leaked": 0,
-          "covered": 4,
+          "covered": 3,
           "agree": 3,
-          "agree_eval": 4
+          "agree_eval": 3
+        },
+        "elevenlabs": {
+          "items": 3,
+          "must_beep": 3,
+          "annotate_only": 0,
+          "leaked": 1,
+          "covered": 2,
+          "agree": 2,
+          "agree_eval": 3
         }
       },
       "verifier_rejected": {
-        "gemini": 0,
-        "elevenlabs": 0,
-        "openai": 0
+        "gemini": 1,
+        "elevenlabs": 1
       },
-      "notes": []
+      "notes": [
+        "gemini: 1 span(s) rejected by verifier (over-reach)",
+        "elevenlabs: 1 span(s) rejected by verifier (over-reach)"
+      ]
     },
     {
       "file_id": "06e8274b603dfddc4ff0a84ed09f1a85",
@@ -385,46 +271,11 @@
           "leaked_by": [],
           "covered_by": [
             "gemini",
-            "elevenlabs",
-            "openai"
+            "elevenlabs"
           ],
           "agreed_by": [
             "gemini",
             "elevenlabs"
-          ]
-        },
-        {
-          "start_ms": 4200,
-          "end_ms": 4520,
-          "categories": [
-            "FULL_NAME"
-          ],
-          "engines": [
-            "openai"
-          ],
-          "public_figure": false,
-          "confidence": "medium",
-          "spoken_text": "Seetha Nagyar",
-          "channel": null,
-          "source_spans": [
-            {
-              "start_ms": 4200,
-              "end_ms": 4520,
-              "engine": "openai",
-              "channel": null
-            }
-          ],
-          "item_id": "06e8274b603dfddc4ff0a84ed09f1a85_P002",
-          "action": "beep",
-          "leaked_by": [
-            "gemini",
-            "elevenlabs"
-          ],
-          "covered_by": [
-            "openai"
-          ],
-          "agreed_by": [
-            "openai"
           ]
         },
         {
@@ -455,30 +306,27 @@
               "channel": null
             }
           ],
-          "item_id": "06e8274b603dfddc4ff0a84ed09f1a85_P003",
+          "item_id": "06e8274b603dfddc4ff0a84ed09f1a85_P002",
           "action": "beep",
           "leaked_by": [],
           "covered_by": [
             "gemini",
-            "elevenlabs",
-            "openai"
+            "elevenlabs"
           ],
           "agreed_by": [
             "gemini",
-            "elevenlabs",
-            "openai"
+            "elevenlabs"
           ]
         },
         {
           "start_ms": 10200,
-          "end_ms": 11001,
+          "end_ms": 10940,
           "categories": [
             "FULL_NAME"
           ],
           "engines": [
             "elevenlabs",
-            "gemini",
-            "openai"
+            "gemini"
           ],
           "public_figure": false,
           "confidence": "high",
@@ -496,26 +344,18 @@
               "end_ms": 10940,
               "engine": "elevenlabs",
               "channel": null
-            },
-            {
-              "start_ms": 11000,
-              "end_ms": 11001,
-              "engine": "openai",
-              "channel": null
             }
           ],
-          "item_id": "06e8274b603dfddc4ff0a84ed09f1a85_P004",
+          "item_id": "06e8274b603dfddc4ff0a84ed09f1a85_P003",
           "action": "beep",
           "leaked_by": [],
           "covered_by": [
             "gemini",
-            "elevenlabs",
-            "openai"
+            "elevenlabs"
           ],
           "agreed_by": [
             "gemini",
-            "elevenlabs",
-            "openai"
+            "elevenlabs"
           ]
         },
         {
@@ -546,11 +386,9 @@
               "channel": null
             }
           ],
-          "item_id": "06e8274b603dfddc4ff0a84ed09f1a85_P005",
+          "item_id": "06e8274b603dfddc4ff0a84ed09f1a85_P004",
           "action": "beep",
-          "leaked_by": [
-            "openai"
-          ],
+          "leaked_by": [],
           "covered_by": [
             "gemini",
             "elevenlabs"
@@ -568,8 +406,7 @@
           ],
           "engines": [
             "elevenlabs",
-            "gemini",
-            "openai"
+            "gemini"
           ],
           "public_figure": false,
           "confidence": "high",
@@ -605,49 +442,33 @@
               "end_ms": 81900,
               "engine": "elevenlabs",
               "channel": null
-            },
-            {
-              "start_ms": 78140,
-              "end_ms": 78480,
-              "engine": "openai",
-              "channel": null
-            },
-            {
-              "start_ms": 81460,
-              "end_ms": 81860,
-              "engine": "openai",
-              "channel": null
             }
           ],
-          "item_id": "06e8274b603dfddc4ff0a84ed09f1a85_P006",
+          "item_id": "06e8274b603dfddc4ff0a84ed09f1a85_P005",
           "action": "beep",
           "leaked_by": [],
           "covered_by": [
             "gemini",
-            "elevenlabs",
-            "openai"
+            "elevenlabs"
           ],
           "agreed_by": [
             "gemini",
-            "elevenlabs",
-            "openai"
+            "elevenlabs"
           ]
         },
         {
           "start_ms": 221180,
-          "end_ms": 237900,
+          "end_ms": 229300,
           "categories": [
-            "ORGANIZATION_PERSON_LINKED",
             "PHONE"
           ],
           "engines": [
             "elevenlabs",
-            "gemini",
-            "openai"
+            "gemini"
           ],
           "public_figure": false,
           "confidence": "high",
-          "spoken_text": "nine double zero eight three zero five six four eight",
+          "spoken_text": "double nine eight zero one six one double three one",
           "channel": null,
           "source_spans": [
             {
@@ -656,6 +477,41 @@
               "engine": "gemini",
               "channel": null
             },
+            {
+              "start_ms": 221180,
+              "end_ms": 224300,
+              "engine": "elevenlabs",
+              "channel": null
+            }
+          ],
+          "item_id": "06e8274b603dfddc4ff0a84ed09f1a85_P006",
+          "action": "beep",
+          "leaked_by": [],
+          "covered_by": [
+            "gemini",
+            "elevenlabs"
+          ],
+          "agreed_by": [
+            "gemini",
+            "elevenlabs"
+          ]
+        },
+        {
+          "start_ms": 226800,
+          "end_ms": 237900,
+          "categories": [
+            "ORGANIZATION_PERSON_LINKED",
+            "PHONE"
+          ],
+          "engines": [
+            "elevenlabs",
+            "gemini"
+          ],
+          "public_figure": false,
+          "confidence": "high",
+          "spoken_text": "nine double zero eight three zero five six four eight",
+          "channel": null,
+          "source_spans": [
             {
               "start_ms": 226800,
               "end_ms": 233800,
@@ -669,12 +525,6 @@
               "channel": null
             },
             {
-              "start_ms": 221180,
-              "end_ms": 224300,
-              "engine": "elevenlabs",
-              "channel": null
-            },
-            {
               "start_ms": 227420,
               "end_ms": 230810,
               "engine": "elevenlabs",
@@ -685,24 +535,6 @@
               "end_ms": 233600,
               "engine": "elevenlabs",
               "channel": null
-            },
-            {
-              "start_ms": 221260,
-              "end_ms": 223700,
-              "engine": "openai",
-              "channel": null
-            },
-            {
-              "start_ms": 226960,
-              "end_ms": 230200,
-              "engine": "openai",
-              "channel": null
-            },
-            {
-              "start_ms": 232880,
-              "end_ms": 233980,
-              "engine": "openai",
-              "channel": null
             }
           ],
           "item_id": "06e8274b603dfddc4ff0a84ed09f1a85_P007",
@@ -710,13 +542,11 @@
           "leaked_by": [],
           "covered_by": [
             "gemini",
-            "elevenlabs",
-            "openai"
+            "elevenlabs"
           ],
           "agreed_by": [
             "gemini",
-            "elevenlabs",
-            "openai"
+            "elevenlabs"
           ]
         },
         {
@@ -730,7 +560,7 @@
             "gemini"
           ],
           "public_figure": false,
-          "confidence": "high",
+          "confidence": "medium",
           "spoken_text": "H D F C bank",
           "channel": null,
           "source_spans": [
@@ -752,47 +582,11 @@
           "leaked_by": [],
           "covered_by": [
             "gemini",
-            "elevenlabs",
-            "openai"
-          ],
-          "agreed_by": [
-            "gemini",
-            "elevenlabs",
-            "openai"
-          ]
-        },
-        {
-          "start_ms": 245480,
-          "end_ms": 245820,
-          "categories": [
-            "ORGANIZATION_PERSON_LINKED"
-          ],
-          "engines": [
-            "openai"
-          ],
-          "public_figure": false,
-          "confidence": "medium",
-          "spoken_text": "KPMC",
-          "channel": null,
-          "source_spans": [
-            {
-              "start_ms": 245480,
-              "end_ms": 245820,
-              "engine": "openai",
-              "channel": null
-            }
-          ],
-          "item_id": "06e8274b603dfddc4ff0a84ed09f1a85_P009",
-          "action": "beep",
-          "leaked_by": [
-            "gemini",
             "elevenlabs"
           ],
-          "covered_by": [
-            "openai"
-          ],
           "agreed_by": [
-            "openai"
+            "gemini",
+            "elevenlabs"
           ]
         },
         {
@@ -802,7 +596,6 @@
             "ORGANIZATION_PERSON_LINKED"
           ],
           "engines": [
-            "elevenlabs",
             "gemini"
           ],
           "public_figure": false,
@@ -815,72 +608,30 @@
               "end_ms": 257700,
               "engine": "gemini",
               "channel": null
-            },
-            {
-              "start_ms": 253420,
-              "end_ms": 253860,
-              "engine": "elevenlabs",
-              "channel": null
             }
           ],
-          "item_id": "06e8274b603dfddc4ff0a84ed09f1a85_P010",
+          "item_id": "06e8274b603dfddc4ff0a84ed09f1a85_P009",
           "action": "beep",
           "leaked_by": [
-            "openai"
+            "elevenlabs"
           ],
           "covered_by": [
-            "gemini",
-            "elevenlabs"
+            "gemini"
           ],
           "agreed_by": [
             "gemini",
-            "elevenlabs",
-            "openai"
+            "elevenlabs"
           ]
         },
         {
-          "start_ms": 321080,
-          "end_ms": 321720,
+          "start_ms": 321000,
+          "end_ms": 328100,
           "categories": [
             "ORGANIZATION_PERSON_LINKED"
           ],
           "engines": [
-            "elevenlabs"
-          ],
-          "public_figure": false,
-          "confidence": "high",
-          "spoken_text": "Ayu Health",
-          "channel": null,
-          "source_spans": [
-            {
-              "start_ms": 321080,
-              "end_ms": 321720,
-              "engine": "elevenlabs",
-              "channel": null
-            }
-          ],
-          "item_id": "06e8274b603dfddc4ff0a84ed09f1a85_P011",
-          "action": "beep",
-          "leaked_by": [],
-          "covered_by": [
-            "gemini",
             "elevenlabs",
-            "openai"
-          ],
-          "agreed_by": [
-            "gemini",
-            "elevenlabs",
-            "openai"
-          ]
-        },
-        {
-          "start_ms": 323460,
-          "end_ms": 324140,
-          "categories": [
-            "ORGANIZATION_PERSON_LINKED"
-          ],
-          "engines": [
-            "elevenlabs"
+            "gemini"
           ],
           "public_figure": false,
           "confidence": "high",
@@ -888,17 +639,33 @@
           "channel": null,
           "source_spans": [
             {
+              "start_ms": 321000,
+              "end_ms": 326300,
+              "engine": "gemini",
+              "channel": null
+            },
+            {
+              "start_ms": 322700,
+              "end_ms": 328100,
+              "engine": "gemini",
+              "channel": null
+            },
+            {
+              "start_ms": 321080,
+              "end_ms": 321720,
+              "engine": "elevenlabs",
+              "channel": null
+            },
+            {
               "start_ms": 323460,
               "end_ms": 324140,
               "engine": "elevenlabs",
               "channel": null
             }
           ],
-          "item_id": "06e8274b603dfddc4ff0a84ed09f1a85_P012",
+          "item_id": "06e8274b603dfddc4ff0a84ed09f1a85_P010",
           "action": "beep",
-          "leaked_by": [
-            "openai"
-          ],
+          "leaked_by": [],
           "covered_by": [
             "gemini",
             "elevenlabs"
@@ -909,18 +676,17 @@
           ]
         },
         {
-          "start_ms": 380660,
+          "start_ms": 381120,
           "end_ms": 387120,
           "categories": [
             "FULL_NAME"
           ],
           "engines": [
             "elevenlabs",
-            "gemini",
-            "openai"
+            "gemini"
           ],
           "public_figure": false,
-          "confidence": "medium",
+          "confidence": "high",
           "spoken_text": "ಸುಧೀರ್",
           "channel": null,
           "source_spans": [
@@ -947,62 +713,13 @@
               "end_ms": 382868,
               "engine": "elevenlabs",
               "channel": null
-            },
-            {
-              "start_ms": 380660,
-              "end_ms": 381520,
-              "engine": "openai",
-              "channel": null
-            },
-            {
-              "start_ms": 382540,
-              "end_ms": 383280,
-              "engine": "openai",
-              "channel": null
             }
           ],
-          "item_id": "06e8274b603dfddc4ff0a84ed09f1a85_P013",
+          "item_id": "06e8274b603dfddc4ff0a84ed09f1a85_P011",
           "action": "beep",
           "leaked_by": [],
           "covered_by": [
             "gemini",
-            "elevenlabs",
-            "openai"
-          ],
-          "agreed_by": [
-            "gemini",
-            "elevenlabs",
-            "openai"
-          ]
-        },
-        {
-          "start_ms": 447008,
-          "end_ms": 447558,
-          "categories": [
-            "ORGANIZATION_PERSON_LINKED"
-          ],
-          "engines": [
-            "elevenlabs"
-          ],
-          "public_figure": false,
-          "confidence": "high",
-          "spoken_text": "Medi Assist",
-          "channel": null,
-          "source_spans": [
-            {
-              "start_ms": 447008,
-              "end_ms": 447558,
-              "engine": "elevenlabs",
-              "channel": null
-            }
-          ],
-          "item_id": "06e8274b603dfddc4ff0a84ed09f1a85_P014",
-          "action": "beep",
-          "leaked_by": [
-            "openai"
-          ],
-          "covered_by": [
-            "gemini",
             "elevenlabs"
           ],
           "agreed_by": [
@@ -1011,7 +728,7 @@
           ]
         },
         {
-          "start_ms": 449228,
+          "start_ms": 446000,
           "end_ms": 457500,
           "categories": [
             "ORGANIZATION_PERSON_LINKED"
@@ -1022,13 +739,31 @@
           ],
           "public_figure": false,
           "confidence": "high",
-          "spoken_text": "media assist",
+          "spoken_text": "Medi Assist",
           "channel": null,
           "source_spans": [
+            {
+              "start_ms": 446000,
+              "end_ms": 451500,
+              "engine": "gemini",
+              "channel": null
+            },
+            {
+              "start_ms": 449000,
+              "end_ms": 454500,
+              "engine": "gemini",
+              "channel": null
+            },
             {
               "start_ms": 452000,
               "end_ms": 457500,
               "engine": "gemini",
+              "channel": null
+            },
+            {
+              "start_ms": 447008,
+              "end_ms": 447558,
+              "engine": "elevenlabs",
               "channel": null
             },
             {
@@ -1044,11 +779,9 @@
               "channel": null
             }
           ],
-          "item_id": "06e8274b603dfddc4ff0a84ed09f1a85_P015",
+          "item_id": "06e8274b603dfddc4ff0a84ed09f1a85_P012",
           "action": "beep",
-          "leaked_by": [
-            "openai"
-          ],
+          "leaked_by": [],
           "covered_by": [
             "gemini",
             "elevenlabs"
@@ -1059,61 +792,19 @@
           ]
         },
         {
-          "start_ms": 457878,
-          "end_ms": 458248,
-          "categories": [
-            "ORGANIZATION_PERSON_LINKED"
-          ],
-          "engines": [
-            "elevenlabs"
-          ],
-          "public_figure": false,
-          "confidence": "high",
-          "spoken_text": "Ayu Health",
-          "channel": null,
-          "source_spans": [
-            {
-              "start_ms": 457878,
-              "end_ms": 458248,
-              "engine": "elevenlabs",
-              "channel": null
-            }
-          ],
-          "item_id": "06e8274b603dfddc4ff0a84ed09f1a85_P016",
-          "action": "beep",
-          "leaked_by": [
-            "gemini",
-            "elevenlabs",
-            "openai"
-          ],
-          "covered_by": [],
-          "agreed_by": [
-            "elevenlabs"
-          ]
-        },
-        {
-          "start_ms": 458000,
+          "start_ms": 459000,
           "end_ms": 466500,
           "categories": [
-            "FULL_NAME",
             "ORGANIZATION_PERSON_LINKED"
           ],
           "engines": [
-            "elevenlabs",
-            "gemini",
-            "openai"
+            "gemini"
           ],
           "public_figure": false,
           "confidence": "medium",
           "spoken_text": "ವಿಕ್ರಮ್",
           "channel": null,
           "source_spans": [
-            {
-              "start_ms": 458000,
-              "end_ms": 463000,
-              "engine": "gemini",
-              "channel": null
-            },
             {
               "start_ms": 459000,
               "end_ms": 464000,
@@ -1125,112 +816,49 @@
               "end_ms": 466500,
               "engine": "gemini",
               "channel": null
-            },
-            {
-              "start_ms": 459228,
-              "end_ms": 459528,
-              "engine": "elevenlabs",
-              "channel": null
-            },
-            {
-              "start_ms": 461288,
-              "end_ms": 461608,
-              "engine": "elevenlabs",
-              "channel": null
-            },
-            {
-              "start_ms": 459637,
-              "end_ms": 460109,
-              "engine": "openai",
-              "channel": null
             }
           ],
-          "item_id": "06e8274b603dfddc4ff0a84ed09f1a85_P017",
-          "action": "beep",
-          "leaked_by": [],
-          "covered_by": [
-            "gemini",
-            "elevenlabs",
-            "openai"
-          ],
-          "agreed_by": [
-            "gemini",
-            "elevenlabs",
-            "openai"
-          ]
-        },
-        {
-          "start_ms": 485395,
-          "end_ms": 486660,
-          "categories": [
-            "FULL_NAME"
-          ],
-          "engines": [
-            "openai"
-          ],
-          "public_figure": false,
-          "confidence": "medium",
-          "spoken_text": "Vikram",
-          "channel": null,
-          "source_spans": [
-            {
-              "start_ms": 485395,
-              "end_ms": 486660,
-              "engine": "openai",
-              "channel": null
-            }
-          ],
-          "item_id": "06e8274b603dfddc4ff0a84ed09f1a85_P018",
+          "item_id": "06e8274b603dfddc4ff0a84ed09f1a85_P013",
           "action": "beep",
           "leaked_by": [
-            "gemini",
             "elevenlabs"
           ],
           "covered_by": [
-            "openai"
+            "gemini"
           ],
           "agreed_by": [
-            "openai"
+            "gemini",
+            "elevenlabs"
           ]
         }
       ],
       "engines": {
         "gemini": {
-          "items": 18,
-          "must_beep": 18,
+          "items": 13,
+          "must_beep": 13,
           "annotate_only": 0,
-          "leaked": 4,
-          "covered": 14,
-          "agree": 14,
-          "agree_eval": 18
+          "leaked": 0,
+          "covered": 13,
+          "agree": 13,
+          "agree_eval": 13
         },
         "elevenlabs": {
-          "items": 18,
-          "must_beep": 18,
+          "items": 13,
+          "must_beep": 13,
           "annotate_only": 0,
-          "leaked": 4,
-          "covered": 14,
-          "agree": 15,
-          "agree_eval": 18
-        },
-        "openai": {
-          "items": 18,
-          "must_beep": 18,
-          "annotate_only": 0,
-          "leaked": 6,
-          "covered": 12,
-          "agree": 12,
-          "agree_eval": 18
+          "leaked": 2,
+          "covered": 11,
+          "agree": 13,
+          "agree_eval": 13
         }
       },
       "verifier_rejected": {
-        "gemini": 4,
-        "elevenlabs": 0,
-        "openai": 3
+        "gemini": 1,
+        "elevenlabs": 4
       },
       "notes": [
-        "gemini: 4 span(s) rejected by verifier (over-reach)",
-        "openai: 3 span(s) rejected by verifier (over-reach)"
+        "gemini: 1 span(s) rejected by verifier (over-reach)",
+        "elevenlabs: 4 span(s) rejected by verifier (over-reach)"
       ]
     },
     {
@@ -1244,8 +872,7 @@
           ],
           "engines": [
             "elevenlabs",
-            "gemini",
-            "openai"
+            "gemini"
           ],
           "public_figure": false,
           "confidence": "high",
@@ -1263,12 +890,6 @@
               "end_ms": 3300,
               "engine": "elevenlabs",
               "channel": null
-            },
-            {
-              "start_ms": 2980,
-              "end_ms": 3080,
-              "engine": "openai",
-              "channel": null
             }
           ],
           "item_id": "5252dea2cb5c97b14aa7dcf365211a85_P001",
@@ -1276,25 +897,22 @@
           "leaked_by": [],
           "covered_by": [
             "gemini",
-            "elevenlabs",
-            "openai"
+            "elevenlabs"
           ],
           "agreed_by": [
             "gemini",
-            "elevenlabs",
-            "openai"
+            "elevenlabs"
           ]
         },
         {
-          "start_ms": 4400,
+          "start_ms": 4500,
           "end_ms": 5600,
           "categories": [
             "ORGANIZATION_PERSON_LINKED"
           ],
           "engines": [
             "elevenlabs",
-            "gemini",
-            "openai"
+            "gemini"
           ],
           "public_figure": false,
           "confidence": "high",
@@ -1312,12 +930,6 @@
               "end_ms": 5540,
               "engine": "elevenlabs",
               "channel": null
-            },
-            {
-              "start_ms": 4400,
-              "end_ms": 5560,
-              "engine": "openai",
-              "channel": null
             }
           ],
           "item_id": "5252dea2cb5c97b14aa7dcf365211a85_P002",
@@ -1325,13 +937,11 @@
           "leaked_by": [],
           "covered_by": [
             "gemini",
-            "elevenlabs",
-            "openai"
+            "elevenlabs"
           ],
           "agreed_by": [
             "gemini",
-            "elevenlabs",
-            "openai"
+            "elevenlabs"
           ]
         },
         {
@@ -1364,9 +974,7 @@
           ],
           "item_id": "5252dea2cb5c97b14aa7dcf365211a85_P003",
           "action": "beep",
-          "leaked_by": [
-            "openai"
-          ],
+          "leaked_by": [],
           "covered_by": [
             "gemini",
             "elevenlabs"
@@ -1378,17 +986,16 @@
         },
         {
           "start_ms": 29600,
-          "end_ms": 30960,
+          "end_ms": 30000,
           "categories": [
             "FULL_NAME"
           ],
           "engines": [
-            "gemini",
-            "openai"
+            "gemini"
           ],
           "public_figure": false,
           "confidence": "high",
-          "spoken_text": "Hanish",
+          "spoken_text": "Anish",
           "channel": null,
           "source_spans": [
             {
@@ -1396,26 +1003,18 @@
               "end_ms": 30000,
               "engine": "gemini",
               "channel": null
-            },
-            {
-              "start_ms": 30920,
-              "end_ms": 30960,
-              "engine": "openai",
-              "channel": null
             }
           ],
           "item_id": "5252dea2cb5c97b14aa7dcf365211a85_P004",
           "action": "beep",
-          "leaked_by": [],
+          "leaked_by": [
+            "elevenlabs"
+          ],
           "covered_by": [
-            "gemini",
-            "elevenlabs",
-            "openai"
+            "gemini"
           ],
           "agreed_by": [
-            "gemini",
-            "elevenlabs",
-            "openai"
+            "gemini"
           ]
         },
         {
@@ -1445,8 +1044,7 @@
             "gemini"
           ],
           "covered_by": [
-            "elevenlabs",
-            "openai"
+            "elevenlabs"
           ],
           "agreed_by": [
             "elevenlabs"
@@ -1454,11 +1052,12 @@
         },
         {
           "start_ms": 46700,
-          "end_ms": 48000,
+          "end_ms": 48460,
           "categories": [
             "HEALTH_MEDICAL_INFO"
           ],
           "engines": [
+            "elevenlabs",
             "gemini"
           ],
           "public_figure": false,
@@ -1471,6 +1070,12 @@
               "end_ms": 48000,
               "engine": "gemini",
               "channel": null
+            },
+            {
+              "start_ms": 46880,
+              "end_ms": 48460,
+              "engine": "elevenlabs",
+              "channel": null
             }
           ],
           "item_id": "5252dea2cb5c97b14aa7dcf365211a85_P006",
@@ -1478,7 +1083,7 @@
           "leaked_by": [],
           "covered_by": [],
           "agreed_by": [
-            "gemini"
+            "elevenlabs"
           ]
         },
         {
@@ -1489,8 +1094,7 @@
           ],
           "engines": [
             "elevenlabs",
-            "gemini",
-            "openai"
+            "gemini"
           ],
           "public_figure": false,
           "confidence": "high",
@@ -1508,12 +1112,6 @@
               "end_ms": 58280,
               "engine": "elevenlabs",
               "channel": null
-            },
-            {
-              "start_ms": 57400,
-              "end_ms": 57920,
-              "engine": "openai",
-              "channel": null
             }
           ],
           "item_id": "5252dea2cb5c97b14aa7dcf365211a85_P007",
@@ -1521,64 +1119,26 @@
           "leaked_by": [],
           "covered_by": [
             "gemini",
-            "elevenlabs",
-            "openai"
+            "elevenlabs"
           ],
           "agreed_by": [
             "gemini",
-            "elevenlabs",
-            "openai"
+            "elevenlabs"
           ]
         },
         {
-          "start_ms": 112460,
-          "end_ms": 113600,
-          "categories": [
-            "FINANCIAL_INFO"
-          ],
-          "engines": [
-            "openai"
-          ],
-          "public_figure": false,
-          "confidence": "high",
-          "spoken_text": "42 000 rupees",
-          "channel": null,
-          "source_spans": [
-            {
-              "start_ms": 112460,
-              "end_ms": 113600,
-              "engine": "openai",
-              "channel": null
-            }
-          ],
-          "item_id": "5252dea2cb5c97b14aa7dcf365211a85_P008",
-          "action": "beep",
-          "leaked_by": [],
-          "covered_by": [
-            "gemini",
-            "elevenlabs",
-            "openai"
-          ],
-          "agreed_by": [
-            "gemini",
-            "elevenlabs",
-            "openai"
-          ]
-        },
-        {
-          "start_ms": 168160,
+          "start_ms": 168225,
           "end_ms": 172401,
           "categories": [
             "PHONE"
           ],
           "engines": [
             "elevenlabs",
-            "gemini",
-            "openai"
+            "gemini"
           ],
           "public_figure": false,
           "confidence": "high",
-          "spoken_text": "nine double nine eight double zero one nine zero double seven",
+          "spoken_text": "nine nine eight zero zero one nine zero seven seven",
           "channel": null,
           "source_spans": [
             {
@@ -1592,38 +1152,29 @@
               "end_ms": 171240,
               "engine": "elevenlabs",
               "channel": null
-            },
-            {
-              "start_ms": 168160,
-              "end_ms": 171140,
-              "engine": "openai",
-              "channel": null
             }
           ],
-          "item_id": "5252dea2cb5c97b14aa7dcf365211a85_P009",
+          "item_id": "5252dea2cb5c97b14aa7dcf365211a85_P008",
           "action": "beep",
           "leaked_by": [],
           "covered_by": [
             "gemini",
-            "elevenlabs",
-            "openai"
+            "elevenlabs"
           ],
           "agreed_by": [
             "gemini",
-            "elevenlabs",
-            "openai"
+            "elevenlabs"
           ]
         },
         {
-          "start_ms": 173820,
+          "start_ms": 173960,
           "end_ms": 177531,
           "categories": [
             "PHONE"
           ],
           "engines": [
             "elevenlabs",
-            "gemini",
-            "openai"
+            "gemini"
           ],
           "public_figure": false,
           "confidence": "high",
@@ -1641,42 +1192,33 @@
               "end_ms": 177531,
               "engine": "elevenlabs",
               "channel": null
-            },
-            {
-              "start_ms": 173820,
-              "end_ms": 177040,
-              "engine": "openai",
-              "channel": null
             }
           ],
-          "item_id": "5252dea2cb5c97b14aa7dcf365211a85_P010",
+          "item_id": "5252dea2cb5c97b14aa7dcf365211a85_P009",
           "action": "beep",
           "leaked_by": [],
           "covered_by": [
             "gemini",
-            "elevenlabs",
-            "openai"
+            "elevenlabs"
           ],
           "agreed_by": [
             "gemini",
-            "elevenlabs",
-            "openai"
+            "elevenlabs"
           ]
         },
         {
-          "start_ms": 179580,
+          "start_ms": 179640,
           "end_ms": 182500,
           "categories": [
             "ORGANIZATION_PERSON_LINKED"
           ],
           "engines": [
             "elevenlabs",
-            "gemini",
-            "openai"
+            "gemini"
           ],
           "public_figure": false,
           "confidence": "high",
-          "spoken_text": "Mortar Solutions India Private Limited Company",
+          "spoken_text": "Model Solutions India Private Limited Company",
           "channel": null,
           "source_spans": [
             {
@@ -1690,11 +1232,45 @@
               "end_ms": 182280,
               "engine": "elevenlabs",
               "channel": null
+            }
+          ],
+          "item_id": "5252dea2cb5c97b14aa7dcf365211a85_P010",
+          "action": "beep",
+          "leaked_by": [],
+          "covered_by": [
+            "gemini",
+            "elevenlabs"
+          ],
+          "agreed_by": [
+            "gemini",
+            "elevenlabs"
+          ]
+        },
+        {
+          "start_ms": 186360,
+          "end_ms": 189000,
+          "categories": [
+            "ORGANIZATION_PERSON_LINKED"
+          ],
+          "engines": [
+            "elevenlabs",
+            "gemini"
+          ],
+          "public_figure": false,
+          "confidence": "high",
+          "spoken_text": "State Bank of India",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 187500,
+              "end_ms": 189000,
+              "engine": "gemini",
+              "channel": null
             },
             {
-              "start_ms": 179580,
-              "end_ms": 182200,
-              "engine": "openai",
+              "start_ms": 186360,
+              "end_ms": 187200,
+              "engine": "elevenlabs",
               "channel": null
             }
           ],
@@ -1703,54 +1279,81 @@
           "leaked_by": [],
           "covered_by": [
             "gemini",
-            "elevenlabs",
-            "openai"
+            "elevenlabs"
           ],
           "agreed_by": [
             "gemini",
-            "elevenlabs",
-            "openai"
+            "elevenlabs"
+          ]
+        },
+        {
+          "start_ms": 285700,
+          "end_ms": 293000,
+          "categories": [
+            "FINANCIAL_INFO"
+          ],
+          "engines": [
+            "gemini"
+          ],
+          "public_figure": false,
+          "confidence": "medium",
+          "spoken_text": "three thousand three hundred",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 285700,
+              "end_ms": 291100,
+              "engine": "gemini",
+              "channel": null
+            },
+            {
+              "start_ms": 287000,
+              "end_ms": 293000,
+              "engine": "gemini",
+              "channel": null
+            }
+          ],
+          "item_id": "5252dea2cb5c97b14aa7dcf365211a85_P012",
+          "action": "beep",
+          "leaked_by": [
+            "elevenlabs"
+          ],
+          "covered_by": [
+            "gemini"
+          ],
+          "agreed_by": [
+            "gemini",
+            "elevenlabs"
           ]
         }
       ],
       "engines": {
         "gemini": {
-          "items": 11,
-          "must_beep": 10,
+          "items": 12,
+          "must_beep": 11,
           "annotate_only": 1,
           "leaked": 1,
-          "covered": 9,
-          "agree": 10,
-          "agree_eval": 11
-        },
-        "elevenlabs": {
-          "items": 11,
-          "must_beep": 10,
-          "annotate_only": 1,
-          "leaked": 0,
           "covered": 10,
           "agree": 10,
-          "agree_eval": 11
+          "agree_eval": 12
         },
-        "openai": {
-          "items": 11,
-          "must_beep": 10,
+        "elevenlabs": {
+          "items": 12,
+          "must_beep": 11,
           "annotate_only": 1,
-          "leaked": 1,
+          "leaked": 2,
           "covered": 9,
-          "agree": 8,
-          "agree_eval": 11
+          "agree": 11,
+          "agree_eval": 12
         }
       },
       "verifier_rejected": {
-        "gemini": 6,
-        "elevenlabs": 6,
-        "openai": 1
+        "gemini": 3,
+        "elevenlabs": 4
       },
       "notes": [
-        "gemini: 6 span(s) rejected by verifier (over-reach)",
-        "elevenlabs: 6 span(s) rejected by verifier (over-reach)",
-        "openai: 1 span(s) rejected by verifier (over-reach)"
+        "gemini: 3 span(s) rejected by verifier (over-reach)",
+        "elevenlabs: 4 span(s) rejected by verifier (over-reach)"
       ]
     },
     {
@@ -1774,21 +1377,11 @@
           "covered": 0,
           "agree": 0,
           "agree_eval": 0
-        },
-        "openai": {
-          "items": 0,
-          "must_beep": 0,
-          "annotate_only": 0,
-          "leaked": 0,
-          "covered": 0,
-          "agree": 0,
-          "agree_eval": 0
         }
       },
       "verifier_rejected": {
         "gemini": 0,
-        "elevenlabs": 0,
-        "openai": 0
+        "elevenlabs": 0
       },
       "notes": []
     },
@@ -1813,21 +1406,11 @@
           "covered": 0,
           "agree": 0,
           "agree_eval": 0
-        },
-        "openai": {
-          "items": 0,
-          "must_beep": 0,
-          "annotate_only": 0,
-          "leaked": 0,
-          "covered": 0,
-          "agree": 0,
-          "agree_eval": 0
         }
       },
       "verifier_rejected": {
         "gemini": 0,
-        "elevenlabs": 0,
-        "openai": 0
+        "elevenlabs": 0
       },
       "notes": []
     },
@@ -1852,21 +1435,11 @@
           "covered": 0,
           "agree": 0,
           "agree_eval": 0
-        },
-        "openai": {
-          "items": 0,
-          "must_beep": 0,
-          "annotate_only": 0,
-          "leaked": 0,
-          "covered": 0,
-          "agree": 0,
-          "agree_eval": 0
         }
       },
       "verifier_rejected": {
         "gemini": 0,
-        "elevenlabs": 0,
-        "openai": 0
+        "elevenlabs": 0
       },
       "notes": []
     },
@@ -1891,21 +1464,11 @@
           "covered": 0,
           "agree": 0,
           "agree_eval": 0
-        },
-        "openai": {
-          "items": 0,
-          "must_beep": 0,
-          "annotate_only": 0,
-          "leaked": 0,
-          "covered": 0,
-          "agree": 0,
-          "agree_eval": 0
         }
       },
       "verifier_rejected": {
         "gemini": 0,
-        "elevenlabs": 0,
-        "openai": 0
+        "elevenlabs": 0
       },
       "notes": []
     },
@@ -1919,6 +1482,7 @@
             "FULL_NAME"
           ],
           "engines": [
+            "elevenlabs",
             "gemini"
           ],
           "public_figure": false,
@@ -1931,13 +1495,17 @@
               "end_ms": 7600,
               "engine": "gemini",
               "channel": null
+            },
+            {
+              "start_ms": 7260,
+              "end_ms": 7440,
+              "engine": "elevenlabs",
+              "channel": null
             }
           ],
           "item_id": "c34897552fdcca8ae3f8d5a7015d1a85_P001",
           "action": "beep",
-          "leaked_by": [
-            "openai"
-          ],
+          "leaked_by": [],
           "covered_by": [
             "gemini",
             "elevenlabs"
@@ -1977,9 +1545,7 @@
           ],
           "item_id": "c34897552fdcca8ae3f8d5a7015d1a85_P002",
           "action": "beep",
-          "leaked_by": [
-            "openai"
-          ],
+          "leaked_by": [],
           "covered_by": [
             "gemini",
             "elevenlabs"
@@ -2013,8 +1579,7 @@
           "item_id": "c34897552fdcca8ae3f8d5a7015d1a85_P003",
           "action": "beep",
           "leaked_by": [
-            "elevenlabs",
-            "openai"
+            "elevenlabs"
           ],
           "covered_by": [
             "gemini"
@@ -2024,12 +1589,13 @@
           ]
         },
         {
-          "start_ms": 21300,
+          "start_ms": 20620,
           "end_ms": 22100,
           "categories": [
             "FULL_NAME"
           ],
           "engines": [
+            "elevenlabs",
             "gemini"
           ],
           "public_figure": false,
@@ -2042,19 +1608,24 @@
               "end_ms": 22100,
               "engine": "gemini",
               "channel": null
+            },
+            {
+              "start_ms": 20620,
+              "end_ms": 21150,
+              "engine": "elevenlabs",
+              "channel": null
             }
           ],
           "item_id": "c34897552fdcca8ae3f8d5a7015d1a85_P004",
           "action": "beep",
-          "leaked_by": [
-            "elevenlabs",
-            "openai"
-          ],
+          "leaked_by": [],
           "covered_by": [
-            "gemini"
+            "gemini",
+            "elevenlabs"
           ],
           "agreed_by": [
-            "gemini"
+            "gemini",
+            "elevenlabs"
           ]
         },
         {
@@ -2064,6 +1635,7 @@
             "PHONE"
           ],
           "engines": [
+            "elevenlabs",
             "gemini"
           ],
           "public_figure": false,
@@ -2076,19 +1648,56 @@
               "end_ms": 84400,
               "engine": "gemini",
               "channel": null
+            },
+            {
+              "start_ms": 82460,
+              "end_ms": 83640,
+              "engine": "elevenlabs",
+              "channel": null
             }
           ],
           "item_id": "c34897552fdcca8ae3f8d5a7015d1a85_P005",
           "action": "beep",
-          "leaked_by": [
-            "elevenlabs",
-            "openai"
-          ],
+          "leaked_by": [],
           "covered_by": [
-            "gemini"
+            "gemini",
+            "elevenlabs"
           ],
           "agreed_by": [
             "gemini",
+            "elevenlabs"
+          ]
+        },
+        {
+          "start_ms": 101600,
+          "end_ms": 102070,
+          "categories": [
+            "ORGANIZATION_PERSON_LINKED"
+          ],
+          "engines": [
+            "elevenlabs"
+          ],
+          "public_figure": false,
+          "confidence": "high",
+          "spoken_text": "Ayu Health",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 101600,
+              "end_ms": 102070,
+              "engine": "elevenlabs",
+              "channel": null
+            }
+          ],
+          "item_id": "c34897552fdcca8ae3f8d5a7015d1a85_P006",
+          "action": "beep",
+          "leaked_by": [
+            "gemini"
+          ],
+          "covered_by": [
+            "elevenlabs"
+          ],
+          "agreed_by": [
             "elevenlabs"
           ]
         },
@@ -2115,18 +1724,17 @@
             },
             {
               "start_ms": 121960,
-              "end_ms": 122470,
+              "end_ms": 123120,
               "engine": "elevenlabs",
               "channel": null
             }
           ],
-          "item_id": "c34897552fdcca8ae3f8d5a7015d1a85_P006",
+          "item_id": "c34897552fdcca8ae3f8d5a7015d1a85_P007",
           "action": "beep",
           "leaked_by": [
-            "openai"
+            "gemini"
           ],
           "covered_by": [
-            "gemini",
             "elevenlabs"
           ],
           "agreed_by": [
@@ -2162,11 +1770,9 @@
               "channel": null
             }
           ],
-          "item_id": "c34897552fdcca8ae3f8d5a7015d1a85_P007",
+          "item_id": "c34897552fdcca8ae3f8d5a7015d1a85_P008",
           "action": "beep",
-          "leaked_by": [
-            "openai"
-          ],
+          "leaked_by": [],
           "covered_by": [
             "gemini",
             "elevenlabs"
@@ -2183,7 +1789,6 @@
             "FINANCIAL_INFO"
           ],
           "engines": [
-            "elevenlabs",
             "gemini"
           ],
           "public_figure": false,
@@ -2196,23 +1801,15 @@
               "end_ms": 180900,
               "engine": "gemini",
               "channel": null
-            },
-            {
-              "start_ms": 177940,
-              "end_ms": 179840,
-              "engine": "elevenlabs",
-              "channel": null
             }
           ],
-          "item_id": "c34897552fdcca8ae3f8d5a7015d1a85_P008",
+          "item_id": "c34897552fdcca8ae3f8d5a7015d1a85_P009",
           "action": "beep",
           "leaked_by": [
-            "openai"
-          ],
-          "covered_by": [
             "gemini",
             "elevenlabs"
           ],
+          "covered_by": [],
           "agreed_by": [
             "gemini",
             "elevenlabs"
@@ -2220,7 +1817,7 @@
         },
         {
           "start_ms": 183000,
-          "end_ms": 186000,
+          "end_ms": 186340,
           "categories": [
             "FINANCIAL_INFO"
           ],
@@ -2241,18 +1838,17 @@
             },
             {
               "start_ms": 183800,
-              "end_ms": 184269,
+              "end_ms": 186340,
               "engine": "elevenlabs",
               "channel": null
             }
           ],
-          "item_id": "c34897552fdcca8ae3f8d5a7015d1a85_P009",
+          "item_id": "c34897552fdcca8ae3f8d5a7015d1a85_P010",
           "action": "beep",
           "leaked_by": [
-            "openai"
+            "gemini"
           ],
           "covered_by": [
-            "gemini",
             "elevenlabs"
           ],
           "agreed_by": [
@@ -2283,18 +1879,17 @@
             },
             {
               "start_ms": 188840,
-              "end_ms": 191420,
+              "end_ms": 192740,
               "engine": "elevenlabs",
               "channel": null
             }
           ],
-          "item_id": "c34897552fdcca8ae3f8d5a7015d1a85_P010",
+          "item_id": "c34897552fdcca8ae3f8d5a7015d1a85_P011",
           "action": "beep",
           "leaked_by": [
-            "openai"
+            "gemini"
           ],
           "covered_by": [
-            "gemini",
             "elevenlabs"
           ],
           "agreed_by": [
@@ -2305,41 +1900,30 @@
       ],
       "engines": {
         "gemini": {
-          "items": 10,
-          "must_beep": 10,
+          "items": 11,
+          "must_beep": 11,
           "annotate_only": 0,
-          "leaked": 0,
-          "covered": 10,
+          "leaked": 5,
+          "covered": 6,
           "agree": 10,
-          "agree_eval": 10
+          "agree_eval": 11
         },
         "elevenlabs": {
-          "items": 10,
-          "must_beep": 10,
+          "items": 11,
+          "must_beep": 11,
           "annotate_only": 0,
-          "leaked": 3,
-          "covered": 7,
-          "agree": 8,
-          "agree_eval": 10
-        },
-        "openai": {
-          "items": 10,
-          "must_beep": 10,
-          "annotate_only": 0,
-          "leaked": 10,
-          "covered": 0,
-          "agree": 0,
-          "agree_eval": 10
+          "leaked": 2,
+          "covered": 9,
+          "agree": 10,
+          "agree_eval": 11
         }
       },
       "verifier_rejected": {
-        "gemini": 1,
-        "elevenlabs": 1,
-        "openai": 0
+        "gemini": 0,
+        "elevenlabs": 2
       },
       "notes": [
-        "gemini: 1 span(s) rejected by verifier (over-reach)",
-        "elevenlabs: 1 span(s) rejected by verifier (over-reach)"
+        "elevenlabs: 2 span(s) rejected by verifier (over-reach)"
       ]
     }
   ]

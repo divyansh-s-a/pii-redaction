@@ -63,9 +63,11 @@ body.append(para("Workflow design, evaluation and engine decision — final repo
                  size=26, color=MUTED, center=True, space_after=1800))
 body.append(para("Deccan.ai  |  Report v2  |  2026-09-02  |  Owner: Shivangi",
                  size=20, color=MUTED, center=True))
-body.append(para("All numbers in this report come from one fresh end-to-end run of the entire corpus "
-                 "(every transcription, detection, render, gate and evaluation re-executed from scratch "
-                 "on 2026-09-02; no cached results reused).",
+body.append(para("Transcripts, gates and costs come from the fresh end-to-end corpus run of "
+                 "2026-09-02 (no cached results reused). Detection and all judge-based metrics were "
+                 "re-measured on those same transcripts under detection policy v4 on 2026-09-03 "
+                 "(the v4 consistency pass, section 5.8) — the numbers in this report describe the "
+                 "policy the repository ships.",
                  size=18, color=MUTED, center=True, space_before=400))
 body.append(para(page_break=True))
 
@@ -298,8 +300,9 @@ for eng in ("elevenlabs", "gemini", "openai"):
 body.append(table([2600, 2200, 2200, 2200],
                   ["Pipeline", "Judge-detector agreement", "Union coverage",
                    "Judge over-reach rejected"], rows))
-body.append(para("A second, three-listener view (Whisper included as a listener): the same ranking from "
-                 "a different reference. Corpus languages (engine consensus, judge-verified): "
+body.append(para("A second view of the same story from the cross-listener union (ElevenLabs + Gemini "
+                 "as listeners; Whisper is scored but deliberately NOT a union listener - see 5.8 for "
+                 "what happens when it is). Corpus languages (engine consensus, judge-verified): "
                  "Indian-English telephone calls (code-switching to Hindi), Bengali narrated episodes, one "
                  "Telugu call. ElevenLabs and Gemini agree on speaker counts; Whisper cannot diarize. "
                  "Known limitation, observed on this corpus: BOTH listeners can mis-hear the same proper "
@@ -365,6 +368,54 @@ body.append(para("ElevenLabs' built-in entity_detection was evaluated as an alte
                  "it is generic named-entity recognition with no policy layer - the fiction episodes "
                  "received 157-275 entities each where the correct count is zero. Vendor-native detection "
                  "is not a substitute for a policy-driven detector; scenario closed."))
+
+# ------------------------------------------------- 5.8 v4 consistency pass
+body.append(h2("5.8 Policy v4 consistency pass (2026-09-03)"))
+import json as _json
+_snap = _json.loads(Path("/private/tmp/claude-501/-Users-shivangi-Documents-Claude-Audio-PII-Project/87ddc989-26e9-49df-9724-61c42bfe09fe/scratchpad/v4pass/pr_v3.json").read_text())["aggregate"] if Path("/private/tmp/claude-501/-Users-shivangi-Documents-Claude-Audio-PII-Project/87ddc989-26e9-49df-9724-61c42bfe09fe/scratchpad/v4pass/pr_v3.json").exists() else None
+body.append(para("Policy v4 redefined the fiction rule (reality of referents, uncertain realness "
+                 "defaults to real - section 4 and prompts/README). To keep reported numbers "
+                 "consistent with the shipped policy, every configuration was re-detected and re-scored "
+                 "on the SAME 2026-09-02 transcripts - transcription is policy-independent, so any "
+                 "metric movement is attributable purely to the policy change plus detector "
+                 "run-to-run variance. Findings:"))
+for txt in [
+    "Stability where it matters: the production configuration re-detected all 8 files with ZERO "
+    "interval drift; Whisper+Gemini likewise; Gemini end-to-end moved one interval on one file. All "
+    "four fiction episodes remained at zero detections in every Gemini-detector configuration and at "
+    "zero reference items under a fresh v4 judge read - the drama exclusion held everywhere the "
+    "transcripts carry the story's fiction signals.",
+    "Ranking unchanged: the same order as the fresh run on every metric; the production "
+    "configuration's detection recall/precision moved slightly UP (partly judge-reference "
+    "recomposition: 39 items vs 40).",
+    "GPT-detector instability, quantified: on identical transcripts the GPT detector moved interval "
+    "counts on all four call files in BOTH directions (e.g. 16 to 21 and 5 to 4), dropping one "
+    "occurrence of a repeated amount on the sample - its render leaks doubled. The Gemini detector's "
+    "stability is now a measured argument, not a preference.",
+    "The uncertainty tiebreak on display: on Whisper's garbled episode transcripts (wrong-script "
+    "hallucinations destroy the fiction signals), the v4 default-to-real rule marks the mangled "
+    "names as PII - Whisper+GPT detected 99 phantom intervals across three episodes and its "
+    "detection precision collapsed from 82% to 19%. A same-day reproducibility run confirmed the "
+    "effect is real but unstable in magnitude (99 vs 35 phantoms; two episodes rock-stable, the "
+    "largest flipped 65 to 0 - the GPT detector's variance again), while the call files reproduced "
+    "with IDENTICAL interval counts. Over-redaction on garbage transcripts is the "
+    "designed safe direction, and it makes Whisper's elimination visible in a single number.",
+    "The same effect pollutes a three-listener judge union: the judge reading Whisper's episode "
+    "transcripts contributed 16 phantom reference items on one episode. The evaluation of record "
+    "therefore uses the two-listener reference (unaffected: episodes contribute zero), the 5.4 "
+    "cross-check uses the two-listener union, and the three-listener run is retained as a "
+    "diagnostic exhibit.",
+    "Leak audit under v4: production configuration ZERO findings and ZERO candidates (24 outputs "
+    "audited). One candidate appeared on the non-shipped Gemini configuration of an "
+    "already-quarantined call - an amount-less payment-mode statement of the exact shape rule 11 "
+    "classifies as judge over-reach (17 sibling findings were verifier-rejected in the same run). "
+    "Adjudicated by the owner (2026-09-03): judge over-reach - no policy change, no re-render; "
+    "precedent recorded in System_Design's rule-11 adjudication log.",
+    "Gates reproduced the fresh run exactly: the same five files delivered, the same three PII-dense "
+    "calls held by the beep-edge listen check.",
+    "v4 re-detection cost: ~$1.9 across all five configurations (text-only; transcription reused).",
+]:
+    body.append(para(txt, bullet=True))
 
 # ------------------------------------------------------------ 6 cost
 body.append(h1("6. Cost x performance — end-to-end, measured"))

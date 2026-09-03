@@ -1,6 +1,6 @@
 {
   "config": {
-    "generated_at": "2026-09-02",
+    "generated_at": "2026-09-03",
     "judge_model": "openai/gpt-5.6-sol",
     "verify_model": "openai/gpt-5.6-luna",
     "profile": "medical_consult",
@@ -36,92 +36,41 @@
   },
   "aggregate": {
     "elevenlabs": {
-      "ref_items": 40,
-      "ref_matched": 35,
+      "ref_items": 39,
+      "ref_matched": 36,
       "intervals": 50,
-      "intervals_matched": 42,
-      "must_beep": 39,
-      "covered": 33,
-      "leaked": 6,
+      "intervals_matched": 45,
+      "must_beep": 38,
+      "covered": 31,
+      "leaked": 7,
       "annotate_only": 1,
       "files": 8,
-      "pverify_kept": 38,
+      "pverify_kept": 45,
       "pverify_total": 50,
       "pverify_files": 8,
-      "detection_recall": 0.875,
-      "detection_precision": 0.84,
-      "redaction_recall": 0.8461538461538461,
-      "leak_rate": 0.15384615384615385,
-      "policy_verified_precision": 0.76,
+      "detection_recall": 0.9230769230769231,
+      "detection_precision": 0.9,
+      "redaction_recall": 0.8157894736842105,
+      "leak_rate": 0.1842105263157895,
+      "policy_verified_precision": 0.9,
       "per_category": {
         "FULL_NAME": {
-          "ref": 13,
+          "ref": 12,
           "ref_matched": 9,
           "iv": 12,
           "iv_matched": 11
         },
         "ORGANIZATION_PERSON_LINKED": {
-          "ref": 16,
-          "ref_matched": 16,
-          "iv": 20,
-          "iv_matched": 18
-        },
-        "FINANCIAL_INFO": {
-          "ref": 6,
-          "ref_matched": 6,
-          "iv": 11,
-          "iv_matched": 8
-        },
-        "PHONE": {
-          "ref": 5,
-          "ref_matched": 5,
-          "iv": 5,
-          "iv_matched": 5
-        },
-        "HEALTH_MEDICAL_INFO": {
-          "ref": 1,
-          "ref_matched": 0,
-          "iv": 2,
-          "iv_matched": 0
-        }
-      }
-    },
-    "gemini": {
-      "ref_items": 40,
-      "ref_matched": 37,
-      "intervals": 52,
-      "intervals_matched": 45,
-      "must_beep": 39,
-      "covered": 36,
-      "leaked": 3,
-      "annotate_only": 1,
-      "files": 8,
-      "pverify_kept": 45,
-      "pverify_total": 52,
-      "pverify_files": 8,
-      "detection_recall": 0.925,
-      "detection_precision": 0.8653846153846154,
-      "redaction_recall": 0.9230769230769231,
-      "leak_rate": 0.07692307692307687,
-      "policy_verified_precision": 0.8653846153846154,
-      "per_category": {
-        "FULL_NAME": {
-          "ref": 13,
-          "ref_matched": 11,
-          "iv": 14,
-          "iv_matched": 14
-        },
-        "ORGANIZATION_PERSON_LINKED": {
-          "ref": 16,
+          "ref": 15,
           "ref_matched": 15,
-          "iv": 18,
-          "iv_matched": 17
+          "iv": 20,
+          "iv_matched": 19
         },
         "FINANCIAL_INFO": {
-          "ref": 6,
-          "ref_matched": 6,
-          "iv": 11,
-          "iv_matched": 8
+          "ref": 7,
+          "ref_matched": 7,
+          "iv": 10,
+          "iv_matched": 9
         },
         "PHONE": {
           "ref": 5,
@@ -132,44 +81,95 @@
         "HEALTH_MEDICAL_INFO": {
           "ref": 1,
           "ref_matched": 1,
-          "iv": 4,
+          "iv": 3,
+          "iv_matched": 1
+        }
+      }
+    },
+    "gemini": {
+      "ref_items": 39,
+      "ref_matched": 36,
+      "intervals": 51,
+      "intervals_matched": 48,
+      "must_beep": 38,
+      "covered": 32,
+      "leaked": 6,
+      "annotate_only": 1,
+      "files": 8,
+      "pverify_kept": 47,
+      "pverify_total": 51,
+      "pverify_files": 8,
+      "detection_recall": 0.9230769230769231,
+      "detection_precision": 0.9411764705882353,
+      "redaction_recall": 0.8421052631578947,
+      "leak_rate": 0.1578947368421053,
+      "policy_verified_precision": 0.9215686274509803,
+      "per_category": {
+        "FULL_NAME": {
+          "ref": 12,
+          "ref_matched": 11,
+          "iv": 14,
+          "iv_matched": 14
+        },
+        "ORGANIZATION_PERSON_LINKED": {
+          "ref": 15,
+          "ref_matched": 14,
+          "iv": 18,
+          "iv_matched": 18
+        },
+        "FINANCIAL_INFO": {
+          "ref": 7,
+          "ref_matched": 7,
+          "iv": 11,
+          "iv_matched": 10
+        },
+        "PHONE": {
+          "ref": 5,
+          "ref_matched": 5,
+          "iv": 5,
+          "iv_matched": 5
+        },
+        "HEALTH_MEDICAL_INFO": {
+          "ref": 1,
+          "ref_matched": 0,
+          "iv": 3,
           "iv_matched": 1
         }
       }
     },
     "openai": {
-      "ref_items": 40,
-      "ref_matched": 21,
+      "ref_items": 39,
+      "ref_matched": 22,
       "intervals": 31,
-      "intervals_matched": 25,
-      "must_beep": 39,
+      "intervals_matched": 26,
+      "must_beep": 38,
       "covered": 13,
-      "leaked": 26,
+      "leaked": 25,
       "annotate_only": 1,
       "files": 8,
-      "pverify_kept": 27,
+      "pverify_kept": 26,
       "pverify_total": 31,
       "pverify_files": 8,
-      "detection_recall": 0.525,
-      "detection_precision": 0.8064516129032258,
-      "redaction_recall": 0.3333333333333333,
-      "leak_rate": 0.6666666666666667,
-      "policy_verified_precision": 0.8709677419354839,
+      "detection_recall": 0.5641025641025641,
+      "detection_precision": 0.8387096774193549,
+      "redaction_recall": 0.34210526315789475,
+      "leak_rate": 0.6578947368421053,
+      "policy_verified_precision": 0.8387096774193549,
       "per_category": {
         "FULL_NAME": {
-          "ref": 13,
+          "ref": 12,
           "ref_matched": 7,
           "iv": 12,
           "iv_matched": 9
         },
         "ORGANIZATION_PERSON_LINKED": {
-          "ref": 16,
-          "ref_matched": 10,
+          "ref": 15,
+          "ref_matched": 11,
           "iv": 11,
-          "iv_matched": 9
+          "iv_matched": 10
         },
         "FINANCIAL_INFO": {
-          "ref": 6,
+          "ref": 7,
           "ref_matched": 1,
           "iv": 4,
           "iv_matched": 3
@@ -189,40 +189,40 @@
       }
     },
     "elevenlabs__gpt": {
-      "ref_items": 40,
-      "ref_matched": 34,
-      "intervals": 44,
-      "intervals_matched": 38,
-      "must_beep": 39,
-      "covered": 32,
-      "leaked": 7,
+      "ref_items": 39,
+      "ref_matched": 33,
+      "intervals": 45,
+      "intervals_matched": 41,
+      "must_beep": 38,
+      "covered": 25,
+      "leaked": 13,
       "annotate_only": 1,
       "files": 8,
-      "pverify_kept": 36,
-      "pverify_total": 44,
+      "pverify_kept": 42,
+      "pverify_total": 45,
       "pverify_files": 8,
-      "detection_recall": 0.85,
-      "detection_precision": 0.8636363636363636,
-      "redaction_recall": 0.8205128205128205,
-      "leak_rate": 0.17948717948717952,
-      "policy_verified_precision": 0.8181818181818182,
+      "detection_recall": 0.8461538461538461,
+      "detection_precision": 0.9111111111111111,
+      "redaction_recall": 0.6578947368421053,
+      "leak_rate": 0.3421052631578947,
+      "policy_verified_precision": 0.9333333333333333,
       "per_category": {
         "FULL_NAME": {
-          "ref": 13,
+          "ref": 12,
           "ref_matched": 9,
-          "iv": 10,
-          "iv_matched": 9
+          "iv": 12,
+          "iv_matched": 11
         },
         "ORGANIZATION_PERSON_LINKED": {
-          "ref": 16,
-          "ref_matched": 14,
+          "ref": 15,
+          "ref_matched": 12,
           "iv": 17,
-          "iv_matched": 15
+          "iv_matched": 16
         },
         "FINANCIAL_INFO": {
-          "ref": 6,
-          "ref_matched": 6,
-          "iv": 11,
+          "ref": 7,
+          "ref_matched": 7,
+          "iv": 9,
           "iv_matched": 8
         },
         "PHONE": {
@@ -230,6 +230,12 @@
           "ref_matched": 5,
           "iv": 5,
           "iv_matched": 5
+        },
+        "ASSIGNED_ID": {
+          "ref": 0,
+          "ref_matched": 0,
+          "iv": 1,
+          "iv_matched": 0
         },
         "HEALTH_MEDICAL_INFO": {
           "ref": 1,
@@ -240,38 +246,38 @@
       }
     },
     "openai__gpt": {
-      "ref_items": 40,
-      "ref_matched": 19,
-      "intervals": 28,
-      "intervals_matched": 23,
-      "must_beep": 39,
+      "ref_items": 39,
+      "ref_matched": 20,
+      "intervals": 128,
+      "intervals_matched": 24,
+      "must_beep": 38,
       "covered": 11,
-      "leaked": 28,
+      "leaked": 27,
       "annotate_only": 1,
       "files": 8,
-      "pverify_kept": 26,
-      "pverify_total": 28,
+      "pverify_kept": 104,
+      "pverify_total": 128,
       "pverify_files": 8,
-      "detection_recall": 0.475,
-      "detection_precision": 0.8214285714285714,
-      "redaction_recall": 0.28205128205128205,
-      "leak_rate": 0.717948717948718,
-      "policy_verified_precision": 0.9285714285714286,
+      "detection_recall": 0.5128205128205128,
+      "detection_precision": 0.1875,
+      "redaction_recall": 0.2894736842105263,
+      "leak_rate": 0.7105263157894737,
+      "policy_verified_precision": 0.8125,
       "per_category": {
         "FULL_NAME": {
-          "ref": 13,
+          "ref": 12,
           "ref_matched": 7,
-          "iv": 12,
+          "iv": 107,
           "iv_matched": 9
         },
         "ORGANIZATION_PERSON_LINKED": {
-          "ref": 16,
-          "ref_matched": 8,
-          "iv": 8,
-          "iv_matched": 7
+          "ref": 15,
+          "ref_matched": 9,
+          "iv": 10,
+          "iv_matched": 8
         },
         "FINANCIAL_INFO": {
-          "ref": 6,
+          "ref": 7,
           "ref_matched": 1,
           "iv": 4,
           "iv_matched": 3
@@ -285,7 +291,7 @@
         "HEALTH_MEDICAL_INFO": {
           "ref": 1,
           "ref_matched": 0,
-          "iv": 0,
+          "iv": 3,
           "iv_matched": 0
         }
       }
@@ -297,30 +303,6 @@
       "profile": "medical_consult",
       "items": [
         {
-          "start_ms": 12690,
-          "end_ms": 12760,
-          "categories": [
-            "FULL_NAME"
-          ],
-          "engines": [
-            "elevenlabs"
-          ],
-          "public_figure": false,
-          "confidence": "high",
-          "spoken_text": "Ritika",
-          "channel": null,
-          "source_spans": [
-            {
-              "start_ms": 12690,
-              "end_ms": 12760,
-              "engine": "elevenlabs",
-              "channel": null
-            }
-          ],
-          "item_id": "025354f09d2dcc71517beb7553441a85_R001",
-          "action": "beep"
-        },
-        {
           "start_ms": 13000,
           "end_ms": 13400,
           "categories": [
@@ -330,7 +312,7 @@
             "gemini"
           ],
           "public_figure": false,
-          "confidence": "high",
+          "confidence": "medium",
           "spoken_text": "Vidya",
           "channel": null,
           "source_spans": [
@@ -341,30 +323,23 @@
               "channel": null
             }
           ],
-          "item_id": "025354f09d2dcc71517beb7553441a85_R002",
+          "item_id": "025354f09d2dcc71517beb7553441a85_R001",
           "action": "beep"
         },
         {
-          "start_ms": 13380,
+          "start_ms": 13600,
           "end_ms": 14400,
           "categories": [
             "ORGANIZATION_PERSON_LINKED"
           ],
           "engines": [
-            "elevenlabs",
             "gemini"
           ],
           "public_figure": false,
           "confidence": "high",
-          "spoken_text": "KIMS Hospital",
+          "spoken_text": "KIMS hospital",
           "channel": null,
           "source_spans": [
-            {
-              "start_ms": 13380,
-              "end_ms": 13910,
-              "engine": "elevenlabs",
-              "channel": null
-            },
             {
               "start_ms": 13600,
               "end_ms": 14400,
@@ -372,7 +347,7 @@
               "channel": null
             }
           ],
-          "item_id": "025354f09d2dcc71517beb7553441a85_R003",
+          "item_id": "025354f09d2dcc71517beb7553441a85_R002",
           "action": "beep"
         },
         {
@@ -415,48 +390,51 @@
               "channel": null
             },
             {
-              "start_ms": 101600,
-              "end_ms": 103000,
-              "engine": "gemini",
-              "channel": null
-            },
-            {
               "start_ms": 104000,
               "end_ms": 106800,
               "engine": "gemini",
               "channel": null
             }
           ],
-          "item_id": "025354f09d2dcc71517beb7553441a85_R004",
+          "item_id": "025354f09d2dcc71517beb7553441a85_R003",
           "action": "beep"
         }
       ],
       "notes": [],
       "verifier_rejected": {
-        "elevenlabs": 0,
-        "gemini": 0
+        "elevenlabs": 1,
+        "gemini": 1
       },
       "configs": {
         "elevenlabs": {
-          "ref_items": 4,
-          "ref_matched": 3,
+          "ref_items": 3,
+          "ref_matched": 2,
           "intervals": 5,
-          "intervals_matched": 5,
-          "must_beep": 4,
-          "covered": 3,
+          "intervals_matched": 4,
+          "must_beep": 3,
+          "covered": 2,
           "leaked": 1,
           "annotate_only": 0,
           "rendered_missing": false,
           "missed_item_ids": [
-            "025354f09d2dcc71517beb7553441a85_R002"
+            "025354f09d2dcc71517beb7553441a85_R001"
           ],
-          "unmatched_intervals": [],
+          "unmatched_intervals": [
+            {
+              "start_ms": 12690,
+              "end_ms": 12760,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "Ritika"
+            }
+          ],
           "per_category": {
             "FULL_NAME": {
-              "ref": 2,
-              "ref_matched": 1,
+              "ref": 1,
+              "ref_matched": 0,
               "iv": 1,
-              "iv_matched": 1
+              "iv_matched": 0
             },
             "ORGANIZATION_PERSON_LINKED": {
               "ref": 1,
@@ -473,22 +451,20 @@
           }
         },
         "gemini": {
-          "ref_items": 4,
+          "ref_items": 3,
           "ref_matched": 3,
           "intervals": 5,
           "intervals_matched": 5,
-          "must_beep": 4,
+          "must_beep": 3,
           "covered": 3,
-          "leaked": 1,
+          "leaked": 0,
           "annotate_only": 0,
           "rendered_missing": false,
-          "missed_item_ids": [
-            "025354f09d2dcc71517beb7553441a85_R001"
-          ],
+          "missed_item_ids": [],
           "unmatched_intervals": [],
           "per_category": {
             "FULL_NAME": {
-              "ref": 2,
+              "ref": 1,
               "ref_matched": 1,
               "iv": 1,
               "iv_matched": 1
@@ -508,22 +484,20 @@
           }
         },
         "openai": {
-          "ref_items": 4,
+          "ref_items": 3,
           "ref_matched": 3,
           "intervals": 5,
           "intervals_matched": 5,
-          "must_beep": 4,
-          "covered": 2,
+          "must_beep": 3,
+          "covered": 1,
           "leaked": 2,
           "annotate_only": 0,
           "rendered_missing": false,
-          "missed_item_ids": [
-            "025354f09d2dcc71517beb7553441a85_R001"
-          ],
+          "missed_item_ids": [],
           "unmatched_intervals": [],
           "per_category": {
             "FULL_NAME": {
-              "ref": 2,
+              "ref": 1,
               "ref_matched": 1,
               "iv": 1,
               "iv_matched": 1
@@ -543,23 +517,34 @@
           }
         },
         "elevenlabs__gpt": {
-          "ref_items": 4,
-          "ref_matched": 4,
-          "intervals": 5,
-          "intervals_matched": 5,
-          "must_beep": 4,
-          "covered": 4,
-          "leaked": 0,
+          "ref_items": 3,
+          "ref_matched": 2,
+          "intervals": 4,
+          "intervals_matched": 3,
+          "must_beep": 3,
+          "covered": 1,
+          "leaked": 2,
           "annotate_only": 0,
           "rendered_missing": false,
-          "missed_item_ids": [],
-          "unmatched_intervals": [],
+          "missed_item_ids": [
+            "025354f09d2dcc71517beb7553441a85_R001"
+          ],
+          "unmatched_intervals": [
+            {
+              "start_ms": 12690,
+              "end_ms": 12760,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "Ritika"
+            }
+          ],
           "per_category": {
             "FULL_NAME": {
-              "ref": 2,
-              "ref_matched": 2,
+              "ref": 1,
+              "ref_matched": 0,
               "iv": 1,
-              "iv_matched": 1
+              "iv_matched": 0
             },
             "ORGANIZATION_PERSON_LINKED": {
               "ref": 1,
@@ -570,28 +555,26 @@
             "FINANCIAL_INFO": {
               "ref": 1,
               "ref_matched": 1,
-              "iv": 3,
-              "iv_matched": 3
+              "iv": 2,
+              "iv_matched": 2
             }
           }
         },
         "openai__gpt": {
-          "ref_items": 4,
+          "ref_items": 3,
           "ref_matched": 3,
           "intervals": 5,
           "intervals_matched": 5,
-          "must_beep": 4,
-          "covered": 2,
+          "must_beep": 3,
+          "covered": 1,
           "leaked": 2,
           "annotate_only": 0,
           "rendered_missing": false,
-          "missed_item_ids": [
-            "025354f09d2dcc71517beb7553441a85_R001"
-          ],
+          "missed_item_ids": [],
           "unmatched_intervals": [],
           "per_category": {
             "FULL_NAME": {
-              "ref": 2,
+              "ref": 1,
               "ref_matched": 1,
               "iv": 1,
               "iv_matched": 1
@@ -625,8 +608,8 @@
           5
         ],
         "elevenlabs__gpt": [
-          5,
-          5
+          4,
+          4
         ],
         "openai__gpt": [
           5,
@@ -634,14 +617,13 @@
         ]
       },
       "timing_offsets_ms": {
-        "n": 4,
-        "median": 680,
-        "p90": 860
+        "n": 3,
+        "median": 860,
+        "p90": 2820
       },
       "timing_offsets_raw": [
-        220,
         860,
-        420,
+        2820,
         680
       ],
       "speakers_languages": {
@@ -928,8 +910,8 @@
             "gemini"
           ],
           "public_figure": false,
-          "confidence": "high",
-          "spoken_text": "H D F C bank",
+          "confidence": "medium",
+          "spoken_text": "Axis PC Bank",
           "channel": null,
           "source_spans": [
             {
@@ -955,7 +937,6 @@
             "ORGANIZATION_PERSON_LINKED"
           ],
           "engines": [
-            "elevenlabs",
             "gemini"
           ],
           "public_figure": false,
@@ -963,12 +944,6 @@
           "spoken_text": "Ayush Health",
           "channel": null,
           "source_spans": [
-            {
-              "start_ms": 253420,
-              "end_ms": 253860,
-              "engine": "elevenlabs",
-              "channel": null
-            },
             {
               "start_ms": 252300,
               "end_ms": 257700,
@@ -980,37 +955,14 @@
           "action": "beep"
         },
         {
-          "start_ms": 321080,
-          "end_ms": 321720,
+          "start_ms": 321000,
+          "end_ms": 328100,
           "categories": [
             "ORGANIZATION_PERSON_LINKED"
           ],
           "engines": [
-            "elevenlabs"
-          ],
-          "public_figure": false,
-          "confidence": "high",
-          "spoken_text": "Ayu Health",
-          "channel": null,
-          "source_spans": [
-            {
-              "start_ms": 321080,
-              "end_ms": 321720,
-              "engine": "elevenlabs",
-              "channel": null
-            }
-          ],
-          "item_id": "06e8274b603dfddc4ff0a84ed09f1a85_R010",
-          "action": "beep"
-        },
-        {
-          "start_ms": 323460,
-          "end_ms": 324140,
-          "categories": [
-            "ORGANIZATION_PERSON_LINKED"
-          ],
-          "engines": [
-            "elevenlabs"
+            "elevenlabs",
+            "gemini"
           ],
           "public_figure": false,
           "confidence": "high",
@@ -1018,13 +970,31 @@
           "channel": null,
           "source_spans": [
             {
+              "start_ms": 321080,
+              "end_ms": 321720,
+              "engine": "elevenlabs",
+              "channel": null
+            },
+            {
               "start_ms": 323460,
               "end_ms": 324140,
               "engine": "elevenlabs",
               "channel": null
+            },
+            {
+              "start_ms": 321000,
+              "end_ms": 326300,
+              "engine": "gemini",
+              "channel": null
+            },
+            {
+              "start_ms": 322700,
+              "end_ms": 328100,
+              "engine": "gemini",
+              "channel": null
             }
           ],
-          "item_id": "06e8274b603dfddc4ff0a84ed09f1a85_R011",
+          "item_id": "06e8274b603dfddc4ff0a84ed09f1a85_R010",
           "action": "beep"
         },
         {
@@ -1038,7 +1008,7 @@
             "gemini"
           ],
           "public_figure": false,
-          "confidence": "medium",
+          "confidence": "high",
           "spoken_text": "ಸುಧೀರ್",
           "channel": null,
           "source_spans": [
@@ -1067,17 +1037,18 @@
               "channel": null
             }
           ],
-          "item_id": "06e8274b603dfddc4ff0a84ed09f1a85_R012",
+          "item_id": "06e8274b603dfddc4ff0a84ed09f1a85_R011",
           "action": "beep"
         },
         {
-          "start_ms": 447008,
-          "end_ms": 447558,
+          "start_ms": 446000,
+          "end_ms": 457500,
           "categories": [
             "ORGANIZATION_PERSON_LINKED"
           ],
           "engines": [
-            "elevenlabs"
+            "elevenlabs",
+            "gemini"
           ],
           "public_figure": false,
           "confidence": "high",
@@ -1089,26 +1060,7 @@
               "end_ms": 447558,
               "engine": "elevenlabs",
               "channel": null
-            }
-          ],
-          "item_id": "06e8274b603dfddc4ff0a84ed09f1a85_R013",
-          "action": "beep"
-        },
-        {
-          "start_ms": 449228,
-          "end_ms": 457500,
-          "categories": [
-            "ORGANIZATION_PERSON_LINKED"
-          ],
-          "engines": [
-            "elevenlabs",
-            "gemini"
-          ],
-          "public_figure": false,
-          "confidence": "high",
-          "spoken_text": "media assist",
-          "channel": null,
-          "source_spans": [
+            },
             {
               "start_ms": 449228,
               "end_ms": 449848,
@@ -1122,47 +1074,34 @@
               "channel": null
             },
             {
+              "start_ms": 446000,
+              "end_ms": 451500,
+              "engine": "gemini",
+              "channel": null
+            },
+            {
+              "start_ms": 449000,
+              "end_ms": 454500,
+              "engine": "gemini",
+              "channel": null
+            },
+            {
               "start_ms": 452000,
               "end_ms": 457500,
               "engine": "gemini",
               "channel": null
             }
           ],
-          "item_id": "06e8274b603dfddc4ff0a84ed09f1a85_R014",
+          "item_id": "06e8274b603dfddc4ff0a84ed09f1a85_R012",
           "action": "beep"
         },
         {
-          "start_ms": 457878,
-          "end_ms": 458248,
-          "categories": [
-            "ORGANIZATION_PERSON_LINKED"
-          ],
-          "engines": [
-            "elevenlabs"
-          ],
-          "public_figure": false,
-          "confidence": "high",
-          "spoken_text": "Ayu Health",
-          "channel": null,
-          "source_spans": [
-            {
-              "start_ms": 457878,
-              "end_ms": 458248,
-              "engine": "elevenlabs",
-              "channel": null
-            }
-          ],
-          "item_id": "06e8274b603dfddc4ff0a84ed09f1a85_R015",
-          "action": "beep"
-        },
-        {
-          "start_ms": 458000,
+          "start_ms": 459000,
           "end_ms": 466500,
           "categories": [
             "ORGANIZATION_PERSON_LINKED"
           ],
           "engines": [
-            "elevenlabs",
             "gemini"
           ],
           "public_figure": false,
@@ -1170,24 +1109,6 @@
           "spoken_text": "ವಿಕ್ರಮ್",
           "channel": null,
           "source_spans": [
-            {
-              "start_ms": 459228,
-              "end_ms": 459528,
-              "engine": "elevenlabs",
-              "channel": null
-            },
-            {
-              "start_ms": 461288,
-              "end_ms": 461608,
-              "engine": "elevenlabs",
-              "channel": null
-            },
-            {
-              "start_ms": 458000,
-              "end_ms": 463000,
-              "engine": "gemini",
-              "channel": null
-            },
             {
               "start_ms": 459000,
               "end_ms": 464000,
@@ -1201,28 +1122,37 @@
               "channel": null
             }
           ],
-          "item_id": "06e8274b603dfddc4ff0a84ed09f1a85_R016",
+          "item_id": "06e8274b603dfddc4ff0a84ed09f1a85_R013",
           "action": "beep"
         }
       ],
       "notes": [],
       "verifier_rejected": {
-        "elevenlabs": 0,
-        "gemini": 4
+        "elevenlabs": 4,
+        "gemini": 1
       },
       "configs": {
         "elevenlabs": {
-          "ref_items": 16,
-          "ref_matched": 16,
+          "ref_items": 13,
+          "ref_matched": 13,
           "intervals": 21,
-          "intervals_matched": 21,
-          "must_beep": 16,
-          "covered": 15,
-          "leaked": 1,
+          "intervals_matched": 20,
+          "must_beep": 13,
+          "covered": 11,
+          "leaked": 2,
           "annotate_only": 0,
           "rendered_missing": false,
           "missed_item_ids": [],
-          "unmatched_intervals": [],
+          "unmatched_intervals": [
+            {
+              "start_ms": 457878,
+              "end_ms": 458248,
+              "categories": [
+                "ORGANIZATION_PERSON_LINKED"
+              ],
+              "spoken_text": "Ayu Health"
+            }
+          ],
           "per_category": {
             "FULL_NAME": {
               "ref": 4,
@@ -1231,10 +1161,10 @@
               "iv_matched": 6
             },
             "ORGANIZATION_PERSON_LINKED": {
-              "ref": 11,
-              "ref_matched": 11,
+              "ref": 8,
+              "ref_matched": 8,
               "iv": 13,
-              "iv_matched": 13
+              "iv_matched": 12
             },
             "PHONE": {
               "ref": 2,
@@ -1245,18 +1175,16 @@
           }
         },
         "gemini": {
-          "ref_items": 16,
-          "ref_matched": 15,
+          "ref_items": 13,
+          "ref_matched": 13,
           "intervals": 22,
           "intervals_matched": 21,
-          "must_beep": 16,
-          "covered": 15,
-          "leaked": 1,
+          "must_beep": 13,
+          "covered": 13,
+          "leaked": 0,
           "annotate_only": 0,
           "rendered_missing": false,
-          "missed_item_ids": [
-            "06e8274b603dfddc4ff0a84ed09f1a85_R015"
-          ],
+          "missed_item_ids": [],
           "unmatched_intervals": [
             {
               "start_ms": 501000,
@@ -1275,8 +1203,8 @@
               "iv_matched": 7
             },
             "ORGANIZATION_PERSON_LINKED": {
-              "ref": 11,
-              "ref_matched": 10,
+              "ref": 8,
+              "ref_matched": 8,
               "iv": 12,
               "iv_matched": 12
             },
@@ -1295,22 +1223,19 @@
           }
         },
         "openai": {
-          "ref_items": 16,
+          "ref_items": 13,
           "ref_matched": 10,
           "intervals": 16,
           "intervals_matched": 12,
-          "must_beep": 16,
+          "must_beep": 13,
           "covered": 6,
-          "leaked": 10,
+          "leaked": 7,
           "annotate_only": 0,
           "rendered_missing": false,
           "missed_item_ids": [
             "06e8274b603dfddc4ff0a84ed09f1a85_R001",
             "06e8274b603dfddc4ff0a84ed09f1a85_R004",
-            "06e8274b603dfddc4ff0a84ed09f1a85_R011",
-            "06e8274b603dfddc4ff0a84ed09f1a85_R013",
-            "06e8274b603dfddc4ff0a84ed09f1a85_R014",
-            "06e8274b603dfddc4ff0a84ed09f1a85_R015"
+            "06e8274b603dfddc4ff0a84ed09f1a85_R012"
           ],
           "unmatched_intervals": [
             {
@@ -1354,7 +1279,7 @@
               "iv_matched": 5
             },
             "ORGANIZATION_PERSON_LINKED": {
-              "ref": 11,
+              "ref": 8,
               "ref_matched": 6,
               "iv": 6,
               "iv_matched": 5
@@ -1368,61 +1293,78 @@
           }
         },
         "elevenlabs__gpt": {
-          "ref_items": 16,
-          "ref_matched": 13,
-          "intervals": 16,
-          "intervals_matched": 16,
-          "must_beep": 16,
-          "covered": 13,
+          "ref_items": 13,
+          "ref_matched": 12,
+          "intervals": 21,
+          "intervals_matched": 19,
+          "must_beep": 13,
+          "covered": 10,
           "leaked": 3,
           "annotate_only": 0,
           "rendered_missing": false,
           "missed_item_ids": [
-            "06e8274b603dfddc4ff0a84ed09f1a85_R008",
-            "06e8274b603dfddc4ff0a84ed09f1a85_R010",
-            "06e8274b603dfddc4ff0a84ed09f1a85_R012"
+            "06e8274b603dfddc4ff0a84ed09f1a85_R008"
           ],
-          "unmatched_intervals": [],
+          "unmatched_intervals": [
+            {
+              "start_ms": 347400,
+              "end_ms": 347990,
+              "categories": [
+                "ASSIGNED_ID"
+              ],
+              "spoken_text": "sixteen days"
+            },
+            {
+              "start_ms": 457878,
+              "end_ms": 458248,
+              "categories": [
+                "ORGANIZATION_PERSON_LINKED"
+              ],
+              "spoken_text": "Ayu Health"
+            }
+          ],
           "per_category": {
             "FULL_NAME": {
               "ref": 4,
-              "ref_matched": 3,
-              "iv": 4,
-              "iv_matched": 4
+              "ref_matched": 4,
+              "iv": 6,
+              "iv_matched": 6
             },
             "ORGANIZATION_PERSON_LINKED": {
-              "ref": 11,
-              "ref_matched": 9,
-              "iv": 10,
-              "iv_matched": 10
+              "ref": 8,
+              "ref_matched": 7,
+              "iv": 12,
+              "iv_matched": 11
             },
             "PHONE": {
               "ref": 2,
               "ref_matched": 2,
               "iv": 2,
               "iv_matched": 2
+            },
+            "ASSIGNED_ID": {
+              "ref": 0,
+              "ref_matched": 0,
+              "iv": 1,
+              "iv_matched": 0
             }
           }
         },
         "openai__gpt": {
-          "ref_items": 16,
-          "ref_matched": 8,
-          "intervals": 14,
-          "intervals_matched": 10,
-          "must_beep": 16,
-          "covered": 4,
-          "leaked": 12,
+          "ref_items": 13,
+          "ref_matched": 9,
+          "intervals": 15,
+          "intervals_matched": 11,
+          "must_beep": 13,
+          "covered": 5,
+          "leaked": 8,
           "annotate_only": 0,
           "rendered_missing": false,
           "missed_item_ids": [
             "06e8274b603dfddc4ff0a84ed09f1a85_R001",
-            "06e8274b603dfddc4ff0a84ed09f1a85_R002",
             "06e8274b603dfddc4ff0a84ed09f1a85_R004",
             "06e8274b603dfddc4ff0a84ed09f1a85_R008",
-            "06e8274b603dfddc4ff0a84ed09f1a85_R011",
-            "06e8274b603dfddc4ff0a84ed09f1a85_R013",
-            "06e8274b603dfddc4ff0a84ed09f1a85_R014",
-            "06e8274b603dfddc4ff0a84ed09f1a85_R015"
+            "06e8274b603dfddc4ff0a84ed09f1a85_R012"
           ],
           "unmatched_intervals": [
             {
@@ -1442,34 +1384,34 @@
               "spoken_text": "PPMS"
             },
             {
+              "start_ms": 245480,
+              "end_ms": 245820,
+              "categories": [
+                "ORGANIZATION_PERSON_LINKED"
+              ],
+              "spoken_text": "KPMC"
+            },
+            {
               "start_ms": 380660,
               "end_ms": 381520,
               "categories": [
                 "FULL_NAME"
               ],
               "spoken_text": "Sujaya"
-            },
-            {
-              "start_ms": 485395,
-              "end_ms": 486660,
-              "categories": [
-                "FULL_NAME"
-              ],
-              "spoken_text": "Vikram"
             }
           ],
           "per_category": {
             "FULL_NAME": {
               "ref": 4,
               "ref_matched": 3,
-              "iv": 8,
+              "iv": 7,
               "iv_matched": 5
             },
             "ORGANIZATION_PERSON_LINKED": {
-              "ref": 11,
-              "ref_matched": 4,
-              "iv": 4,
-              "iv_matched": 3
+              "ref": 8,
+              "ref_matched": 5,
+              "iv": 6,
+              "iv_matched": 4
             },
             "PHONE": {
               "ref": 2,
@@ -1482,7 +1424,7 @@
       },
       "pverify": {
         "elevenlabs": [
-          17,
+          20,
           21
         ],
         "gemini": [
@@ -1494,18 +1436,18 @@
           16
         ],
         "elevenlabs__gpt": [
-          12,
-          16
+          20,
+          21
         ],
         "openai__gpt": [
-          12,
-          14
+          15,
+          15
         ]
       },
       "timing_offsets_ms": {
         "n": 17,
         "median": 520,
-        "p90": 1270
+        "p90": 1220
       },
       "timing_offsets_raw": [
         520,
@@ -1518,13 +1460,13 @@
         620,
         600,
         1270,
-        1120,
+        80,
+        760,
         88,
         388,
-        2772,
-        152,
+        1008,
         228,
-        212
+        152
       ],
       "speakers_languages": {
         "per_listener": {
@@ -1695,11 +1637,12 @@
         },
         {
           "start_ms": 46700,
-          "end_ms": 48000,
+          "end_ms": 48460,
           "categories": [
             "HEALTH_MEDICAL_INFO"
           ],
           "engines": [
+            "elevenlabs",
             "gemini"
           ],
           "public_figure": false,
@@ -1707,6 +1650,12 @@
           "spoken_text": "medications post-surgery",
           "channel": null,
           "source_spans": [
+            {
+              "start_ms": 46880,
+              "end_ms": 48460,
+              "engine": "elevenlabs",
+              "channel": null
+            },
             {
               "start_ms": 46700,
               "end_ms": 48000,
@@ -1760,7 +1709,7 @@
           ],
           "public_figure": false,
           "confidence": "high",
-          "spoken_text": "nine double nine eight double zero one nine zero double seven",
+          "spoken_text": "nine nine eight zero zero one nine zero seven seven",
           "channel": null,
           "source_spans": [
             {
@@ -1840,27 +1789,87 @@
           ],
           "item_id": "5252dea2cb5c97b14aa7dcf365211a85_R010",
           "action": "beep"
+        },
+        {
+          "start_ms": 186360,
+          "end_ms": 189000,
+          "categories": [
+            "ORGANIZATION_PERSON_LINKED"
+          ],
+          "engines": [
+            "elevenlabs",
+            "gemini"
+          ],
+          "public_figure": false,
+          "confidence": "high",
+          "spoken_text": "State Bank of India",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 186360,
+              "end_ms": 187200,
+              "engine": "elevenlabs",
+              "channel": null
+            },
+            {
+              "start_ms": 187500,
+              "end_ms": 189000,
+              "engine": "gemini",
+              "channel": null
+            }
+          ],
+          "item_id": "5252dea2cb5c97b14aa7dcf365211a85_R011",
+          "action": "beep"
+        },
+        {
+          "start_ms": 285700,
+          "end_ms": 293000,
+          "categories": [
+            "FINANCIAL_INFO"
+          ],
+          "engines": [
+            "gemini"
+          ],
+          "public_figure": false,
+          "confidence": "medium",
+          "spoken_text": "three thousand three hundred",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 285700,
+              "end_ms": 291100,
+              "engine": "gemini",
+              "channel": null
+            },
+            {
+              "start_ms": 287000,
+              "end_ms": 293000,
+              "engine": "gemini",
+              "channel": null
+            }
+          ],
+          "item_id": "5252dea2cb5c97b14aa7dcf365211a85_R012",
+          "action": "beep"
         }
       ],
       "notes": [],
       "verifier_rejected": {
-        "elevenlabs": 6,
-        "gemini": 6
+        "elevenlabs": 4,
+        "gemini": 3
       },
       "configs": {
         "elevenlabs": {
-          "ref_items": 10,
-          "ref_matched": 8,
+          "ref_items": 12,
+          "ref_matched": 11,
           "intervals": 14,
-          "intervals_matched": 8,
-          "must_beep": 9,
-          "covered": 8,
-          "leaked": 1,
+          "intervals_matched": 11,
+          "must_beep": 11,
+          "covered": 9,
+          "leaked": 2,
           "annotate_only": 1,
           "rendered_missing": false,
           "missed_item_ids": [
-            "5252dea2cb5c97b14aa7dcf365211a85_R004",
-            "5252dea2cb5c97b14aa7dcf365211a85_R006"
+            "5252dea2cb5c97b14aa7dcf365211a85_R004"
           ],
           "unmatched_intervals": [
             {
@@ -1870,14 +1879,6 @@
                 "FINANCIAL_INFO"
               ],
               "spoken_text": "forty-two thousand"
-            },
-            {
-              "start_ms": 186360,
-              "end_ms": 187200,
-              "categories": [
-                "ORGANIZATION_PERSON_LINKED"
-              ],
-              "spoken_text": "State Bank of India"
             },
             {
               "start_ms": 284240,
@@ -1894,22 +1895,6 @@
                 "HEALTH_MEDICAL_INFO"
               ],
               "spoken_text": "X-rays"
-            },
-            {
-              "start_ms": 287000,
-              "end_ms": 287780,
-              "categories": [
-                "FINANCIAL_INFO"
-              ],
-              "spoken_text": "three thousand"
-            },
-            {
-              "start_ms": 288980,
-              "end_ms": 290510,
-              "categories": [
-                "FINANCIAL_INFO"
-              ],
-              "spoken_text": "three thousand three hundred"
             }
           ],
           "per_category": {
@@ -1920,16 +1905,16 @@
               "iv_matched": 3
             },
             "ORGANIZATION_PERSON_LINKED": {
-              "ref": 3,
-              "ref_matched": 3,
+              "ref": 4,
+              "ref_matched": 4,
               "iv": 4,
-              "iv_matched": 3
+              "iv_matched": 4
             },
             "HEALTH_MEDICAL_INFO": {
               "ref": 1,
-              "ref_matched": 0,
-              "iv": 2,
-              "iv_matched": 0
+              "ref_matched": 1,
+              "iv": 3,
+              "iv_matched": 1
             },
             "PHONE": {
               "ref": 2,
@@ -1938,25 +1923,26 @@
               "iv_matched": 2
             },
             "FINANCIAL_INFO": {
-              "ref": 0,
-              "ref_matched": 0,
-              "iv": 3,
-              "iv_matched": 0
+              "ref": 1,
+              "ref_matched": 1,
+              "iv": 2,
+              "iv_matched": 1
             }
           }
         },
         "gemini": {
-          "ref_items": 10,
-          "ref_matched": 9,
-          "intervals": 15,
-          "intervals_matched": 9,
-          "must_beep": 9,
-          "covered": 8,
+          "ref_items": 12,
+          "ref_matched": 10,
+          "intervals": 14,
+          "intervals_matched": 12,
+          "must_beep": 11,
+          "covered": 10,
           "leaked": 1,
           "annotate_only": 1,
           "rendered_missing": false,
           "missed_item_ids": [
-            "5252dea2cb5c97b14aa7dcf365211a85_R005"
+            "5252dea2cb5c97b14aa7dcf365211a85_R005",
+            "5252dea2cb5c97b14aa7dcf365211a85_R006"
           ],
           "unmatched_intervals": [
             {
@@ -1968,44 +1954,12 @@
               "spoken_text": "forty-two thousand"
             },
             {
-              "start_ms": 187500,
-              "end_ms": 189000,
-              "categories": [
-                "ORGANIZATION_PERSON_LINKED"
-              ],
-              "spoken_text": "State Bank of India"
-            },
-            {
               "start_ms": 282900,
               "end_ms": 287900,
               "categories": [
                 "HEALTH_MEDICAL_INFO"
               ],
               "spoken_text": "ECG"
-            },
-            {
-              "start_ms": 283600,
-              "end_ms": 288900,
-              "categories": [
-                "HEALTH_MEDICAL_INFO"
-              ],
-              "spoken_text": "blood test"
-            },
-            {
-              "start_ms": 285700,
-              "end_ms": 291100,
-              "categories": [
-                "FINANCIAL_INFO"
-              ],
-              "spoken_text": "three thousand"
-            },
-            {
-              "start_ms": 287000,
-              "end_ms": 293000,
-              "categories": [
-                "FINANCIAL_INFO"
-              ],
-              "spoken_text": "three thousand three hundred"
             }
           ],
           "per_category": {
@@ -2016,15 +1970,15 @@
               "iv_matched": 3
             },
             "ORGANIZATION_PERSON_LINKED": {
-              "ref": 3,
-              "ref_matched": 3,
+              "ref": 4,
+              "ref_matched": 4,
               "iv": 4,
-              "iv_matched": 3
+              "iv_matched": 4
             },
             "HEALTH_MEDICAL_INFO": {
               "ref": 1,
-              "ref_matched": 1,
-              "iv": 3,
+              "ref_matched": 0,
+              "iv": 2,
               "iv_matched": 1
             },
             "PHONE": {
@@ -2034,26 +1988,27 @@
               "iv_matched": 2
             },
             "FINANCIAL_INFO": {
-              "ref": 0,
-              "ref_matched": 0,
+              "ref": 1,
+              "ref_matched": 1,
               "iv": 3,
-              "iv_matched": 0
+              "iv_matched": 2
             }
           }
         },
         "openai": {
-          "ref_items": 10,
-          "ref_matched": 8,
+          "ref_items": 12,
+          "ref_matched": 9,
           "intervals": 10,
-          "intervals_matched": 8,
-          "must_beep": 9,
-          "covered": 5,
-          "leaked": 4,
+          "intervals_matched": 9,
+          "must_beep": 11,
+          "covered": 6,
+          "leaked": 5,
           "annotate_only": 1,
           "rendered_missing": false,
           "missed_item_ids": [
             "5252dea2cb5c97b14aa7dcf365211a85_R005",
-            "5252dea2cb5c97b14aa7dcf365211a85_R006"
+            "5252dea2cb5c97b14aa7dcf365211a85_R006",
+            "5252dea2cb5c97b14aa7dcf365211a85_R012"
           ],
           "unmatched_intervals": [
             {
@@ -2063,14 +2018,6 @@
                 "FINANCIAL_INFO"
               ],
               "spoken_text": "42 000 rupees"
-            },
-            {
-              "start_ms": 186240,
-              "end_ms": 187920,
-              "categories": [
-                "ORGANIZATION_PERSON_LINKED"
-              ],
-              "spoken_text": "State Bank of India Transfer Check Unit"
             }
           ],
           "per_category": {
@@ -2081,10 +2028,10 @@
               "iv_matched": 3
             },
             "ORGANIZATION_PERSON_LINKED": {
-              "ref": 3,
-              "ref_matched": 3,
+              "ref": 4,
+              "ref_matched": 4,
               "iv": 4,
-              "iv_matched": 3
+              "iv_matched": 4
             },
             "HEALTH_MEDICAL_INFO": {
               "ref": 1,
@@ -2099,7 +2046,7 @@
               "iv_matched": 2
             },
             "FINANCIAL_INFO": {
-              "ref": 0,
+              "ref": 1,
               "ref_matched": 0,
               "iv": 1,
               "iv_matched": 0
@@ -2107,17 +2054,19 @@
           }
         },
         "elevenlabs__gpt": {
-          "ref_items": 10,
+          "ref_items": 12,
           "ref_matched": 9,
-          "intervals": 12,
+          "intervals": 10,
           "intervals_matched": 9,
-          "must_beep": 9,
-          "covered": 8,
-          "leaked": 1,
+          "must_beep": 11,
+          "covered": 7,
+          "leaked": 4,
           "annotate_only": 1,
           "rendered_missing": false,
           "missed_item_ids": [
-            "5252dea2cb5c97b14aa7dcf365211a85_R004"
+            "5252dea2cb5c97b14aa7dcf365211a85_R002",
+            "5252dea2cb5c97b14aa7dcf365211a85_R004",
+            "5252dea2cb5c97b14aa7dcf365211a85_R011"
           ],
           "unmatched_intervals": [
             {
@@ -2127,22 +2076,6 @@
                 "FINANCIAL_INFO"
               ],
               "spoken_text": "forty-two thousand"
-            },
-            {
-              "start_ms": 186360,
-              "end_ms": 187200,
-              "categories": [
-                "ORGANIZATION_PERSON_LINKED"
-              ],
-              "spoken_text": "State Bank of India"
-            },
-            {
-              "start_ms": 288980,
-              "end_ms": 290510,
-              "categories": [
-                "FINANCIAL_INFO"
-              ],
-              "spoken_text": "three thousand three hundred"
             }
           ],
           "per_category": {
@@ -2153,10 +2086,10 @@
               "iv_matched": 3
             },
             "ORGANIZATION_PERSON_LINKED": {
-              "ref": 3,
-              "ref_matched": 3,
-              "iv": 4,
-              "iv_matched": 3
+              "ref": 4,
+              "ref_matched": 2,
+              "iv": 2,
+              "iv_matched": 2
             },
             "HEALTH_MEDICAL_INFO": {
               "ref": 1,
@@ -2171,26 +2104,28 @@
               "iv_matched": 2
             },
             "FINANCIAL_INFO": {
-              "ref": 0,
-              "ref_matched": 0,
+              "ref": 1,
+              "ref_matched": 1,
               "iv": 2,
-              "iv_matched": 0
+              "iv_matched": 1
             }
           }
         },
         "openai__gpt": {
-          "ref_items": 10,
+          "ref_items": 12,
           "ref_matched": 8,
           "intervals": 9,
           "intervals_matched": 8,
-          "must_beep": 9,
+          "must_beep": 11,
           "covered": 5,
-          "leaked": 4,
+          "leaked": 6,
           "annotate_only": 1,
           "rendered_missing": false,
           "missed_item_ids": [
             "5252dea2cb5c97b14aa7dcf365211a85_R005",
-            "5252dea2cb5c97b14aa7dcf365211a85_R006"
+            "5252dea2cb5c97b14aa7dcf365211a85_R006",
+            "5252dea2cb5c97b14aa7dcf365211a85_R011",
+            "5252dea2cb5c97b14aa7dcf365211a85_R012"
           ],
           "unmatched_intervals": [
             {
@@ -2210,7 +2145,7 @@
               "iv_matched": 3
             },
             "ORGANIZATION_PERSON_LINKED": {
-              "ref": 3,
+              "ref": 4,
               "ref_matched": 3,
               "iv": 3,
               "iv_matched": 3
@@ -2228,7 +2163,7 @@
               "iv_matched": 2
             },
             "FINANCIAL_INFO": {
-              "ref": 0,
+              "ref": 1,
               "ref_matched": 0,
               "iv": 1,
               "iv_matched": 0
@@ -2238,20 +2173,20 @@
       },
       "pverify": {
         "elevenlabs": [
-          9,
+          10,
           14
         ],
         "gemini": [
-          10,
-          15
+          12,
+          14
         ],
         "openai": [
-          10,
+          9,
           10
         ],
         "elevenlabs__gpt": [
-          9,
-          12
+          8,
+          10
         ],
         "openai__gpt": [
           9,
@@ -2259,18 +2194,20 @@
         ]
       },
       "timing_offsets_ms": {
-        "n": 7,
+        "n": 9,
         "median": 270,
-        "p90": 740
+        "p90": 1140
       },
       "timing_offsets_raw": [
         40,
         270,
         220,
+        180,
         740,
         1475,
         540,
-        260
+        260,
+        1140
       ],
       "speakers_languages": {
         "per_listener": {
@@ -2362,7 +2299,7 @@
         "openai__gpt": {
           "ref_items": 0,
           "ref_matched": 0,
-          "intervals": 0,
+          "intervals": 23,
           "intervals_matched": 0,
           "must_beep": 0,
           "covered": 0,
@@ -2370,8 +2307,200 @@
           "annotate_only": 0,
           "rendered_missing": false,
           "missed_item_ids": [],
-          "unmatched_intervals": [],
-          "per_category": {}
+          "unmatched_intervals": [
+            {
+              "start_ms": 7640,
+              "end_ms": 7840,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "রাকার"
+            },
+            {
+              "start_ms": 11640,
+              "end_ms": 12100,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "সুস্মিতার"
+            },
+            {
+              "start_ms": 14340,
+              "end_ms": 14960,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "অনন্তো জিত"
+            },
+            {
+              "start_ms": 14960,
+              "end_ms": 15260,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "রাকার"
+            },
+            {
+              "start_ms": 77573,
+              "end_ms": 77634,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "রাকা"
+            },
+            {
+              "start_ms": 107860,
+              "end_ms": 107861,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "অনন্তো জিতে"
+            },
+            {
+              "start_ms": 144760,
+              "end_ms": 144995,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "রাকার"
+            },
+            {
+              "start_ms": 147398,
+              "end_ms": 147775,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "শুষ্মিতা"
+            },
+            {
+              "start_ms": 148906,
+              "end_ms": 149282,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "শুষ্মিতা"
+            },
+            {
+              "start_ms": 294462,
+              "end_ms": 294763,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "রেহান"
+            },
+            {
+              "start_ms": 357040,
+              "end_ms": 357158,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "রাকা"
+            },
+            {
+              "start_ms": 383800,
+              "end_ms": 385160,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "রাকা"
+            },
+            {
+              "start_ms": 387840,
+              "end_ms": 387841,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "রাকা"
+            },
+            {
+              "start_ms": 387840,
+              "end_ms": 388320,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "রেহানের"
+            },
+            {
+              "start_ms": 389300,
+              "end_ms": 389740,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "রাকার"
+            },
+            {
+              "start_ms": 415460,
+              "end_ms": 416000,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "রেহান"
+            },
+            {
+              "start_ms": 483460,
+              "end_ms": 484140,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "সোষ্মিতা"
+            },
+            {
+              "start_ms": 486660,
+              "end_ms": 486980,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "রাকার"
+            },
+            {
+              "start_ms": 487360,
+              "end_ms": 488100,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "অনন্তো জিতের"
+            },
+            {
+              "start_ms": 490300,
+              "end_ms": 490600,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "রাকা"
+            },
+            {
+              "start_ms": 498920,
+              "end_ms": 499380,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "অনন্তো জিত"
+            },
+            {
+              "start_ms": 501280,
+              "end_ms": 501640,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "রাকা"
+            },
+            {
+              "start_ms": 501880,
+              "end_ms": 502600,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "অনন্তো জিতের"
+            }
+          ],
+          "per_category": {
+            "FULL_NAME": {
+              "ref": 0,
+              "ref_matched": 0,
+              "iv": 23,
+              "iv_matched": 0
+            }
+          }
         }
       },
       "pverify": {
@@ -2393,7 +2522,7 @@
         ],
         "openai__gpt": [
           0,
-          0
+          23
         ]
       },
       "timing_offsets_ms": {
@@ -2492,7 +2621,7 @@
         "openai__gpt": {
           "ref_items": 0,
           "ref_matched": 0,
-          "intervals": 0,
+          "intervals": 65,
           "intervals_matched": 0,
           "must_beep": 0,
           "covered": 0,
@@ -2500,8 +2629,542 @@
           "annotate_only": 0,
           "rendered_missing": false,
           "missed_item_ids": [],
-          "unmatched_intervals": [],
-          "per_category": {}
+          "unmatched_intervals": [
+            {
+              "start_ms": 6360,
+              "end_ms": 7080,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "तनिमा"
+            },
+            {
+              "start_ms": 16740,
+              "end_ms": 17140,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "तनिमार"
+            },
+            {
+              "start_ms": 19220,
+              "end_ms": 20100,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "अभीजीत"
+            },
+            {
+              "start_ms": 23300,
+              "end_ms": 23820,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "तनिमा"
+            },
+            {
+              "start_ms": 37680,
+              "end_ms": 38080,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "तनिमा"
+            },
+            {
+              "start_ms": 41720,
+              "end_ms": 42560,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "उभीजीद"
+            },
+            {
+              "start_ms": 61860,
+              "end_ms": 62780,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "उभीजीद गांगुली"
+            },
+            {
+              "start_ms": 72180,
+              "end_ms": 73180,
+              "categories": [
+                "HEALTH_MEDICAL_INFO"
+              ],
+              "spoken_text": "अशुस्थो"
+            },
+            {
+              "start_ms": 83080,
+              "end_ms": 83620,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "उभीजीद"
+            },
+            {
+              "start_ms": 86040,
+              "end_ms": 86660,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "तनी मा"
+            },
+            {
+              "start_ms": 90960,
+              "end_ms": 91400,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "उभीजीद"
+            },
+            {
+              "start_ms": 112680,
+              "end_ms": 113320,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "उभीजीद"
+            },
+            {
+              "start_ms": 119020,
+              "end_ms": 119340,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "उभीजीद"
+            },
+            {
+              "start_ms": 199960,
+              "end_ms": 200500,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "अभिजित"
+            },
+            {
+              "start_ms": 231400,
+              "end_ms": 232100,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "अभीजित"
+            },
+            {
+              "start_ms": 238960,
+              "end_ms": 242200,
+              "categories": [
+                "HEALTH_MEDICAL_INFO"
+              ],
+              "spoken_text": "शारीरिक आर मानुशिक भाबे खूब क्लांतो छिलो"
+            },
+            {
+              "start_ms": 250380,
+              "end_ms": 250720,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "तणी मा"
+            },
+            {
+              "start_ms": 292040,
+              "end_ms": 292660,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "उभीजितेर"
+            },
+            {
+              "start_ms": 324460,
+              "end_ms": 325020,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "तनिमा"
+            },
+            {
+              "start_ms": 381260,
+              "end_ms": 382160,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "तनिमा"
+            },
+            {
+              "start_ms": 385180,
+              "end_ms": 386080,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "अभीजीतेर"
+            },
+            {
+              "start_ms": 386700,
+              "end_ms": 387400,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "रन्जा"
+            },
+            {
+              "start_ms": 389000,
+              "end_ms": 389680,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "रन्जा"
+            },
+            {
+              "start_ms": 397100,
+              "end_ms": 397900,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "तनिमा"
+            },
+            {
+              "start_ms": 397900,
+              "end_ms": 398360,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "रन्जार"
+            },
+            {
+              "start_ms": 412640,
+              "end_ms": 413400,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "तनिमा"
+            },
+            {
+              "start_ms": 413540,
+              "end_ms": 414000,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "अभिजित"
+            },
+            {
+              "start_ms": 417120,
+              "end_ms": 417580,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "अभिजितेर"
+            },
+            {
+              "start_ms": 425140,
+              "end_ms": 425540,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "तनिमा"
+            },
+            {
+              "start_ms": 460460,
+              "end_ms": 460880,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "तनिमा"
+            },
+            {
+              "start_ms": 461000,
+              "end_ms": 461500,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "अभिजित"
+            },
+            {
+              "start_ms": 486400,
+              "end_ms": 487380,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "तनिमा"
+            },
+            {
+              "start_ms": 489480,
+              "end_ms": 489840,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "अभिजित"
+            },
+            {
+              "start_ms": 493460,
+              "end_ms": 493700,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "तनिमा"
+            },
+            {
+              "start_ms": 497120,
+              "end_ms": 498020,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "अभिजित"
+            },
+            {
+              "start_ms": 501160,
+              "end_ms": 501560,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "अभिजित"
+            },
+            {
+              "start_ms": 531400,
+              "end_ms": 531560,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "तनिमा"
+            },
+            {
+              "start_ms": 537400,
+              "end_ms": 537800,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "रणजा"
+            },
+            {
+              "start_ms": 540940,
+              "end_ms": 541500,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "तनिमा"
+            },
+            {
+              "start_ms": 546580,
+              "end_ms": 546640,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "अभिजीत"
+            },
+            {
+              "start_ms": 553680,
+              "end_ms": 554140,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "तनिमा"
+            },
+            {
+              "start_ms": 556280,
+              "end_ms": 556620,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "अभिजीत"
+            },
+            {
+              "start_ms": 565660,
+              "end_ms": 565960,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "रनजा"
+            },
+            {
+              "start_ms": 581840,
+              "end_ms": 582240,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "तनिमार"
+            },
+            {
+              "start_ms": 583480,
+              "end_ms": 583860,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "अभीजीतेर"
+            },
+            {
+              "start_ms": 586140,
+              "end_ms": 586400,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "तनिमा"
+            },
+            {
+              "start_ms": 596020,
+              "end_ms": 596360,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "तनिमा"
+            },
+            {
+              "start_ms": 615160,
+              "end_ms": 615580,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "तनिमा"
+            },
+            {
+              "start_ms": 634420,
+              "end_ms": 634640,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "ओभीजीत"
+            },
+            {
+              "start_ms": 637400,
+              "end_ms": 637800,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "तनिमा"
+            },
+            {
+              "start_ms": 641960,
+              "end_ms": 642380,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "ओभीजीत"
+            },
+            {
+              "start_ms": 643200,
+              "end_ms": 643560,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "तनिमार"
+            },
+            {
+              "start_ms": 665240,
+              "end_ms": 665620,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "तनिमार"
+            },
+            {
+              "start_ms": 665920,
+              "end_ms": 666880,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "ओभीजीतेर"
+            },
+            {
+              "start_ms": 668820,
+              "end_ms": 669340,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "तनिमार"
+            },
+            {
+              "start_ms": 716080,
+              "end_ms": 716500,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "अभीजित"
+            },
+            {
+              "start_ms": 723880,
+              "end_ms": 724600,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "तनिमा"
+            },
+            {
+              "start_ms": 734100,
+              "end_ms": 734500,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "तनिमार"
+            },
+            {
+              "start_ms": 736880,
+              "end_ms": 737420,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "उभिजित"
+            },
+            {
+              "start_ms": 767480,
+              "end_ms": 767740,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "उभिजीत"
+            },
+            {
+              "start_ms": 786000,
+              "end_ms": 786540,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "उभिजीत"
+            },
+            {
+              "start_ms": 803500,
+              "end_ms": 803860,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "तनिमा"
+            },
+            {
+              "start_ms": 858740,
+              "end_ms": 859300,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "अभीजीतेर"
+            },
+            {
+              "start_ms": 862580,
+              "end_ms": 863560,
+              "categories": [
+                "HEALTH_MEDICAL_INFO"
+              ],
+              "spoken_text": "अभीजीतेर इइ अबस्था"
+            },
+            {
+              "start_ms": 863740,
+              "end_ms": 864160,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "तनिमा"
+            }
+          ],
+          "per_category": {
+            "FULL_NAME": {
+              "ref": 0,
+              "ref_matched": 0,
+              "iv": 62,
+              "iv_matched": 0
+            },
+            "HEALTH_MEDICAL_INFO": {
+              "ref": 0,
+              "ref_matched": 0,
+              "iv": 3,
+              "iv_matched": 0
+            }
+          }
         }
       },
       "pverify": {
@@ -2522,8 +3185,8 @@
           0
         ],
         "openai__gpt": [
-          0,
-          0
+          64,
+          65
         ]
       },
       "timing_offsets_ms": {
@@ -2624,7 +3287,7 @@
         "openai__gpt": {
           "ref_items": 0,
           "ref_matched": 0,
-          "intervals": 0,
+          "intervals": 11,
           "intervals_matched": 0,
           "must_beep": 0,
           "covered": 0,
@@ -2632,8 +3295,104 @@
           "annotate_only": 0,
           "rendered_missing": false,
           "missed_item_ids": [],
-          "unmatched_intervals": [],
-          "per_category": {}
+          "unmatched_intervals": [
+            {
+              "start_ms": 139300,
+              "end_ms": 139301,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "নিধির"
+            },
+            {
+              "start_ms": 142380,
+              "end_ms": 142860,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "নিধির"
+            },
+            {
+              "start_ms": 145920,
+              "end_ms": 146940,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "রোহান"
+            },
+            {
+              "start_ms": 148960,
+              "end_ms": 149560,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "সামাইর"
+            },
+            {
+              "start_ms": 185780,
+              "end_ms": 186080,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "আশিস"
+            },
+            {
+              "start_ms": 222779,
+              "end_ms": 222926,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "আশিস"
+            },
+            {
+              "start_ms": 251942,
+              "end_ms": 252198,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "সামাইরার"
+            },
+            {
+              "start_ms": 252901,
+              "end_ms": 253028,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "নিধি"
+            },
+            {
+              "start_ms": 281660,
+              "end_ms": 282140,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "নিধি"
+            },
+            {
+              "start_ms": 294420,
+              "end_ms": 294780,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "নিধি"
+            },
+            {
+              "start_ms": 745340,
+              "end_ms": 745960,
+              "categories": [
+                "FULL_NAME"
+              ],
+              "spoken_text": "নিথির"
+            }
+          ],
+          "per_category": {
+            "FULL_NAME": {
+              "ref": 0,
+              "ref_matched": 0,
+              "iv": 11,
+              "iv_matched": 0
+            }
+          }
         }
       },
       "pverify": {
@@ -2654,8 +3413,8 @@
           0
         ],
         "openai__gpt": [
-          0,
-          0
+          11,
+          11
         ]
       },
       "timing_offsets_ms": {
@@ -2827,6 +3586,7 @@
             "FULL_NAME"
           ],
           "engines": [
+            "elevenlabs",
             "gemini"
           ],
           "public_figure": false,
@@ -2834,6 +3594,12 @@
           "spoken_text": "నూతన్",
           "channel": null,
           "source_spans": [
+            {
+              "start_ms": 7260,
+              "end_ms": 7440,
+              "engine": "elevenlabs",
+              "channel": null
+            },
             {
               "start_ms": 7200,
               "end_ms": 7600,
@@ -2900,12 +3666,13 @@
           "action": "beep"
         },
         {
-          "start_ms": 21300,
+          "start_ms": 20620,
           "end_ms": 22100,
           "categories": [
             "FULL_NAME"
           ],
           "engines": [
+            "elevenlabs",
             "gemini"
           ],
           "public_figure": false,
@@ -2913,6 +3680,12 @@
           "spoken_text": "రాజేంద్ర చారి",
           "channel": null,
           "source_spans": [
+            {
+              "start_ms": 20620,
+              "end_ms": 21150,
+              "engine": "elevenlabs",
+              "channel": null
+            },
             {
               "start_ms": 21300,
               "end_ms": 22100,
@@ -2930,6 +3703,7 @@
             "PHONE"
           ],
           "engines": [
+            "elevenlabs",
             "gemini"
           ],
           "public_figure": false,
@@ -2938,6 +3712,12 @@
           "channel": null,
           "source_spans": [
             {
+              "start_ms": 82460,
+              "end_ms": 83640,
+              "engine": "elevenlabs",
+              "channel": null
+            },
+            {
               "start_ms": 81300,
               "end_ms": 84400,
               "engine": "gemini",
@@ -2945,6 +3725,30 @@
             }
           ],
           "item_id": "c34897552fdcca8ae3f8d5a7015d1a85_R005",
+          "action": "beep"
+        },
+        {
+          "start_ms": 101600,
+          "end_ms": 102070,
+          "categories": [
+            "ORGANIZATION_PERSON_LINKED"
+          ],
+          "engines": [
+            "elevenlabs"
+          ],
+          "public_figure": false,
+          "confidence": "high",
+          "spoken_text": "Ayu Health",
+          "channel": null,
+          "source_spans": [
+            {
+              "start_ms": 101600,
+              "end_ms": 102070,
+              "engine": "elevenlabs",
+              "channel": null
+            }
+          ],
+          "item_id": "c34897552fdcca8ae3f8d5a7015d1a85_R006",
           "action": "beep"
         },
         {
@@ -2964,7 +3768,7 @@
           "source_spans": [
             {
               "start_ms": 121960,
-              "end_ms": 122470,
+              "end_ms": 123120,
               "engine": "elevenlabs",
               "channel": null
             },
@@ -2975,7 +3779,7 @@
               "channel": null
             }
           ],
-          "item_id": "c34897552fdcca8ae3f8d5a7015d1a85_R006",
+          "item_id": "c34897552fdcca8ae3f8d5a7015d1a85_R007",
           "action": "beep"
         },
         {
@@ -3006,7 +3810,7 @@
               "channel": null
             }
           ],
-          "item_id": "c34897552fdcca8ae3f8d5a7015d1a85_R007",
+          "item_id": "c34897552fdcca8ae3f8d5a7015d1a85_R008",
           "action": "beep"
         },
         {
@@ -3016,7 +3820,6 @@
             "FINANCIAL_INFO"
           ],
           "engines": [
-            "elevenlabs",
             "gemini"
           ],
           "public_figure": false,
@@ -3025,24 +3828,18 @@
           "channel": null,
           "source_spans": [
             {
-              "start_ms": 177940,
-              "end_ms": 179840,
-              "engine": "elevenlabs",
-              "channel": null
-            },
-            {
               "start_ms": 176500,
               "end_ms": 180900,
               "engine": "gemini",
               "channel": null
             }
           ],
-          "item_id": "c34897552fdcca8ae3f8d5a7015d1a85_R008",
+          "item_id": "c34897552fdcca8ae3f8d5a7015d1a85_R009",
           "action": "beep"
         },
         {
           "start_ms": 183000,
-          "end_ms": 186000,
+          "end_ms": 186340,
           "categories": [
             "FINANCIAL_INFO"
           ],
@@ -3057,7 +3854,7 @@
           "source_spans": [
             {
               "start_ms": 183800,
-              "end_ms": 184269,
+              "end_ms": 186340,
               "engine": "elevenlabs",
               "channel": null
             },
@@ -3068,7 +3865,7 @@
               "channel": null
             }
           ],
-          "item_id": "c34897552fdcca8ae3f8d5a7015d1a85_R009",
+          "item_id": "c34897552fdcca8ae3f8d5a7015d1a85_R010",
           "action": "beep"
         },
         {
@@ -3088,7 +3885,7 @@
           "source_spans": [
             {
               "start_ms": 188840,
-              "end_ms": 191420,
+              "end_ms": 192740,
               "engine": "elevenlabs",
               "channel": null
             },
@@ -3099,60 +3896,42 @@
               "channel": null
             }
           ],
-          "item_id": "c34897552fdcca8ae3f8d5a7015d1a85_R010",
+          "item_id": "c34897552fdcca8ae3f8d5a7015d1a85_R011",
           "action": "beep"
         }
       ],
       "notes": [],
       "verifier_rejected": {
-        "elevenlabs": 1,
-        "gemini": 1
+        "elevenlabs": 2,
+        "gemini": 0
       },
       "configs": {
         "elevenlabs": {
-          "ref_items": 10,
-          "ref_matched": 8,
+          "ref_items": 11,
+          "ref_matched": 10,
           "intervals": 10,
-          "intervals_matched": 8,
-          "must_beep": 10,
-          "covered": 7,
-          "leaked": 3,
+          "intervals_matched": 10,
+          "must_beep": 11,
+          "covered": 9,
+          "leaked": 2,
           "annotate_only": 0,
           "rendered_missing": false,
           "missed_item_ids": [
-            "c34897552fdcca8ae3f8d5a7015d1a85_R003",
-            "c34897552fdcca8ae3f8d5a7015d1a85_R004"
+            "c34897552fdcca8ae3f8d5a7015d1a85_R003"
           ],
-          "unmatched_intervals": [
-            {
-              "start_ms": 20620,
-              "end_ms": 21620,
-              "categories": [
-                "FULL_NAME"
-              ],
-              "spoken_text": "రాజేందర్ శారి"
-            },
-            {
-              "start_ms": 101600,
-              "end_ms": 102070,
-              "categories": [
-                "ORGANIZATION_PERSON_LINKED"
-              ],
-              "spoken_text": "Ayu Health"
-            }
-          ],
+          "unmatched_intervals": [],
           "per_category": {
             "FULL_NAME": {
               "ref": 3,
-              "ref_matched": 1,
+              "ref_matched": 2,
               "iv": 2,
-              "iv_matched": 1
+              "iv_matched": 2
             },
             "ORGANIZATION_PERSON_LINKED": {
-              "ref": 1,
-              "ref_matched": 1,
+              "ref": 2,
+              "ref_matched": 2,
               "iv": 2,
-              "iv_matched": 1
+              "iv_matched": 2
             },
             "PHONE": {
               "ref": 1,
@@ -3169,16 +3948,18 @@
           }
         },
         "gemini": {
-          "ref_items": 10,
+          "ref_items": 11,
           "ref_matched": 10,
           "intervals": 10,
           "intervals_matched": 10,
-          "must_beep": 10,
-          "covered": 10,
-          "leaked": 0,
+          "must_beep": 11,
+          "covered": 6,
+          "leaked": 5,
           "annotate_only": 0,
           "rendered_missing": false,
-          "missed_item_ids": [],
+          "missed_item_ids": [
+            "c34897552fdcca8ae3f8d5a7015d1a85_R006"
+          ],
           "unmatched_intervals": [],
           "per_category": {
             "FULL_NAME": {
@@ -3188,7 +3969,7 @@
               "iv_matched": 3
             },
             "ORGANIZATION_PERSON_LINKED": {
-              "ref": 1,
+              "ref": 2,
               "ref_matched": 1,
               "iv": 1,
               "iv_matched": 1
@@ -3208,13 +3989,13 @@
           }
         },
         "openai": {
-          "ref_items": 10,
+          "ref_items": 11,
           "ref_matched": 0,
           "intervals": 0,
           "intervals_matched": 0,
-          "must_beep": 10,
+          "must_beep": 11,
           "covered": 0,
-          "leaked": 10,
+          "leaked": 11,
           "annotate_only": 0,
           "rendered_missing": false,
           "missed_item_ids": [
@@ -3227,7 +4008,8 @@
             "c34897552fdcca8ae3f8d5a7015d1a85_R007",
             "c34897552fdcca8ae3f8d5a7015d1a85_R008",
             "c34897552fdcca8ae3f8d5a7015d1a85_R009",
-            "c34897552fdcca8ae3f8d5a7015d1a85_R010"
+            "c34897552fdcca8ae3f8d5a7015d1a85_R010",
+            "c34897552fdcca8ae3f8d5a7015d1a85_R011"
           ],
           "unmatched_intervals": [],
           "per_category": {
@@ -3238,7 +4020,7 @@
               "iv_matched": 0
             },
             "ORGANIZATION_PERSON_LINKED": {
-              "ref": 1,
+              "ref": 2,
               "ref_matched": 0,
               "iv": 0,
               "iv_matched": 0
@@ -3258,57 +4040,31 @@
           }
         },
         "elevenlabs__gpt": {
-          "ref_items": 10,
-          "ref_matched": 8,
-          "intervals": 11,
-          "intervals_matched": 8,
-          "must_beep": 10,
+          "ref_items": 11,
+          "ref_matched": 10,
+          "intervals": 10,
+          "intervals_matched": 10,
+          "must_beep": 11,
           "covered": 7,
-          "leaked": 3,
+          "leaked": 4,
           "annotate_only": 0,
           "rendered_missing": false,
           "missed_item_ids": [
-            "c34897552fdcca8ae3f8d5a7015d1a85_R003",
-            "c34897552fdcca8ae3f8d5a7015d1a85_R004"
+            "c34897552fdcca8ae3f8d5a7015d1a85_R003"
           ],
-          "unmatched_intervals": [
-            {
-              "start_ms": 20620,
-              "end_ms": 21620,
-              "categories": [
-                "FULL_NAME"
-              ],
-              "spoken_text": "రాజేందర్ శారి"
-            },
-            {
-              "start_ms": 101600,
-              "end_ms": 102070,
-              "categories": [
-                "ORGANIZATION_PERSON_LINKED"
-              ],
-              "spoken_text": "Ayu Health"
-            },
-            {
-              "start_ms": 210500,
-              "end_ms": 211680,
-              "categories": [
-                "FINANCIAL_INFO"
-              ],
-              "spoken_text": "online ఒక్క రూపాయి కూడా కట్టలేదని"
-            }
-          ],
+          "unmatched_intervals": [],
           "per_category": {
             "FULL_NAME": {
               "ref": 3,
-              "ref_matched": 1,
+              "ref_matched": 2,
               "iv": 2,
-              "iv_matched": 1
+              "iv_matched": 2
             },
             "ORGANIZATION_PERSON_LINKED": {
-              "ref": 1,
-              "ref_matched": 1,
+              "ref": 2,
+              "ref_matched": 2,
               "iv": 2,
-              "iv_matched": 1
+              "iv_matched": 2
             },
             "PHONE": {
               "ref": 1,
@@ -3319,19 +4075,19 @@
             "FINANCIAL_INFO": {
               "ref": 5,
               "ref_matched": 5,
-              "iv": 6,
+              "iv": 5,
               "iv_matched": 5
             }
           }
         },
         "openai__gpt": {
-          "ref_items": 10,
+          "ref_items": 11,
           "ref_matched": 0,
           "intervals": 0,
           "intervals_matched": 0,
-          "must_beep": 10,
+          "must_beep": 11,
           "covered": 0,
-          "leaked": 10,
+          "leaked": 11,
           "annotate_only": 0,
           "rendered_missing": false,
           "missed_item_ids": [
@@ -3344,7 +4100,8 @@
             "c34897552fdcca8ae3f8d5a7015d1a85_R007",
             "c34897552fdcca8ae3f8d5a7015d1a85_R008",
             "c34897552fdcca8ae3f8d5a7015d1a85_R009",
-            "c34897552fdcca8ae3f8d5a7015d1a85_R010"
+            "c34897552fdcca8ae3f8d5a7015d1a85_R010",
+            "c34897552fdcca8ae3f8d5a7015d1a85_R011"
           ],
           "unmatched_intervals": [],
           "per_category": {
@@ -3355,7 +4112,7 @@
               "iv_matched": 0
             },
             "ORGANIZATION_PERSON_LINKED": {
-              "ref": 1,
+              "ref": 2,
               "ref_matched": 0,
               "iv": 0,
               "iv_matched": 0
@@ -3377,7 +4134,7 @@
       },
       "pverify": {
         "elevenlabs": [
-          7,
+          10,
           10
         ],
         "gemini": [
@@ -3390,7 +4147,7 @@
         ],
         "elevenlabs__gpt": [
           10,
-          11
+          10
         ],
         "openai__gpt": [
           0,
@@ -3398,15 +4155,17 @@
         ]
       },
       "timing_offsets_ms": {
-        "n": 6,
-        "median": 420,
+        "n": 8,
+        "median": 640,
         "p90": 800
       },
       "timing_offsets_raw": [
+        60,
         100,
+        680,
+        1160,
         160,
         420,
-        1440,
         800,
         640
       ],

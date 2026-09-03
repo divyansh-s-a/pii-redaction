@@ -67,7 +67,11 @@ BEEP_FREQ_HZ = 1000
 EXPECTED_LANG = {"HIN": "hi", "ODI": "or", "BEN": "bn"}
 ENGINE_MODULES = {"gemini": "gemini_transcribe",
                   "elevenlabs": "adapters.elevenlabs_transcribe",
-                  "openai": "adapters.openai_transcribe"}
+                  "openai": "adapters.openai_transcribe",
+                  # scribe_v1: benched 2026-09-03 (third-listener evaluation;
+                  # decision: reference stays two-listener). OpenRouter audio
+                  # candidates screen via adapters/openrouter_audio.py.
+                  "el_scribe_v1": "adapters.el_scribe_v1"}
 
 # ------------------------------------------------------------ reference parsing
 
