@@ -154,9 +154,18 @@ def cp(src, dst):
 
 
 def main():
+    # preserve the git history across rebuilds (the folder is a live repo)
+    git_keep = None
+    if (G / ".git").exists():
+        git_keep = ROOT / "_gitupload_git_keep"
+        if git_keep.exists():
+            shutil.rmtree(git_keep)
+        shutil.move(str(G / ".git"), str(git_keep))
     if G.exists():
         shutil.rmtree(G)
     G.mkdir()
+    if git_keep is not None:
+        shutil.move(str(git_keep), str(G / ".git"))
     (G / "README.md").write_text(README)
     (G / ".env.example").write_text(ENV_EXAMPLE)
     (G / ".gitignore").write_text(GITIGNORE)
