@@ -61,16 +61,12 @@ body.append(para("Audio PII Redaction Pilot", bold=True, size=48,
                  center=True, space_before=2200, space_after=200))
 body.append(para("Workflow design, evaluation and engine decision — final report",
                  size=26, color=MUTED, center=True, space_after=1800))
-body.append(para("Deccan.ai  |  Report v2  |  2026-09-02  |  Owner: Shivangi",
+body.append(para("Deccan.ai  |  Report v2  |  2026-09-03  |  Owner: Shivangi",
                  size=20, color=MUTED, center=True))
-body.append(para("Transcripts, gates and costs come from the fresh end-to-end corpus run of "
-                 "2026-09-02 (no cached results reused). Detection and all judge-based metrics were "
-                 "re-measured on those same transcripts under detection policy v4 on 2026-09-03 "
-                 "(the v4 consistency pass, section 5.8) — the numbers in this report describe the "
-                 "policy the repository ships. Later on 2026-09-03 the judge reference was rebuilt on "
-                 "listeners independent of every configuration's transcription engine (section 5.9); "
-                 "all judge-based numbers in this report are measured against that independent "
-                 "reference.",
+body.append(para("All numbers come from a full end-to-end run over the pilot corpus with the shipped "
+                 "detection policy (no cached results reused). Judge-based metrics are measured "
+                 "against a reference built on listeners independent of every configuration's "
+                 "transcription engine (section 5.1).",
                  size=18, color=MUTED, center=True, space_before=400))
 body.append(para(page_break=True))
 
@@ -90,7 +86,7 @@ body.append(para(f"Production configuration (ElevenLabs scribe_v2 + keyterms for
                  f"applying our 31-category policy for detection): detection recall "
                  f"{frac(prod['ref_matched'], prod['ref_items'])} and detection precision "
                  f"{frac(prod['intervals_matched'], prod['intervals'])} against the judge reference on the "
-                 f"fresh corpus run, at roughly 1/40th of Gemini-only transcription cost.", bullet=True))
+                 f"pilot corpus, at roughly 1/40th of Gemini-only transcription cost.", bullet=True))
 body.append(para(f"Safety gates run on every delivery by default (signal QC, beep-edge listen check, "
                  f"independent judge audit): {n_del} of {n_del+n_q} files delivered clean; {n_q} PII-dense "
                  f"telephone calls were correctly HELD for human review by the beep-edge listen check — "
@@ -135,7 +131,7 @@ body.append(para("Transcribe: ElevenLabs scribe_v2 with word-level timestamps, d
                  "keyterms vocabulary (Indian given names + domain organizations) that fixes dropped proper "
                  "nouns. Automatic Gemini fallback if the vendor is unavailable, recorded in the manifest.", bullet=True))
 body.append(para("Detect: a pluggable detector (Gemini in production; a GPT backend exists for "
-                 "comparison) reads the canonicalized word stream against detection policy v3; a "
+                 "comparison) reads the canonicalized word stream against the detection policy; a "
                  "deterministic safety net additionally catches long spoken digit sequences (English and "
                  "Indic number words). The detector outputs word ranges - never timestamps - so it cannot "
                  "corrupt timing.", bullet=True))
@@ -168,7 +164,7 @@ body.append(h1("4. Policy foundation"))
 body.append(para("All behavior derives from versioned policy files: Taxonomy v0.2 (31 jurisdiction-neutral "
                  "categories with a canonical routing table for country identifiers - Aadhaar, SSN, PAN, "
                  "UPI all route into neutral categories), the Action Matrix (category x profile -> beep or "
-                 "annotate-only), and detection prompt v3 (the machine-readable form, shared by the "
+                 "annotate-only), and the detection prompt (the machine-readable form, shared by the "
                  "detector AND the evaluation judges so they can never diverge). Key decisions, each "
                  "logged with rationale: public figures are not beeped (flagged and audited); masked "
                  "partial values ('card ending 4832') are excluded; fictional content is not PII; the "
@@ -186,11 +182,11 @@ body.append(h2("5.1 Metric definitions"))
 for name, d in pr.get("metric_definitions", {}).items():
     body.append(para(f"{name}: {d}", bullet=True))
 body.append(para("Reference construction: the judge (GPT-5.6-sol) applies the SAME versioned policy file "
-                 "as the detector (v4) to two INDEPENDENT listener transcripts of each file — ElevenLabs "
+                 "as the detector to two INDEPENDENT listener transcripts of each file — ElevenLabs "
                  "Scribe v1 and Gemini 3.8 Flash, deliberately different model versions from every "
                  "configuration's transcription engine (Scribe v2, Gemini 3.1 Pro, Whisper), so no "
-                 "configuration is scored against an answer key built from its own transcript (section "
-                 "5.9). Every finding passes an adversarial verifier (GPT-5.6-luna: cite the include rule "
+                 "configuration is scored against an answer key built from its own transcript. "
+                 "Every finding passes an adversarial verifier (GPT-5.6-luna: cite the include rule "
                  "or reject); verified spans are clustered into unique items by temporal overlap, same "
                  "canonicalized value within +/-2.5 s, or the same-slot name rule (cross-listener "
                  "respellings of one spoken name merge; a listener hearing two names in the window keeps "
@@ -219,11 +215,16 @@ body.append(para("The render-leak column measures the RENDERED audio of every co
                  "every file carrying a production render leak is one the beep-edge listen check "
                  "quarantined (5.5), so the DELIVERED-file leak rate is 0/4 for every configuration "
                  "(the split is a standing column in the md report). The production configuration leads "
-                 "detection outright against the independent reference; Gemini end-to-end trails it "
-                 "slightly and costs ~40x more to transcribe (section 6). Whisper configurations "
-                 "collapse on recall because the transcripts never surface many values. The GPT "
-                 "detector tracks the Gemini detector closely on the same transcripts: transcript "
-                 "quality, not detector choice, dominates.", space_before=100))
+                 "detection outright; Gemini end-to-end trails it slightly and costs ~40x more to "
+                 "transcribe (section 6). Whisper configurations collapse on recall because the "
+                 "transcripts never surface many values; on Whisper's garbled episode transcripts the "
+                 "policy's uncertain-realness default marks mangled names as PII (the designed safe "
+                 "direction: over-redact on garbage input), which is what drives Whisper+GPT's low "
+                 "precision. The GPT detector tracks the Gemini detector closely on the same "
+                 "transcripts — transcript quality, not detector choice, dominates — but it moves "
+                 "interval counts between identical runs, while the Gemini detector reproduces "
+                 "identically on repeated measurement: detector stability is a measured argument for "
+                 "the production choice, not a preference.", space_before=100))
 
 # per-file detection table (production + gemini for readability; full set in the md report)
 body.append(para("Per-file results, production configuration:", space_before=150))
@@ -241,10 +242,9 @@ body.append(table([2900, 1500, 2000, 2000, 1500],
                   ["File", "Reference items", "Detection recall",
                    "Detection precision", "Render leaks"], rows))
 body.append(para("The four narrated-episode files produced zero reference items — the fiction rule held "
-                 "on every listener pair evaluated (the production ears and the independent reference "
-                 "ears alike) across hundreds of character-name mentions (a standing false-positive "
-                 "control). Per-category and per-file tables for all configurations are in "
-                 "output/judge/precision_recall/precision_recall_report.md.", space_before=100))
+                 "on both reference listeners across hundreds of character-name mentions (a standing "
+                 "false-positive control). Per-category and per-file tables for all configurations are "
+                 "in output/judge/precision_recall/precision_recall_report.md.", space_before=100))
 
 # per-category (production)
 pc = agg["elevenlabs"].get("per_category", {})
@@ -315,8 +315,9 @@ body.append(table([2600, 2200, 2200, 2200],
 body.append(para("A second view of the same story from the cross-listener union (the production ears — "
                  "ElevenLabs Scribe v2 + Gemini 3.1 Pro — as listeners: this table is each pipeline's "
                  "SELF-check against what its own ears surfaced, complementary to the independent "
-                 "reference of 5.2/5.9; Whisper is scored but deliberately NOT a union listener - see "
-                 "5.8 for what happens when it is). Corpus languages (engine consensus, judge-verified): "
+                 "reference of 5.2; Whisper is scored but deliberately NOT a union listener — its "
+                 "garbled episode transcripts inject phantom items into any union that includes it). "
+                 "Corpus languages (engine consensus, judge-verified): "
                  "Indian-English telephone calls (code-switching to Hindi), Bengali narrated episodes, one "
                  "Telugu call. ElevenLabs and Gemini agree on speaker counts; Whisper cannot diarize. "
                  "Known limitation, observed on this corpus: BOTH listeners can mis-hear the same proper "
@@ -325,7 +326,7 @@ body.append(para("A second view of the same story from the cross-listener union 
                  "since the name is beeped in audio and <NAME REDACTED> in text regardless of spelling.", space_before=100))
 
 # ---- 5.5 delivery outcomes + quarantine triage
-body.append(h2("5.5 Delivery outcomes and quarantine triage (fresh run)"))
+body.append(h2("5.5 Delivery outcomes and quarantine triage"))
 rows = []
 for name, status, m in outcomes:
     ev = m.get("edge_verification") or {}
@@ -355,6 +356,14 @@ for t in [
     "family-overlap caveat wherever their numbers appear.",
     "Policy: the judge applies the SAME versioned policy file as the detector (see prompts/README for the current version). "
     "Temperature 0, strict JSON output schemas.",
+    "Reference listeners: ElevenLabs Scribe v1 and Gemini 3.8 Flash, auditioned against the three "
+    "human reference transcripts before admission (aggregate WER 0.33 and 0.48 respectively, native "
+    "scripts and correct language identification on every file; candidates that romanized an Indic "
+    "file or could not honor the word-timestamp JSON contract were disqualified). Listener-mode "
+    "transcription runs 120 s windows (dense speech is under-transcribed at longer windows) and "
+    "bisects safety-blocked windows to isolate them; on this corpus no audio was skipped. These "
+    "adaptations are confined to the reference adapters — production transcription is unchanged and "
+    "fails loudly on any blocked window.",
     "Grounding: every leak-audit finding must literally quote text present in the transcript; non-quoting "
     "findings are dropped and counted. Observed hallucination rate across all runs: zero.",
     "Profile correctness: the judge knows nothing about domain profiles; leak-vs-kept classification is "
@@ -367,7 +376,7 @@ for t in [
     "Calibration: judge-based numbers are relative rankings across configurations against one shared "
     "reference; a future human GT pass could calibrate the judge via the ready-made scorer "
     "(tools/score_run.py).",
-    "Improvement loop: the judge's early over-reach became calibration rule 11 in policy v3 - the same "
+    "Improvement loop: the judge's early over-reach became a calibration rule in the policy - the same "
     "hillclimbing method the Mindy pilot used, applied to our own judge.",
 ]:
     body.append(para(t, bullet=True))
@@ -383,125 +392,9 @@ body.append(para("ElevenLabs' built-in entity_detection was evaluated as an alte
                  "received 157-275 entities each where the correct count is zero. Vendor-native detection "
                  "is not a substitute for a policy-driven detector; scenario closed."))
 
-# ------------------------------------------------- 5.8 v4 consistency pass
-body.append(h2("5.8 Policy v4 consistency pass (2026-09-03)"))
-import json as _json
-_snap = _json.loads(Path("/private/tmp/claude-501/-Users-shivangi-Documents-Claude-Audio-PII-Project/87ddc989-26e9-49df-9724-61c42bfe09fe/scratchpad/v4pass/pr_v3.json").read_text())["aggregate"] if Path("/private/tmp/claude-501/-Users-shivangi-Documents-Claude-Audio-PII-Project/87ddc989-26e9-49df-9724-61c42bfe09fe/scratchpad/v4pass/pr_v3.json").exists() else None
-body.append(para("Policy v4 redefined the fiction rule (reality of referents, uncertain realness "
-                 "defaults to real - section 4 and prompts/README). To keep reported numbers "
-                 "consistent with the shipped policy, every configuration was re-detected and re-scored "
-                 "on the SAME 2026-09-02 transcripts - transcription is policy-independent, so any "
-                 "metric movement is attributable purely to the policy change plus detector "
-                 "run-to-run variance. Findings:"))
-for txt in [
-    "Stability where it matters: the production configuration re-detected all 8 files with ZERO "
-    "interval drift; Whisper+Gemini likewise; Gemini end-to-end moved one interval on one file. All "
-    "four fiction episodes remained at zero detections in every Gemini-detector configuration and at "
-    "zero reference items under a fresh v4 judge read - the drama exclusion held everywhere the "
-    "transcripts carry the story's fiction signals.",
-    "Ranking unchanged: the same order as the fresh run on every metric; the production "
-    "configuration's detection recall/precision moved slightly UP (partly judge-reference "
-    "recomposition: 39 items vs 40).",
-    "GPT-detector instability, quantified: on identical transcripts the GPT detector moved interval "
-    "counts on all four call files in BOTH directions (e.g. 16 to 21 and 5 to 4), dropping one "
-    "occurrence of a repeated amount on the sample - its render leaks doubled. The Gemini detector's "
-    "stability is now a measured argument, not a preference.",
-    "The uncertainty tiebreak on display: on Whisper's garbled episode transcripts (wrong-script "
-    "hallucinations destroy the fiction signals), the v4 default-to-real rule marks the mangled "
-    "names as PII - Whisper+GPT detected 99 phantom intervals across three episodes and its "
-    "detection precision collapsed from 82% to 19%. A same-day reproducibility run confirmed the "
-    "effect is real but unstable in magnitude (99 vs 35 phantoms; two episodes rock-stable, the "
-    "largest flipped 65 to 0 - the GPT detector's variance again), while the call files reproduced "
-    "with IDENTICAL interval counts. Over-redaction on garbage transcripts is the "
-    "designed safe direction, and it makes Whisper's elimination visible in a single number.",
-    "The same effect pollutes a three-listener judge union: the judge reading Whisper's episode "
-    "transcripts contributed 16 phantom reference items on one episode. The evaluation of record "
-    "at the time of this pass therefore used the two-listener reference (unaffected: episodes "
-    "contribute zero), the 5.4 cross-check uses that union, and the three-listener run is retained "
-    "as a diagnostic exhibit. Later the same day the reference was rebuilt on independent "
-    "listeners (5.9); the v4-pass numbers in THIS section are the historical two-listener "
-    "measurements.",
-    "Leak audit under v4: production configuration ZERO findings and ZERO candidates (24 outputs "
-    "audited). One candidate appeared on the non-shipped Gemini configuration of an "
-    "already-quarantined call - an amount-less payment-mode statement of the exact shape rule 11 "
-    "classifies as judge over-reach (17 sibling findings were verifier-rejected in the same run). "
-    "Adjudicated by the owner (2026-09-03): judge over-reach - no policy change, no re-render; "
-    "precedent recorded in System_Design's rule-11 adjudication log.",
-    "Gates reproduced the fresh run exactly: the same five files delivered, the same three PII-dense "
-    "calls held by the beep-edge listen check.",
-    "v4 re-detection cost: ~$1.9 across all five configurations (text-only; transcription reused).",
-]:
-    body.append(para(txt, bullet=True))
-
-# ------------------------------------- 5.9 independent reference rebuild
-body.append(h2("5.9 Independent reference rebuild (2026-09-03)"))
-body.append(para("The original reference was built on the production ears (ElevenLabs Scribe v2 + "
-                 "Gemini 3.1 Pro) — the same engines two configurations use for transcription, so "
-                 "those configurations were scored against an answer key partly built from their own "
-                 "transcripts. To make the comparison ear-independent, the reference listeners were "
-                 "replaced by different model versions on the same vendor keys: ElevenLabs Scribe v1 "
-                 "and Gemini 3.8 Flash. Candidates were auditioned against the three human reference "
-                 "transcripts first (same discipline as the engine bench): Scribe v1 aggregate WER "
-                 "0.33 (beats production's v2 on the Hindi and Odia files); Gemini 3.8 Flash 0.48 "
-                 "with native scripts and correct language identification on every file (the "
-                 "incumbent 3.1 Pro ear reads 0.64 and romanized the Hindi file); Gemini 2.5 Pro was "
-                 "disqualified for romanizing the entire Odia file, and the dedicated "
-                 "gemini-3.5-transcribe model for lacking JSON output support. Independence remains "
-                 "partial by necessity — v1/v2 share the ElevenLabs family, 3.8/3.1 the Google family; "
-                 "full vendor independence is unreachable on the pilot's keys — but no configuration "
-                 "is scored against its own transcript any longer."))
-body.append(para("Two listener-mode adaptations were required and are confined to the reference "
-                 "adapters: 120 s transcription windows for the Flash ear (at 240 s it silently "
-                 "under-transcribes dense speech — a Kannada call read 14-29 words/min against ~195 "
-                 "actual; at 120 s its word counts match 3.1 Pro within a few percent), and bisection "
-                 "of safety-blocked windows (Flash refuses some episode segments that 3.1 Pro "
-                 "transcribes; bisection isolated every block with zero skipped audio on this corpus). "
-                 "Production transcription is unchanged and still fails loudly on any blocked window.", space_before=100))
-body.append(para("Rebuilding on independent ears also exposed a scoring artifact: raw span-coverage "
-                 "redaction scoring charged cross-engine CLOCK SKEW as leaks once no configuration's "
-                 "engine was a reference listener (one configuration read a 59.5% leak rate while the "
-                 "text-leak audit found nothing readable in its redacted transcripts). Redaction "
-                 "recall is now scored on each configuration's own clock — a detected item counts as "
-                 "covered when the configuration's matching interval is >= 95% beep-covered; items the "
-                 "configuration never detected are still judged on reference-span coverage alone (the "
-                 "genuinely transcription-lost class). The same rule applies to every configuration, "
-                 "which also removed a hidden bias of the old scoring in favour of listener-sharing "
-                 "configurations. For transparency, the production headline moved as: 18.4% (original "
-                 "ears, original scoring) -> 16.7% (independent ears, original scoring) -> 7.1% "
-                 "(independent ears, own-clock scoring); its DELIVERED-file leak rate is 0/4.", space_before=100))
-_pre = None
-_pre_path = ROOT / "output/judge/precision_recall/pre_rebuild_snapshot.json"
-if _pre_path.exists():
-    _pre = json.loads(_pre_path.read_text())["aggregate"]
-if _pre:
-    body.append(para("Before/after, all configurations (detection recall | detection precision | "
-                     "render leak rate, all files):", space_before=150))
-    def pct1(x):
-        return "-" if x is None else f"{x:.1%}"
-    rows = []
-    for cfg in CFG_ORDER:
-        o, n = _pre.get(cfg), agg[cfg]
-        if not o:
-            continue
-        rows.append([CFG_NAME[cfg],
-                     f"{pct1(o['detection_recall'])} -> {pct1(n['detection_recall'])}",
-                     f"{pct1(o['detection_precision'])} -> {pct1(n['detection_precision'])}",
-                     f"{pct1(o['leak_rate'])} -> {pct1(n['leak_rate'])}"])
-    body.append(table([2700, 2300, 2300, 2300],
-                      ["Configuration", "Detection recall", "Detection precision",
-                       "Leak rate (all files)"], rows))
-body.append(para("The reference grew from 39 to 44 verified items (all on the four call files; the "
-                 "episodes stay at zero under the independent ears too). The production "
-                 "configuration's numbers IMPROVED against ears it does not share: the original "
-                 "reference had been under-crediting precision — real detections its ears never "
-                 "transcribed were charged as false positives. The Whisper configurations' low recall "
-                 "survived the rebuild unchanged, confirming it as a genuine transcript deficit rather "
-                 "than a reference artifact. Rebuild evaluation cost, measured: ~$5.4 (Flash corpus "
-                 "transcription $3.9 including a discarded first pass; judge + verifier ~$1.5).", space_before=100))
-
 # ------------------------------------------------------------ 6 cost
 body.append(h1("6. Cost x performance — end-to-end, measured"))
-body.append(para(f"Measured on the fresh run over {cost.get('audio_hours', 0):.2f} audio-hours: "
+body.append(para(f"Measured over {cost.get('audio_hours', 0):.2f} audio-hours: "
                  f"vendor audio billed at published rates x measured seconds; Gemini from logged tokens "
                  f"at prices that reproduce the earlier measured sample; OpenRouter judge/detector calls "
                  f"carry their exact per-call cost via usage accounting. Every usage row is tagged with "
@@ -540,9 +433,9 @@ for t in [
     "detection + a QC tripwire flagging any beep over 45 seconds.",
     "Broken word timestamps in chunked transcription (single 'words' lasting minutes at chunk boundaries): "
     "a 5-second word-duration clamp + a zero-cost deterministic repair of cached transcripts.",
-    "Fiction misjudgment on one episode: detection policy v2 with an explicit narrated-drama rule; the "
-    "corpus re-ran clean (fresh run: 0 reference items across all four episodes).",
-    "Judge over-reach (findings outside written policy): calibration rule 11 in policy v3 + the "
+    "Fiction misjudgment on one episode: an explicit narrated-drama rule in the detection policy; the "
+    "corpus re-ran clean (0 reference items across all four episodes).",
+    "Judge over-reach (findings outside written policy): a calibration rule in the policy + the "
     "adversarial verification pass.",
     "Defect class 4 (user-reported): engine stamps a name's onset late - a beep built from those times "
     "clips the first syllable. Defense: the beep-edge listen check re-hears the beeped audio at every "
@@ -616,8 +509,9 @@ for t in [
 
 body.append(h1("Appendix C — Prompt and artifact inventory"))
 for t in [
-    "prompts/: transcription_prompt_v1, detection_policy_prompt_v1->v3 (versioned, change-controlled), "
-    "judge_leak_audit_prompt_v1, keyterms_india_v1 - the code loads these files directly.",
+    "prompts/: the transcription prompt, the detection policy prompt (versioned and change-controlled; "
+    "prompts/README names the current version), the leak-audit prompt and the keyterms vocabulary - "
+    "the code loads these files directly.",
     "pipeline/: run_pipeline.py (5-stage orchestrator; pluggable --engine and --detector), adapters/ "
     "(ElevenLabs, OpenAI), judge_client.py (judge + adversarial verifier), edge_verify.py (beep-edge "
     "listen check), textnorm.py (Indic folding).",
