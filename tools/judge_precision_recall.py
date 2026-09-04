@@ -97,8 +97,14 @@ METRIC_DEFS = [
      "70% cover, OR same canonicalized value within +/-2.5 s)"),
     ("DETECTION PRECISION", "intervals matching a reference item / all "
      "intervals in intervals.json (same match rule, same reference)"),
-    ("REDACTION RECALL", "must-beep reference items >= 95% covered by the "
-     "rendered beeps / all must-beep items (channel-aware coverage)"),
+    ("REDACTION RECALL", "must-beep reference items covered by the rendered "
+     "beeps / all must-beep items. An item counts as covered when a config "
+     "interval matching it (detection match rule) is >= 95% beep-covered on "
+     "the config's own clock, or when the reference spans themselves are "
+     ">= 95% covered (channel-aware). The own-clock rule keeps cross-engine "
+     "timestamp skew between the reference listeners and the config's "
+     "engine from counting as leaks; items the config never detected are "
+     "judged on reference-span coverage alone."),
     ("LEAK RATE", "1 - redaction recall — the headline safety number"),
     ("POLICY-VERIFIED PRECISION (supplementary)", "intervals the adversarial "
      "verifier confirms satisfy a policy include rule / all intervals; "
@@ -173,6 +179,40 @@ def _cat_bucket(percat, c):
                                  "iv": 0, "iv_matched": 0})
 
 
+def _redaction_counts(items, ivs, rendered, profile):
+    """Own-clock redaction coverage. Reference items carry the LISTENERS'
+    timestamps; a config renders beeps on its OWN engine's clock, so raw
+    span-coverage charges cross-engine clock skew as leaks (a config whose
+    engine is not a reference listener has no same-clock span to anchor
+    item_coverage's sibling bridge). A must-beep item therefore counts as
+    covered when EITHER: (a) a config interval MATCHING the item (the
+    detection match rule) is >= 95% beep-covered — the engine heard the
+    value and beeped its own placement of it — or (b) the reference spans
+    themselves are covered per item_coverage (coincidental or cross-clock
+    coverage; also the only path for items the config never detected)."""
+    counts = {"must_beep": 0, "annotate_only": 0, "covered": 0, "leaked": 0}
+    leaked_idx = []
+    for k, it in enumerate(items):
+        action = policy.action_for(it["categories"], it["public_figure"],
+                                   profile)
+        if action != "beep":
+            counts["annotate_only"] += 1
+            continue
+        counts["must_beep"] += 1
+        own_cov = any(
+            score_run.coverage_of(
+                {"start_ms": iv["start_ms"], "end_ms": iv["end_ms"],
+                 "channel": iv.get("channel")}, rendered)
+            >= pgt.COVERAGE_MIN
+            for iv in ivs if match_item_interval(it, iv))
+        if own_cov or pgt.item_coverage(it, rendered) >= pgt.COVERAGE_MIN:
+            counts["covered"] += 1
+        else:
+            counts["leaked"] += 1
+            leaked_idx.append(k)
+    return counts, leaked_idx
+
+
 def score_config_file(items, cdir, profile):
     """Score one config's outputs for one file against the reference items.
     Returns None when the config has no intervals.json for this file."""
@@ -187,8 +227,7 @@ def score_config_file(items, cdir, profile):
                      for it in items]
     matched_ivs = [any(match_item_interval(it, iv) for it in items)
                    for iv in ivs]
-    counts, leaked_idx, _ = pgt.score_engine_for_items(items, rendered, None,
-                                                       profile)
+    counts, leaked_idx = _redaction_counts(items, ivs, rendered, profile)
     percat = {}
     for it, m in zip(items, matched_items):
         for c in it["categories"]:
@@ -287,12 +326,13 @@ def timing_offsets(items):
     offs = []
     for it in items:
         spans = it.get("source_spans") or []
-        el = [s for s in spans if s.get("engine") == "elevenlabs"]
-        gm = [s for s in spans if s.get("engine") == "gemini"]
-        if not gm:
+        first = [s for s in spans if s.get("engine") == LISTENERS[0]]
+        second = [s for s in spans if s.get("engine") == LISTENERS[-1]]
+        if not second:
             continue
-        for a in el:
-            offs.append(min(abs(a["start_ms"] - b["start_ms"]) for b in gm))
+        for a in first:
+            offs.append(min(abs(a["start_ms"] - b["start_ms"])
+                            for b in second))
     return offs
 
 
@@ -328,15 +368,22 @@ def listener_summary(fid, pred_root):
     both = all(e in per for e in LISTENERS)
     return {
         "per_listener": per,
-        "speakers_agree": (both and per["elevenlabs"]["speakers"]
-                           == per["gemini"]["speakers"]) if both else None,
+        "speakers_agree": (len({per[e]["speakers"] for e in LISTENERS}) == 1
+                           if both else None),
         "primary_language_agree":
-            (both and per["elevenlabs"]["primary_language"]
-             == per["gemini"]["primary_language"]) if both else None,
+            (len({per[e]["primary_language"] for e in LISTENERS}) == 1
+             if both else None),
     }
 
 
 # --------------------------------------------------------------- aggregation
+
+def _quarantined(fid):
+    """Gate status from the production run: a file under quarantine/ was
+    withheld from delivery, so its uncovered items never shipped. Files with
+    no gate output count as delivered (the conservative direction)."""
+    return (ROOT / "quarantine" / fid).exists()
+
 
 def _ratio(num, den):
     return (num / float(den)) if den else None
@@ -377,6 +424,16 @@ def aggregate(file_results, configs):
                 a["pverify_files"] += 1
                 a["pverify_kept"] += pv[0]
                 a["pverify_total"] += pv[1]
+        # delivered-only leak split: items on quarantined files never ship,
+        # so the headline leak rate is also reported for delivered files alone
+        a["must_beep_delivered"] = sum(
+            f["configs"][cfg]["must_beep"] for f in file_results
+            if f["configs"].get(cfg) is not None
+            and not _quarantined(f["file_id"]))
+        a["leaked_delivered"] = sum(
+            f["configs"][cfg]["leaked"] for f in file_results
+            if f["configs"].get(cfg) is not None
+            and not _quarantined(f["file_id"]))
         a["detection_recall"] = _ratio(a["ref_matched"], a["ref_items"])
         a["detection_precision"] = _ratio(a["intervals_matched"],
                                           a["intervals"])
@@ -411,17 +468,25 @@ def build_report(cfg_meta, file_results, agg, configs):
     L[-1] = ""
     L += ["## Aggregate per configuration (micro-averaged)", "",
           "| config | files | detection recall | detection precision | "
-          "redaction recall | leak rate | policy-verified precision "
-          "(suppl.) |", "|---|---|---|---|---|---|---|"]
+          "redaction recall | leak rate (all files) | leak rate (delivered "
+          "files) | policy-verified precision (suppl.) |",
+          "|---|---|---|---|---|---|---|---|"]
     for c in configs:
         a = agg[c]
         leak = ("%s" % _pct(a["must_beep"] - a["covered"], a["must_beep"]))
-        L.append("| %s | %d | %s | %s | %s | %s | %s |" % (
+        leak_del = _pct(a["leaked_delivered"], a["must_beep_delivered"])
+        L.append("| %s | %d | %s | %s | %s | %s | %s | %s |" % (
             CONFIG_LABELS.get(c, c), a["files"],
             _pct(a["ref_matched"], a["ref_items"]),
             _pct(a["intervals_matched"], a["intervals"]),
-            _pct(a["covered"], a["must_beep"]), leak,
+            _pct(a["covered"], a["must_beep"]), leak, leak_del,
             _pct(a["pverify_kept"], a["pverify_total"])))
+    L += ["",
+          "Leak rate (all files) counts every corpus file including "
+          "quarantined ones; the production gates withhold quarantined "
+          "files from delivery, so leak rate (delivered files) is the "
+          "shipping-relevant view. A file with no gate output counts as "
+          "delivered."]
     L += ["", "## Per file", ""]
     for c in configs:
         L += ["### %s" % CONFIG_LABELS.get(c, c), "",
@@ -435,6 +500,8 @@ def build_report(cfg_meta, file_results, agg, configs):
                          "this config |" % (f["file_id"], len(f["items"])))
                 continue
             notes = []
+            if _quarantined(f["file_id"]):
+                notes.append("QUARANTINED — withheld from delivery")
             if r["rendered_missing"]:
                 notes.append("rendered_intervals.json missing — all "
                              "must-beep count leaked")
@@ -460,14 +527,16 @@ def build_report(cfg_meta, file_results, agg, configs):
                 cat, _pct(b["ref_matched"], b["ref"]),
                 _pct(b["iv_matched"], b["iv"])))
         L.append("")
+    l1, l2 = LISTENERS[0], LISTENERS[-1]
     L += ["## Speakers and languages (per file, per listener)", "",
-          "| file_id | EL speakers | Gemini speakers | agree | EL primary "
-          "lang | Gemini primary lang | agree | all languages (union) |",
+          "| file_id | %s speakers | %s speakers | agree | %s primary "
+          "lang | %s primary lang | agree | all languages (union) |"
+          % (l1, l2, l1, l2),
           "|---|---|---|---|---|---|---|---|"]
     for f in file_results:
         s = f["speakers_languages"]
-        pe = s["per_listener"].get("elevenlabs", {})
-        pg = s["per_listener"].get("gemini", {})
+        pe = s["per_listener"].get(l1, {})
+        pg = s["per_listener"].get(l2, {})
         langs = []
         for src in (pe.get("languages", []), pg.get("languages", [])):
             for l in src:
@@ -615,6 +684,7 @@ def run(args):
 
 def self_test():
     import tempfile
+    LISTENERS[:] = ["elevenlabs", "gemini"]   # fixtures build these two ears
     cases = []
 
     def case(name, ok, detail=""):
@@ -797,11 +867,16 @@ def main():
                          "rendered_intervals.json)")
     ap.add_argument("--no-pverify", action="store_true",
                     help="skip the supplementary policy-verified precision")
+    ap.add_argument("--listeners", default=",".join(LISTENERS),
+                    help="comma list of the reference listener engines "
+                         "(transcripts read from <pred-root>/<fid><suffix>; "
+                         "default: %(default)s)")
     ap.add_argument("--force", action="store_true")
     ap.add_argument("--self-test", action="store_true")
     args = ap.parse_args()
     if args.self_test:
         sys.exit(self_test())
+    LISTENERS[:] = [e.strip() for e in args.listeners.split(",") if e.strip()]
     sys.exit(run(args))
 
 

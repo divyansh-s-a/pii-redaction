@@ -68,10 +68,16 @@ EXPECTED_LANG = {"HIN": "hi", "ODI": "or", "BEN": "bn"}
 ENGINE_MODULES = {"gemini": "gemini_transcribe",
                   "elevenlabs": "adapters.elevenlabs_transcribe",
                   "openai": "adapters.openai_transcribe",
-                  # scribe_v1: benched 2026-09-03 (third-listener evaluation;
-                  # decision: reference stays two-listener). OpenRouter audio
-                  # candidates screen via adapters/openrouter_audio.py.
-                  "el_scribe_v1": "adapters.el_scribe_v1"}
+                  # scribe_v1: benched 2026-09-03 (third-listener evaluation).
+                  # OpenRouter audio candidates screen via
+                  # adapters/openrouter_audio.py. gem_*: Gemini-version
+                  # candidates for the reference-listener replacement
+                  # (decision 2026-09-03: decouple reference ears from the
+                  # production transcription models).
+                  "el_scribe_v1": "adapters.el_scribe_v1",
+                  "gem_25_pro": "adapters.gem_25_pro",
+                  "gem_38_flash": "adapters.gem_38_flash",
+                  "gem_35_transcribe": "adapters.gem_35_transcribe"}
 
 # ------------------------------------------------------------ reference parsing
 

@@ -1,12 +1,12 @@
 # Detection precision/recall report — judge `openai/gpt-5.6-sol`, verifier `openai/gpt-5.6-luna`, profile `medical_consult`
 
-Generated 2026-09-03 by `tools/judge_precision_recall.py` | reference listeners: elevenlabs, gemini | 8 file(s) | predictions: `output`
+Generated 2026-09-03 by `tools/judge_precision_recall.py` | reference listeners: el_scribe_v1, gem_38_flash | 8 file(s) | predictions: `output`
 
 ## Metric definitions
 
 - **DETECTION RECALL** — reference items matched by the config's intervals.json / all reference items (match = temporal IoU >= 0.3 or 70% cover, OR same canonicalized value within +/-2.5 s)
 - **DETECTION PRECISION** — intervals matching a reference item / all intervals in intervals.json (same match rule, same reference)
-- **REDACTION RECALL** — must-beep reference items >= 95% covered by the rendered beeps / all must-beep items (channel-aware coverage)
+- **REDACTION RECALL** — must-beep reference items covered by the rendered beeps / all must-beep items. An item counts as covered when a config interval matching it (detection match rule) is >= 95% beep-covered on the config's own clock, or when the reference spans themselves are >= 95% covered (channel-aware). The own-clock rule keeps cross-engine timestamp skew between the reference listeners and the config's engine from counting as leaks; items the config never detected are judged on reference-span coverage alone.
 - **LEAK RATE** — 1 - redaction recall — the headline safety number
 - **POLICY-VERIFIED PRECISION (supplementary)** — intervals the adversarial verifier confirms satisfy a policy include rule / all intervals; reported alongside detection precision, never instead of it
 
@@ -22,13 +22,15 @@ Generated 2026-09-03 by `tools/judge_precision_recall.py` | reference listeners:
 
 ## Aggregate per configuration (micro-averaged)
 
-| config | files | detection recall | detection precision | redaction recall | leak rate | policy-verified precision (suppl.) |
-|---|---|---|---|---|---|---|
-| ElevenLabs + Gemini (production) | 8 | 36/39 = 92.3% | 45/50 = 90.0% | 31/38 = 81.6% | 7/38 = 18.4% | 45/50 = 90.0% |
-| Gemini end-to-end | 8 | 36/39 = 92.3% | 48/51 = 94.1% | 32/38 = 84.2% | 6/38 = 15.8% | 47/51 = 92.2% |
-| Whisper + Gemini | 8 | 22/39 = 56.4% | 26/31 = 83.9% | 13/38 = 34.2% | 25/38 = 65.8% | 26/31 = 83.9% |
-| ElevenLabs + GPT detector | 8 | 33/39 = 84.6% | 41/45 = 91.1% | 25/38 = 65.8% | 13/38 = 34.2% | 42/45 = 93.3% |
-| Whisper + GPT detector | 8 | 20/39 = 51.3% | 24/128 = 18.8% | 11/38 = 28.9% | 27/38 = 71.1% | 104/128 = 81.2% |
+| config | files | detection recall | detection precision | redaction recall | leak rate (all files) | leak rate (delivered files) | policy-verified precision (suppl.) |
+|---|---|---|---|---|---|---|---|
+| ElevenLabs + Gemini (production) | 8 | 41/44 = 93.2% | 48/50 = 96.0% | 39/42 = 92.9% | 3/42 = 7.1% | 0/4 = 0.0% | 45/50 = 90.0% |
+| Gemini end-to-end | 8 | 40/44 = 90.9% | 48/51 = 94.1% | 39/42 = 92.9% | 3/42 = 7.1% | 0/4 = 0.0% | 47/51 = 92.2% |
+| Whisper + Gemini | 8 | 25/44 = 56.8% | 29/31 = 93.5% | 26/42 = 61.9% | 16/42 = 38.1% | 0/4 = 0.0% | 26/31 = 83.9% |
+| ElevenLabs + GPT detector | 8 | 38/44 = 86.4% | 42/45 = 93.3% | 37/42 = 88.1% | 5/42 = 11.9% | 0/4 = 0.0% | 42/45 = 93.3% |
+| Whisper + GPT detector | 8 | 24/44 = 54.5% | 27/128 = 21.1% | 25/42 = 59.5% | 17/42 = 40.5% | 0/4 = 0.0% | 104/128 = 81.2% |
+
+Leak rate (all files) counts every corpus file including quarantined ones; the production gates withhold quarantined files from delivery, so leak rate (delivered files) is the shipping-relevant view. A file with no gate output counts as delivered.
 
 ## Per file
 
@@ -36,66 +38,66 @@ Generated 2026-09-03 by `tools/judge_precision_recall.py` | reference listeners:
 
 | file_id | ref items | detection recall | detection precision | must-beep | leaked | notes |
 |---|---|---|---|---|---|---|
-| 025354f09d2dcc71517beb7553441a85 | 3 | 2/3 = 66.7% | 4/5 = 80.0% | 3 | 1 | missed: 025354f09d2dcc71517beb7553441a85_R001 |
-| 06e8274b603dfddc4ff0a84ed09f1a85 | 13 | 13/13 = 100.0% | 20/21 = 95.2% | 13 | 2 |  |
-| 5252dea2cb5c97b14aa7dcf365211a85 | 12 | 11/12 = 91.7% | 11/14 = 78.6% | 11 | 2 | missed: 5252dea2cb5c97b14aa7dcf365211a85_R004 |
+| 025354f09d2dcc71517beb7553441a85 | 4 | 3/4 = 75.0% | 4/5 = 80.0% | 4 | 0 | missed: 025354f09d2dcc71517beb7553441a85_R001 |
+| 06e8274b603dfddc4ff0a84ed09f1a85 | 16 | 16/16 = 100.0% | 21/21 = 100.0% | 16 | 1 | QUARANTINED — withheld from delivery |
+| 5252dea2cb5c97b14aa7dcf365211a85 | 12 | 12/12 = 100.0% | 13/14 = 92.9% | 10 | 0 | QUARANTINED — withheld from delivery |
 | EP-3 | 0 | n/a | n/a | 0 | 0 |  |
 | EP_3 | 0 | n/a | n/a | 0 | 0 |  |
 | MP_EP_-_1 | 0 | n/a | n/a | 0 | 0 |  |
 | MP_EP_-_2 | 0 | n/a | n/a | 0 | 0 |  |
-| c34897552fdcca8ae3f8d5a7015d1a85 | 11 | 10/11 = 90.9% | 10/10 = 100.0% | 11 | 2 | missed: c34897552fdcca8ae3f8d5a7015d1a85_R003 |
+| c34897552fdcca8ae3f8d5a7015d1a85 | 12 | 10/12 = 83.3% | 10/10 = 100.0% | 12 | 2 | QUARANTINED — withheld from delivery; missed: c34897552fdcca8ae3f8d5a7015d1a85_R003,c34897552fdcca8ae3f8d5a7015d1a85_R007 |
 
 ### Gemini end-to-end
 
 | file_id | ref items | detection recall | detection precision | must-beep | leaked | notes |
 |---|---|---|---|---|---|---|
-| 025354f09d2dcc71517beb7553441a85 | 3 | 3/3 = 100.0% | 5/5 = 100.0% | 3 | 0 |  |
-| 06e8274b603dfddc4ff0a84ed09f1a85 | 13 | 13/13 = 100.0% | 21/22 = 95.5% | 13 | 0 |  |
-| 5252dea2cb5c97b14aa7dcf365211a85 | 12 | 10/12 = 83.3% | 12/14 = 85.7% | 11 | 1 | missed: 5252dea2cb5c97b14aa7dcf365211a85_R005,5252dea2cb5c97b14aa7dcf365211a85_R006 |
+| 025354f09d2dcc71517beb7553441a85 | 4 | 4/4 = 100.0% | 5/5 = 100.0% | 4 | 0 |  |
+| 06e8274b603dfddc4ff0a84ed09f1a85 | 16 | 15/16 = 93.8% | 21/22 = 95.5% | 16 | 1 | QUARANTINED — withheld from delivery; missed: 06e8274b603dfddc4ff0a84ed09f1a85_R014 |
+| 5252dea2cb5c97b14aa7dcf365211a85 | 12 | 11/12 = 91.7% | 12/14 = 85.7% | 10 | 0 | QUARANTINED — withheld from delivery; missed: 5252dea2cb5c97b14aa7dcf365211a85_R005 |
 | EP-3 | 0 | n/a | n/a | 0 | 0 |  |
 | EP_3 | 0 | n/a | n/a | 0 | 0 |  |
 | MP_EP_-_1 | 0 | n/a | n/a | 0 | 0 |  |
 | MP_EP_-_2 | 0 | n/a | n/a | 0 | 0 |  |
-| c34897552fdcca8ae3f8d5a7015d1a85 | 11 | 10/11 = 90.9% | 10/10 = 100.0% | 11 | 5 | missed: c34897552fdcca8ae3f8d5a7015d1a85_R006 |
+| c34897552fdcca8ae3f8d5a7015d1a85 | 12 | 10/12 = 83.3% | 10/10 = 100.0% | 12 | 2 | QUARANTINED — withheld from delivery; missed: c34897552fdcca8ae3f8d5a7015d1a85_R006,c34897552fdcca8ae3f8d5a7015d1a85_R007 |
 
 ### Whisper + Gemini
 
 | file_id | ref items | detection recall | detection precision | must-beep | leaked | notes |
 |---|---|---|---|---|---|---|
-| 025354f09d2dcc71517beb7553441a85 | 3 | 3/3 = 100.0% | 5/5 = 100.0% | 3 | 2 |  |
-| 06e8274b603dfddc4ff0a84ed09f1a85 | 13 | 10/13 = 76.9% | 12/16 = 75.0% | 13 | 7 | missed: 06e8274b603dfddc4ff0a84ed09f1a85_R001,06e8274b603dfddc4ff0a84ed09f1a85_R004,06e8274b603dfddc4ff0a84ed09f1a85_R012 |
-| 5252dea2cb5c97b14aa7dcf365211a85 | 12 | 9/12 = 75.0% | 9/10 = 90.0% | 11 | 5 | missed: 5252dea2cb5c97b14aa7dcf365211a85_R005,5252dea2cb5c97b14aa7dcf365211a85_R006,5252dea2cb5c97b14aa7dcf365211a85_R012 |
+| 025354f09d2dcc71517beb7553441a85 | 4 | 4/4 = 100.0% | 5/5 = 100.0% | 4 | 0 |  |
+| 06e8274b603dfddc4ff0a84ed09f1a85 | 16 | 11/16 = 68.8% | 14/16 = 87.5% | 16 | 4 | QUARANTINED — withheld from delivery; missed: 06e8274b603dfddc4ff0a84ed09f1a85_R001,06e8274b603dfddc4ff0a84ed09f1a85_R004,06e8274b603dfddc4ff0a84ed09f1a85_R013,06e8274b603dfddc4ff0a84ed09f1a85_R014,06e8274b603dfddc4ff0a84ed09f1a85_R015 |
+| 5252dea2cb5c97b14aa7dcf365211a85 | 12 | 10/12 = 83.3% | 10/10 = 100.0% | 10 | 0 | QUARANTINED — withheld from delivery; missed: 5252dea2cb5c97b14aa7dcf365211a85_R005,5252dea2cb5c97b14aa7dcf365211a85_R012 |
 | EP-3 | 0 | n/a | n/a | 0 | 0 |  |
 | EP_3 | 0 | n/a | n/a | 0 | 0 |  |
 | MP_EP_-_1 | 0 | n/a | n/a | 0 | 0 |  |
 | MP_EP_-_2 | 0 | n/a | n/a | 0 | 0 |  |
-| c34897552fdcca8ae3f8d5a7015d1a85 | 11 | 0/11 = 0.0% | n/a | 11 | 11 | missed: c34897552fdcca8ae3f8d5a7015d1a85_R001,c34897552fdcca8ae3f8d5a7015d1a85_R002,c34897552fdcca8ae3f8d5a7015d1a85_R003,c34897552fdcca8ae3f8d5a7015d1a85_R004,c34897552fdcca8ae3f8d5a7015d1a85_R005,c34897552fdcca8ae3f8d5a7015d1a85_R006,c34897552fdcca8ae3f8d5a7015d1a85_R007,c34897552fdcca8ae3f8d5a7015d1a85_R008,c34897552fdcca8ae3f8d5a7015d1a85_R009,c34897552fdcca8ae3f8d5a7015d1a85_R010,c34897552fdcca8ae3f8d5a7015d1a85_R011 |
+| c34897552fdcca8ae3f8d5a7015d1a85 | 12 | 0/12 = 0.0% | n/a | 12 | 12 | QUARANTINED — withheld from delivery; missed: c34897552fdcca8ae3f8d5a7015d1a85_R001,c34897552fdcca8ae3f8d5a7015d1a85_R002,c34897552fdcca8ae3f8d5a7015d1a85_R003,c34897552fdcca8ae3f8d5a7015d1a85_R004,c34897552fdcca8ae3f8d5a7015d1a85_R005,c34897552fdcca8ae3f8d5a7015d1a85_R006,c34897552fdcca8ae3f8d5a7015d1a85_R007,c34897552fdcca8ae3f8d5a7015d1a85_R008,c34897552fdcca8ae3f8d5a7015d1a85_R009,c34897552fdcca8ae3f8d5a7015d1a85_R010,c34897552fdcca8ae3f8d5a7015d1a85_R011,c34897552fdcca8ae3f8d5a7015d1a85_R012 |
 
 ### ElevenLabs + GPT detector
 
 | file_id | ref items | detection recall | detection precision | must-beep | leaked | notes |
 |---|---|---|---|---|---|---|
-| 025354f09d2dcc71517beb7553441a85 | 3 | 2/3 = 66.7% | 3/4 = 75.0% | 3 | 2 | missed: 025354f09d2dcc71517beb7553441a85_R001 |
-| 06e8274b603dfddc4ff0a84ed09f1a85 | 13 | 12/13 = 92.3% | 19/21 = 90.5% | 13 | 3 | missed: 06e8274b603dfddc4ff0a84ed09f1a85_R008 |
-| 5252dea2cb5c97b14aa7dcf365211a85 | 12 | 9/12 = 75.0% | 9/10 = 90.0% | 11 | 4 | missed: 5252dea2cb5c97b14aa7dcf365211a85_R002,5252dea2cb5c97b14aa7dcf365211a85_R004,5252dea2cb5c97b14aa7dcf365211a85_R011 |
+| 025354f09d2dcc71517beb7553441a85 | 4 | 4/4 = 100.0% | 3/4 = 75.0% | 4 | 0 |  |
+| 06e8274b603dfddc4ff0a84ed09f1a85 | 16 | 15/16 = 93.8% | 20/21 = 95.2% | 16 | 1 | QUARANTINED — withheld from delivery; missed: 06e8274b603dfddc4ff0a84ed09f1a85_R008 |
+| 5252dea2cb5c97b14aa7dcf365211a85 | 12 | 9/12 = 75.0% | 9/10 = 90.0% | 10 | 2 | QUARANTINED — withheld from delivery; missed: 5252dea2cb5c97b14aa7dcf365211a85_R002,5252dea2cb5c97b14aa7dcf365211a85_R011,5252dea2cb5c97b14aa7dcf365211a85_R012 |
 | EP-3 | 0 | n/a | n/a | 0 | 0 |  |
 | EP_3 | 0 | n/a | n/a | 0 | 0 |  |
 | MP_EP_-_1 | 0 | n/a | n/a | 0 | 0 |  |
 | MP_EP_-_2 | 0 | n/a | n/a | 0 | 0 |  |
-| c34897552fdcca8ae3f8d5a7015d1a85 | 11 | 10/11 = 90.9% | 10/10 = 100.0% | 11 | 4 | missed: c34897552fdcca8ae3f8d5a7015d1a85_R003 |
+| c34897552fdcca8ae3f8d5a7015d1a85 | 12 | 10/12 = 83.3% | 10/10 = 100.0% | 12 | 2 | QUARANTINED — withheld from delivery; missed: c34897552fdcca8ae3f8d5a7015d1a85_R003,c34897552fdcca8ae3f8d5a7015d1a85_R007 |
 
 ### Whisper + GPT detector
 
 | file_id | ref items | detection recall | detection precision | must-beep | leaked | notes |
 |---|---|---|---|---|---|---|
-| 025354f09d2dcc71517beb7553441a85 | 3 | 3/3 = 100.0% | 5/5 = 100.0% | 3 | 2 |  |
-| 06e8274b603dfddc4ff0a84ed09f1a85 | 13 | 9/13 = 69.2% | 11/15 = 73.3% | 13 | 8 | missed: 06e8274b603dfddc4ff0a84ed09f1a85_R001,06e8274b603dfddc4ff0a84ed09f1a85_R004,06e8274b603dfddc4ff0a84ed09f1a85_R008,06e8274b603dfddc4ff0a84ed09f1a85_R012 |
-| 5252dea2cb5c97b14aa7dcf365211a85 | 12 | 8/12 = 66.7% | 8/9 = 88.9% | 11 | 6 | missed: 5252dea2cb5c97b14aa7dcf365211a85_R005,5252dea2cb5c97b14aa7dcf365211a85_R006,5252dea2cb5c97b14aa7dcf365211a85_R011,5252dea2cb5c97b14aa7dcf365211a85_R012 |
+| 025354f09d2dcc71517beb7553441a85 | 4 | 4/4 = 100.0% | 5/5 = 100.0% | 4 | 0 |  |
+| 06e8274b603dfddc4ff0a84ed09f1a85 | 16 | 11/16 = 68.8% | 13/15 = 86.7% | 16 | 4 | QUARANTINED — withheld from delivery; missed: 06e8274b603dfddc4ff0a84ed09f1a85_R001,06e8274b603dfddc4ff0a84ed09f1a85_R004,06e8274b603dfddc4ff0a84ed09f1a85_R013,06e8274b603dfddc4ff0a84ed09f1a85_R014,06e8274b603dfddc4ff0a84ed09f1a85_R015 |
+| 5252dea2cb5c97b14aa7dcf365211a85 | 12 | 9/12 = 75.0% | 9/9 = 100.0% | 10 | 1 | QUARANTINED — withheld from delivery; missed: 5252dea2cb5c97b14aa7dcf365211a85_R005,5252dea2cb5c97b14aa7dcf365211a85_R011,5252dea2cb5c97b14aa7dcf365211a85_R012 |
 | EP-3 | 0 | n/a | 0/23 = 0.0% | 0 | 0 |  |
 | EP_3 | 0 | n/a | 0/65 = 0.0% | 0 | 0 |  |
 | MP_EP_-_1 | 0 | n/a | 0/11 = 0.0% | 0 | 0 |  |
 | MP_EP_-_2 | 0 | n/a | n/a | 0 | 0 |  |
-| c34897552fdcca8ae3f8d5a7015d1a85 | 11 | 0/11 = 0.0% | n/a | 11 | 11 | missed: c34897552fdcca8ae3f8d5a7015d1a85_R001,c34897552fdcca8ae3f8d5a7015d1a85_R002,c34897552fdcca8ae3f8d5a7015d1a85_R003,c34897552fdcca8ae3f8d5a7015d1a85_R004,c34897552fdcca8ae3f8d5a7015d1a85_R005,c34897552fdcca8ae3f8d5a7015d1a85_R006,c34897552fdcca8ae3f8d5a7015d1a85_R007,c34897552fdcca8ae3f8d5a7015d1a85_R008,c34897552fdcca8ae3f8d5a7015d1a85_R009,c34897552fdcca8ae3f8d5a7015d1a85_R010,c34897552fdcca8ae3f8d5a7015d1a85_R011 |
+| c34897552fdcca8ae3f8d5a7015d1a85 | 12 | 0/12 = 0.0% | n/a | 12 | 12 | QUARANTINED — withheld from delivery; missed: c34897552fdcca8ae3f8d5a7015d1a85_R001,c34897552fdcca8ae3f8d5a7015d1a85_R002,c34897552fdcca8ae3f8d5a7015d1a85_R003,c34897552fdcca8ae3f8d5a7015d1a85_R004,c34897552fdcca8ae3f8d5a7015d1a85_R005,c34897552fdcca8ae3f8d5a7015d1a85_R006,c34897552fdcca8ae3f8d5a7015d1a85_R007,c34897552fdcca8ae3f8d5a7015d1a85_R008,c34897552fdcca8ae3f8d5a7015d1a85_R009,c34897552fdcca8ae3f8d5a7015d1a85_R010,c34897552fdcca8ae3f8d5a7015d1a85_R011,c34897552fdcca8ae3f8d5a7015d1a85_R012 |
 
 ## Per category (aggregate)
 
@@ -103,30 +105,30 @@ Generated 2026-09-03 by `tools/judge_precision_recall.py` | reference listeners:
 
 | category | detection recall | detection precision |
 |---|---|---|
-| FINANCIAL_INFO | 7/7 = 100.0% | 9/10 = 90.0% |
-| FULL_NAME | 9/12 = 75.0% | 11/12 = 91.7% |
-| HEALTH_MEDICAL_INFO | 1/1 = 100.0% | 1/3 = 33.3% |
-| ORGANIZATION_PERSON_LINKED | 15/15 = 100.0% | 19/20 = 95.0% |
+| FINANCIAL_INFO | 8/8 = 100.0% | 9/10 = 90.0% |
+| FULL_NAME | 11/13 = 84.6% | 11/12 = 91.7% |
+| HEALTH_MEDICAL_INFO | 2/2 = 100.0% | 3/3 = 100.0% |
+| ORGANIZATION_PERSON_LINKED | 17/19 = 89.5% | 20/20 = 100.0% |
 | PHONE | 5/5 = 100.0% | 5/5 = 100.0% |
 
 ### Gemini end-to-end
 
 | category | detection recall | detection precision |
 |---|---|---|
-| FINANCIAL_INFO | 7/7 = 100.0% | 10/11 = 90.9% |
-| FULL_NAME | 11/12 = 91.7% | 14/14 = 100.0% |
-| HEALTH_MEDICAL_INFO | 0/1 = 0.0% | 1/3 = 33.3% |
-| ORGANIZATION_PERSON_LINKED | 14/15 = 93.3% | 18/18 = 100.0% |
+| FINANCIAL_INFO | 8/8 = 100.0% | 9/11 = 81.8% |
+| FULL_NAME | 13/13 = 100.0% | 14/14 = 100.0% |
+| HEALTH_MEDICAL_INFO | 1/2 = 50.0% | 2/3 = 66.7% |
+| ORGANIZATION_PERSON_LINKED | 16/19 = 84.2% | 18/18 = 100.0% |
 | PHONE | 5/5 = 100.0% | 5/5 = 100.0% |
 
 ### Whisper + Gemini
 
 | category | detection recall | detection precision |
 |---|---|---|
-| FINANCIAL_INFO | 1/7 = 14.3% | 3/4 = 75.0% |
-| FULL_NAME | 7/12 = 58.3% | 9/12 = 75.0% |
-| HEALTH_MEDICAL_INFO | 0/1 = 0.0% | n/a |
-| ORGANIZATION_PERSON_LINKED | 11/15 = 73.3% | 10/11 = 90.9% |
+| FINANCIAL_INFO | 3/8 = 37.5% | 4/4 = 100.0% |
+| FULL_NAME | 9/13 = 69.2% | 10/12 = 83.3% |
+| HEALTH_MEDICAL_INFO | 0/2 = 0.0% | n/a |
+| ORGANIZATION_PERSON_LINKED | 12/19 = 63.2% | 11/11 = 100.0% |
 | PHONE | 4/5 = 80.0% | 4/4 = 100.0% |
 
 ### ElevenLabs + GPT detector
@@ -134,33 +136,33 @@ Generated 2026-09-03 by `tools/judge_precision_recall.py` | reference listeners:
 | category | detection recall | detection precision |
 |---|---|---|
 | ASSIGNED_ID | n/a | 0/1 = 0.0% |
-| FINANCIAL_INFO | 7/7 = 100.0% | 8/9 = 88.9% |
-| FULL_NAME | 9/12 = 75.0% | 11/12 = 91.7% |
-| HEALTH_MEDICAL_INFO | 1/1 = 100.0% | 1/1 = 100.0% |
-| ORGANIZATION_PERSON_LINKED | 12/15 = 80.0% | 16/17 = 94.1% |
+| FINANCIAL_INFO | 8/8 = 100.0% | 8/9 = 88.9% |
+| FULL_NAME | 12/13 = 92.3% | 11/12 = 91.7% |
+| HEALTH_MEDICAL_INFO | 1/2 = 50.0% | 1/1 = 100.0% |
+| ORGANIZATION_PERSON_LINKED | 15/19 = 78.9% | 17/17 = 100.0% |
 | PHONE | 5/5 = 100.0% | 5/5 = 100.0% |
 
 ### Whisper + GPT detector
 
 | category | detection recall | detection precision |
 |---|---|---|
-| FINANCIAL_INFO | 1/7 = 14.3% | 3/4 = 75.0% |
-| FULL_NAME | 7/12 = 58.3% | 9/107 = 8.4% |
-| HEALTH_MEDICAL_INFO | 0/1 = 0.0% | 0/3 = 0.0% |
-| ORGANIZATION_PERSON_LINKED | 9/15 = 60.0% | 8/10 = 80.0% |
+| FINANCIAL_INFO | 3/8 = 37.5% | 4/4 = 100.0% |
+| FULL_NAME | 9/13 = 69.2% | 10/107 = 9.3% |
+| HEALTH_MEDICAL_INFO | 0/2 = 0.0% | 0/3 = 0.0% |
+| ORGANIZATION_PERSON_LINKED | 11/19 = 57.9% | 9/10 = 90.0% |
 | PHONE | 4/5 = 80.0% | 4/4 = 100.0% |
 
 ## Speakers and languages (per file, per listener)
 
-| file_id | EL speakers | Gemini speakers | agree | EL primary lang | Gemini primary lang | agree | all languages (union) |
+| file_id | el_scribe_v1 speakers | gem_38_flash speakers | agree | el_scribe_v1 primary lang | gem_38_flash primary lang | agree | all languages (union) |
 |---|---|---|---|---|---|---|---|
 | 025354f09d2dcc71517beb7553441a85 | 2 | 2 | True | en | en | True | en |
-| 06e8274b603dfddc4ff0a84ed09f1a85 | 3 | 3 | True | en | en | True | en, mixed |
-| 5252dea2cb5c97b14aa7dcf365211a85 | 2 | 2 | True | en | en | True | en |
-| EP-3 | 3 | 11 | False | bn | bn | True | bn |
+| 06e8274b603dfddc4ff0a84ed09f1a85 | 3 | 2 | False | en | en | True | en, kn |
+| 5252dea2cb5c97b14aa7dcf365211a85 | 2 | 2 | True | en | en | True | en, hi |
+| EP-3 | 2 | 10 | False | bn | bn | True | bn, mixed |
 | EP_3 | 2 | 5 | False | bn | bn | True | bn, mixed, en |
-| MP_EP_-_1 | 2 | 5 | False | bn | bn | True | bn, en |
-| MP_EP_-_2 | 2 | 4 | False | bn | bn | True | bn |
+| MP_EP_-_1 | 2 | 6 | False | bn | bn | True | bn, mixed, en |
+| MP_EP_-_2 | 2 | 5 | False | bn | bn | True | bn, mixed |
 | c34897552fdcca8ae3f8d5a7015d1a85 | 2 | 2 | True | te | te | True | te |
 
 ## Cross-listener timestamp agreement
@@ -169,60 +171,64 @@ Start-time offset between the two listeners' spans of the SAME value (their rela
 
 | file_id | value pairs | median offset ms | p90 offset ms |
 |---|---|---|---|
-| 025354f09d2dcc71517beb7553441a85 | 3 | 860 | 2820 |
-| 06e8274b603dfddc4ff0a84ed09f1a85 | 17 | 520 | 1220 |
-| 5252dea2cb5c97b14aa7dcf365211a85 | 9 | 270 | 1140 |
+| 025354f09d2dcc71517beb7553441a85 | 4 | 310 | 520 |
+| 06e8274b603dfddc4ff0a84ed09f1a85 | 16 | 218 | 550 |
+| 5252dea2cb5c97b14aa7dcf365211a85 | 8 | 210 | 330 |
 | EP-3 | 0 | n/a | n/a |
 | EP_3 | 0 | n/a | n/a |
 | MP_EP_-_1 | 0 | n/a | n/a |
 | MP_EP_-_2 | 0 | n/a | n/a |
-| c34897552fdcca8ae3f8d5a7015d1a85 | 8 | 640 | 800 |
-| **all files** | 37 | 540 | 1220 |
+| c34897552fdcca8ae3f8d5a7015d1a85 | 9 | 190 | 740 |
+| **all files** | 37 | 210 | 550 |
 
 ## Reference items per file
 
-### 025354f09d2dcc71517beb7553441a85 — 3 item(s)
+### 025354f09d2dcc71517beb7553441a85 — 4 item(s)
 
 | item | interval ms | categories | heard by | action | spoken_text |
 |---|---|---|---|---|---|
-| 025354f09d2dcc71517beb7553441a85_R001 | 13000-13400 | FULL_NAME | gemini | beep | Vidya |
-| 025354f09d2dcc71517beb7553441a85_R002 | 13600-14400 | ORGANIZATION_PERSON_LINKED | gemini | beep | KIMS hospital |
-| 025354f09d2dcc71517beb7553441a85_R003 | 95940-106800 | FINANCIAL_INFO | elevenlabs,gemini | beep | thirty thousand six hundred and thirty-five rupees |
+| 025354f09d2dcc71517beb7553441a85_R001 | 12720-13763 | FULL_NAME,ORGANIZATION_PERSON_LINKED | el_scribe_v1,gem_38_flash | beep | Finfortune |
+| 025354f09d2dcc71517beb7553441a85_R002 | 14013-14764 | ORGANIZATION_PERSON_LINKED | el_scribe_v1 | beep | KIMS Hospital |
+| 025354f09d2dcc71517beb7553441a85_R003 | 95940-98020 | FINANCIAL_INFO | el_scribe_v1,gem_38_flash | beep | thirty thousand six hundred and thirty-five rupees |
+| 025354f09d2dcc71517beb7553441a85_R004 | 100900-105700 | FINANCIAL_INFO | el_scribe_v1,gem_38_flash | beep | Thirty thousand six hundred and thirty-five rupees |
 
-### 06e8274b603dfddc4ff0a84ed09f1a85 — 13 item(s)
+### 06e8274b603dfddc4ff0a84ed09f1a85 — 16 item(s)
 
 | item | interval ms | categories | heard by | action | spoken_text |
 |---|---|---|---|---|---|
-| 06e8274b603dfddc4ff0a84ed09f1a85_R001 | 3400-4280 | FULL_NAME | elevenlabs,gemini | beep | Keerthana |
-| 06e8274b603dfddc4ff0a84ed09f1a85_R002 | 4700-6040 | ORGANIZATION_PERSON_LINKED | elevenlabs,gemini | beep | Vikram Hospital |
-| 06e8274b603dfddc4ff0a84ed09f1a85_R003 | 10200-10940 | FULL_NAME | elevenlabs,gemini | beep | Praveen |
-| 06e8274b603dfddc4ff0a84ed09f1a85_R004 | 51300-52460 | ORGANIZATION_PERSON_LINKED | elevenlabs,gemini | beep | Orix |
-| 06e8274b603dfddc4ff0a84ed09f1a85_R005 | 76700-81900 | FULL_NAME | elevenlabs,gemini | beep | Shailesh |
-| 06e8274b603dfddc4ff0a84ed09f1a85_R006 | 221180-229300 | PHONE | elevenlabs,gemini | beep | double nine eight zero one six one double three one |
-| 06e8274b603dfddc4ff0a84ed09f1a85_R007 | 226800-237900 | ORGANIZATION_PERSON_LINKED,PHONE | elevenlabs,gemini | beep | nine double zero eight three zero five six four eight |
-| 06e8274b603dfddc4ff0a84ed09f1a85_R008 | 239100-244900 | ORGANIZATION_PERSON_LINKED | elevenlabs,gemini | beep | Axis PC Bank |
-| 06e8274b603dfddc4ff0a84ed09f1a85_R009 | 252300-257700 | ORGANIZATION_PERSON_LINKED | gemini | beep | Ayush Health |
-| 06e8274b603dfddc4ff0a84ed09f1a85_R010 | 321000-328100 | ORGANIZATION_PERSON_LINKED | elevenlabs,gemini | beep | Medi Assist |
-| 06e8274b603dfddc4ff0a84ed09f1a85_R011 | 381120-387120 | FULL_NAME | elevenlabs,gemini | beep | ಸುಧೀರ್ |
-| 06e8274b603dfddc4ff0a84ed09f1a85_R012 | 446000-457500 | ORGANIZATION_PERSON_LINKED | elevenlabs,gemini | beep | Medi Assist |
-| 06e8274b603dfddc4ff0a84ed09f1a85_R013 | 459000-466500 | ORGANIZATION_PERSON_LINKED | gemini | beep | ವಿಕ್ರಮ್ |
+| 06e8274b603dfddc4ff0a84ed09f1a85_R001 | 3760-4280 | FULL_NAME | el_scribe_v1,gem_38_flash | beep | Keerthana |
+| 06e8274b603dfddc4ff0a84ed09f1a85_R002 | 4660-6040 | ORGANIZATION_PERSON_LINKED | el_scribe_v1,gem_38_flash | beep | Mitramitra hospital |
+| 06e8274b603dfddc4ff0a84ed09f1a85_R003 | 10070-11020 | FULL_NAME | el_scribe_v1,gem_38_flash | beep | Praveen |
+| 06e8274b603dfddc4ff0a84ed09f1a85_R004 | 52180-52580 | ORGANIZATION_PERSON_LINKED | el_scribe_v1,gem_38_flash | beep | Orix |
+| 06e8274b603dfddc4ff0a84ed09f1a85_R005 | 77280-81900 | FULL_NAME | el_scribe_v1,gem_38_flash | beep | Shailesh |
+| 06e8274b603dfddc4ff0a84ed09f1a85_R006 | 221180-228320 | PHONE | el_scribe_v1,gem_38_flash | beep | nine nine eight zero one six one double three one |
+| 06e8274b603dfddc4ff0a84ed09f1a85_R007 | 227380-238260 | ORGANIZATION_PERSON_LINKED,PHONE | el_scribe_v1,gem_38_flash | beep | nine double zero eight three zero five six four eight |
+| 06e8274b603dfddc4ff0a84ed09f1a85_R008 | 240040-247680 | ORGANIZATION_PERSON_LINKED | gem_38_flash | beep | HDFC Bank |
+| 06e8274b603dfddc4ff0a84ed09f1a85_R009 | 252960-258760 | ORGANIZATION_PERSON_LINKED | el_scribe_v1,gem_38_flash | beep | Ayu Health team |
+| 06e8274b603dfddc4ff0a84ed09f1a85_R010 | 321080-328430 | ORGANIZATION_PERSON_LINKED | el_scribe_v1,gem_38_flash | beep | Medi Assist |
+| 06e8274b603dfddc4ff0a84ed09f1a85_R011 | 381208-381508 | FULL_NAME | el_scribe_v1 | beep | ಸುಧಾ |
+| 06e8274b603dfddc4ff0a84ed09f1a85_R012 | 382508-382738 | FULL_NAME | el_scribe_v1 | beep | ಸುಧಾ |
+| 06e8274b603dfddc4ff0a84ed09f1a85_R013 | 446730-457070 | ORGANIZATION_PERSON_LINKED | el_scribe_v1,gem_38_flash | beep | ಮೀಡಿ ಅಸಿಸ್ಟ್ |
+| 06e8274b603dfddc4ff0a84ed09f1a85_R014 | 457878-458248 | ORGANIZATION_PERSON_LINKED | el_scribe_v1 | beep | Ayu Health |
+| 06e8274b603dfddc4ff0a84ed09f1a85_R015 | 459228-459528 | ORGANIZATION_PERSON_LINKED | el_scribe_v1 | beep | Vikram |
+| 06e8274b603dfddc4ff0a84ed09f1a85_R016 | 459390-466490 | FULL_NAME,ORGANIZATION_PERSON_LINKED | el_scribe_v1,gem_38_flash | beep | Vikram |
 
 ### 5252dea2cb5c97b14aa7dcf365211a85 — 12 item(s)
 
 | item | interval ms | categories | heard by | action | spoken_text |
 |---|---|---|---|---|---|
-| 5252dea2cb5c97b14aa7dcf365211a85_R001 | 2960-3500 | FULL_NAME | elevenlabs,gemini | beep | Keerthana |
-| 5252dea2cb5c97b14aa7dcf365211a85_R002 | 4500-5600 | ORGANIZATION_PERSON_LINKED | elevenlabs,gemini | beep | Dr Agarwal Hospital |
-| 5252dea2cb5c97b14aa7dcf365211a85_R003 | 10200-11020 | FULL_NAME | elevenlabs,gemini | beep | Noor Jahan |
-| 5252dea2cb5c97b14aa7dcf365211a85_R004 | 29600-30000 | FULL_NAME | gemini | beep | Anish |
-| 5252dea2cb5c97b14aa7dcf365211a85_R005 | 30620-30940 | FULL_NAME | elevenlabs | beep | Haneef |
-| 5252dea2cb5c97b14aa7dcf365211a85_R006 | 46700-48460 | HEALTH_MEDICAL_INFO | elevenlabs,gemini | annotate_only | medications post-surgery |
-| 5252dea2cb5c97b14aa7dcf365211a85_R007 | 56500-58280 | ORGANIZATION_PERSON_LINKED | elevenlabs,gemini | beep | Medi Assist |
-| 5252dea2cb5c97b14aa7dcf365211a85_R008 | 168225-172401 | PHONE | elevenlabs,gemini | beep | nine nine eight zero zero one nine zero seven seven |
-| 5252dea2cb5c97b14aa7dcf365211a85_R009 | 173960-177531 | PHONE | elevenlabs,gemini | beep | nine seven three one five four double nine zero five |
-| 5252dea2cb5c97b14aa7dcf365211a85_R010 | 179640-182500 | ORGANIZATION_PERSON_LINKED | elevenlabs,gemini | beep | Model Solutions India Private Limited Company |
-| 5252dea2cb5c97b14aa7dcf365211a85_R011 | 186360-189000 | ORGANIZATION_PERSON_LINKED | elevenlabs,gemini | beep | State Bank of India |
-| 5252dea2cb5c97b14aa7dcf365211a85_R012 | 285700-293000 | FINANCIAL_INFO | gemini | beep | three thousand three hundred |
+| 5252dea2cb5c97b14aa7dcf365211a85_R001 | 2960-3400 | FULL_NAME | el_scribe_v1,gem_38_flash | beep | Keerthana |
+| 5252dea2cb5c97b14aa7dcf365211a85_R002 | 4090-5540 | ORGANIZATION_PERSON_LINKED | el_scribe_v1,gem_38_flash | beep | Dr Aakarul Hospital |
+| 5252dea2cb5c97b14aa7dcf365211a85_R003 | 10240-10990 | FULL_NAME | el_scribe_v1,gem_38_flash | beep | Noor Jahan |
+| 5252dea2cb5c97b14aa7dcf365211a85_R004 | 30620-30960 | FULL_NAME | el_scribe_v1 | beep | Manish |
+| 5252dea2cb5c97b14aa7dcf365211a85_R005 | 46470-48140 | HEALTH_MEDICAL_INFO | gem_38_flash | annotate_only | medications post surgery |
+| 5252dea2cb5c97b14aa7dcf365211a85_R006 | 57070-58280 | ORGANIZATION_PERSON_LINKED | el_scribe_v1,gem_38_flash | beep | Medi Assist |
+| 5252dea2cb5c97b14aa7dcf365211a85_R007 | 111890-116890 | FINANCIAL_INFO | gem_38_flash | beep | 42,000 |
+| 5252dea2cb5c97b14aa7dcf365211a85_R008 | 168520-173520 | PHONE | el_scribe_v1,gem_38_flash | beep | nine double nine eight double zero one nine zero double seve |
+| 5252dea2cb5c97b14aa7dcf365211a85_R009 | 173940-179250 | PHONE | el_scribe_v1,gem_38_flash | beep | nine seven three one five four double nine zero five |
+| 5252dea2cb5c97b14aa7dcf365211a85_R010 | 179640-186320 | ORGANIZATION_PERSON_LINKED | el_scribe_v1,gem_38_flash | beep | Model Solutions India Private Limited Company |
+| 5252dea2cb5c97b14aa7dcf365211a85_R011 | 186486-192060 | ORGANIZATION_PERSON_LINKED | el_scribe_v1,gem_38_flash | beep | State Bank of India |
+| 5252dea2cb5c97b14aa7dcf365211a85_R012 | 284260-285880 | HEALTH_MEDICAL_INFO | el_scribe_v1 | annotate_only | ECG X-rays |
 
 ### EP-3 — 0 item(s)
 
@@ -244,19 +250,20 @@ Start-time offset between the two listeners' spans of the SAME value (their rela
 | item | interval ms | categories | heard by | action | spoken_text |
 |---|---|---|---|---|---|
 
-### c34897552fdcca8ae3f8d5a7015d1a85 — 11 item(s)
+### c34897552fdcca8ae3f8d5a7015d1a85 — 12 item(s)
 
 | item | interval ms | categories | heard by | action | spoken_text |
 |---|---|---|---|---|---|
-| c34897552fdcca8ae3f8d5a7015d1a85_R001 | 7200-7600 | FULL_NAME | elevenlabs,gemini | beep | నూతన్ |
-| c34897552fdcca8ae3f8d5a7015d1a85_R002 | 7500-8500 | ORGANIZATION_PERSON_LINKED | elevenlabs,gemini | beep | Medicover Hospital |
-| c34897552fdcca8ae3f8d5a7015d1a85_R003 | 13500-14400 | FULL_NAME | gemini | beep | ఎల్ పి సావిత్రి |
-| c34897552fdcca8ae3f8d5a7015d1a85_R004 | 20620-22100 | FULL_NAME | elevenlabs,gemini | beep | రాజేంద్ర చారి |
-| c34897552fdcca8ae3f8d5a7015d1a85_R005 | 81300-84400 | PHONE | elevenlabs,gemini | beep | ఎయిట్ వన్ టూ త్రీ సిక్స్ త్రీ ఎయిట్ జీరో ఫోర్ టూ |
-| c34897552fdcca8ae3f8d5a7015d1a85_R006 | 101600-102070 | ORGANIZATION_PERSON_LINKED | elevenlabs | beep | Ayu Health |
-| c34897552fdcca8ae3f8d5a7015d1a85_R007 | 121800-123600 | FINANCIAL_INFO | elevenlabs,gemini | beep | ఫిఫ్టీన్ థౌసండ్ లో కట్టాము |
-| c34897552fdcca8ae3f8d5a7015d1a85_R008 | 166380-171500 | FINANCIAL_INFO | elevenlabs,gemini | beep | రెండు లక్షల నలభై తొమ్మిది వేల నాలుగు వందల తొంభై ఐదు రూపాయలు |
-| c34897552fdcca8ae3f8d5a7015d1a85_R009 | 176500-180900 | FINANCIAL_INFO | gemini | beep | ఇరవై ఒక్క వేల రెండు వందల యాభై రూపాయలు డిస్కౌంట్ ఇచ్చారు |
-| c34897552fdcca8ae3f8d5a7015d1a85_R010 | 183000-186340 | FINANCIAL_INFO | elevenlabs,gemini | beep | లక్ష యాభై వేలు క్యాష్ ద్వారా పే చేసాము |
-| c34897552fdcca8ae3f8d5a7015d1a85_R011 | 188200-193600 | FINANCIAL_INFO | elevenlabs,gemini | beep | డెబ్బై ఎనిమిది వేల రెండు వందల నలభై ఐదు రూపాయలు నెఫ్ట్ ద్వారా |
+| c34897552fdcca8ae3f8d5a7015d1a85_R001 | 7090-7460 | FULL_NAME | el_scribe_v1,gem_38_flash | beep | నమిత |
+| c34897552fdcca8ae3f8d5a7015d1a85_R002 | 7450-8400 | ORGANIZATION_PERSON_LINKED | el_scribe_v1,gem_38_flash | beep | Medicover Hospital |
+| c34897552fdcca8ae3f8d5a7015d1a85_R003 | 13620-14410 | FULL_NAME | gem_38_flash | beep | ఎంపిసి అర్జున్ |
+| c34897552fdcca8ae3f8d5a7015d1a85_R004 | 20380-21650 | FULL_NAME | el_scribe_v1,gem_38_flash | beep | Rajendar Chari |
+| c34897552fdcca8ae3f8d5a7015d1a85_R005 | 82280-84320 | PHONE | el_scribe_v1 | beep | eight one two three six eight zero four two |
+| c34897552fdcca8ae3f8d5a7015d1a85_R006 | 101410-102280 | ORGANIZATION_PERSON_LINKED | el_scribe_v1,gem_38_flash | beep | Ayu Health |
+| c34897552fdcca8ae3f8d5a7015d1a85_R007 | 115820-121390 | ORGANIZATION_PERSON_LINKED | el_scribe_v1,gem_38_flash | beep | ఆరోగ్య ఫైనాన్స్ |
+| c34897552fdcca8ae3f8d5a7015d1a85_R008 | 121960-126960 | FINANCIAL_INFO | el_scribe_v1,gem_38_flash | beep | fifteen thousand కట్టాము |
+| c34897552fdcca8ae3f8d5a7015d1a85_R009 | 166350-174320 | FINANCIAL_INFO | el_scribe_v1,gem_38_flash | beep | 2,49,495 రూపాయలు |
+| c34897552fdcca8ae3f8d5a7015d1a85_R010 | 177710-180700 | FINANCIAL_INFO | el_scribe_v1 | beep | 21,250 రూపాయలు discount ఇచ్చారని |
+| c34897552fdcca8ae3f8d5a7015d1a85_R011 | 183060-188600 | FINANCIAL_INFO | el_scribe_v1,gem_38_flash | beep | 1,50,000 cash ద్వారా pay చేశామని |
+| c34897552fdcca8ae3f8d5a7015d1a85_R012 | 187700-194740 | FINANCIAL_INFO | el_scribe_v1,gem_38_flash | beep | Remaining amount 78,245 రూపాయలు NEFT ద్వారా pay చేశామని |
 

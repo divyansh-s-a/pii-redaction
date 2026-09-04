@@ -16,6 +16,12 @@ import common
 TRANSCRIBE_PROMPT = (Path(__file__).resolve().parent.parent / "prompts"
                      / "transcription_prompt_v1.txt").read_text()
 
+# Reference-listener mode ONLY: a safety-blocked 30 s floor window is skipped
+# (the other reference ear covers the hole) instead of failing the file.
+# NEVER enable for production transcription — an untranscribed window is
+# audio the detector never sees.
+SKIP_BLOCKED_WINDOWS = False
+
 TRANSCRIBE_SCHEMA = {
     "type": "OBJECT",
     "properties": {
@@ -162,6 +168,30 @@ def transcribe_window(model, work_wav, out_dir, start_s, length_s, dur_ms,
         try:
             res = transcribe_bytes(model, chunk, "audio/wav", context)
         except RuntimeError as e:
+            if "no candidates" in str(e):
+                # input-side safety block (e.g. PROHIBITED_CONTENT) — bisect
+                # to isolate the offending segment; at the floor, skipping is
+                # allowed ONLY in reference-listener mode. Production
+                # transcription must fail loudly: an untranscribed window is
+                # audio the detector never sees.
+                if length_s >= 60:
+                    half = length_s / 2
+                    print(f"  window @{start_s:.0f}s blocked ({e}) -> "
+                          f"bisecting into {half:.0f}s halves")
+                    left = transcribe_window(model, work_wav, out_dir,
+                                             start_s, half, dur_ms, context)
+                    right = transcribe_window(model, work_wav, out_dir,
+                                              start_s + half,
+                                              length_s - half, dur_ms,
+                                              _tail_context(left) or context)
+                    return left + right
+                if SKIP_BLOCKED_WINDOWS:
+                    print(f"  WARNING: window @{start_s:.0f}s "
+                          f"({length_s:.0f}s) blocked ({e}) -> SKIPPED "
+                          "(reference-listener mode; stretch is "
+                          "single-listener)")
+                    return []
+                raise
             if not _truncated(e):
                 raise
             # Truncation is usually THINKING eating the output budget, not

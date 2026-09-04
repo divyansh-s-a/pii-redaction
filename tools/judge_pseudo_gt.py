@@ -69,7 +69,13 @@ CLUSTER_COVER = 0.70         # ... or when one covers this much of the other
 COVERAGE_MIN = score_run.COVERAGE_MIN   # rendered coverage below this => leak
 CONF_RANK = {"high": 2, "medium": 1, "low": 0}
 ENGINE_SUFFIX = {"gemini": "", "elevenlabs": "__elevenlabs",
-                 "openai": "__openai"}
+                 "openai": "__openai",
+                 # reference-listener candidates (2026-09-03): transcripts
+                 # live at <pred-root>/<fid>__<engine>/ like any engine
+                 "el_scribe_v1": "__el_scribe_v1",
+                 "gem_25_pro": "__gem_25_pro",
+                 "gem_38_flash": "__gem_38_flash",
+                 "gem_35_transcribe": "__gem_35_transcribe"}
 # Span-cache schema. Bumped to 2 when the adversarial verification pass was
 # added; entries without the "schema" field predate it and are stale for
 # --verify runs (they carry no verification data).
@@ -352,14 +358,52 @@ def same_value_nearby(a, b, slop_ms=2500):
     return False
 
 
+NAME_SLOT_GAP_MS = 600       # cross-engine name-respelling merge window
+
+
+def _name_slot_pairs(spans):
+    """Cross-engine FULL_NAME spans occupying the SAME time slot are one
+    occurrence heard with different spellings (e.g. 'Vidya' vs 'Ritika' at
+    13.0-13.8 s: barely-overlapping spans, no value match — two items without
+    this guard). Chain FULL_NAME spans whose gaps are <= NAME_SLOT_GAP_MS
+    into slots; a slot merges ONLY when it holds several engines and no
+    engine contributes more than one span — an engine hearing TWO names in
+    the window ('Ramesh' then 'Vidya') marks genuinely distinct names, and
+    the slot is left alone. Returns the set of index pairs to force-merge."""
+    names = sorted((i for i, s in enumerate(spans)
+                    if "FULL_NAME" in s["categories"]),
+                   key=lambda i: (spans[i]["start_ms"], spans[i]["end_ms"]))
+    chains, last_end = [], None
+    for i in names:
+        if chains and spans[i]["start_ms"] - last_end <= NAME_SLOT_GAP_MS:
+            chains[-1].append(i)
+            last_end = max(last_end, spans[i]["end_ms"])
+        else:
+            chains.append([i])
+            last_end = spans[i]["end_ms"]
+    pairs = set()
+    for ch in chains:
+        per_engine = {}
+        for i in ch:
+            per_engine.setdefault(spans[i]["engine"], []).append(i)
+        if len(per_engine) > 1 and all(len(v) == 1
+                                       for v in per_engine.values()):
+            ids = sorted(v[0] for v in per_engine.values())
+            pairs.update((a, b) for x, a in enumerate(ids)
+                         for b in ids[x + 1:])
+    return pairs
+
+
 def cluster_spans(spans):
     """Union-find clustering of time-anchored spans; one pseudo-GT item per
     cluster: interval hull, union of categories, surfacing engines, majority
     public_figure (ties -> False, the safety-conservative choice: the item
     stays in the leak denominator), best confidence. Spans cluster on temporal
-    overlap OR on same-value-nearby (cross-engine timestamp slop)."""
+    overlap, on same-value-nearby (cross-engine timestamp slop), or on the
+    FULL_NAME same-slot rule (cross-engine respellings of one occurrence)."""
     n = len(spans)
     parent = list(range(n))
+    slot_pairs = _name_slot_pairs(spans)
 
     def find(x):
         while parent[x] != x:
@@ -369,8 +413,9 @@ def cluster_spans(spans):
 
     for i in range(n):
         for j in range(i + 1, n):
-            if overlap_pair(spans[i], spans[j]) or same_value_nearby(
-                    spans[i], spans[j]):
+            if (overlap_pair(spans[i], spans[j])
+                    or same_value_nearby(spans[i], spans[j])
+                    or (i, j) in slot_pairs):
                 ri, rj = find(i), find(j)
                 if ri != rj:
                     parent[rj] = ri
@@ -942,6 +987,35 @@ def self_test():
          and set(items[0]["engines"]) == {"elevenlabs", "gemini"},
          "r_kn=%.2f r_te=%.2f fold_kn=%r fold_te=%r items=%s"
          % (r_kn, r_te, fold_indic("ಸುಧಾ"), fold_indic("ఆయుష్"), items))
+
+    # 3d. name-slot guard: cross-engine respelling of ONE name occurrence
+    #     (dissimilar values, barely-touching spans — the Vidya/Ritika case)
+    #     merges into one item
+    f1 = _tspan(13000, 13400, "gemini", cats=("FULL_NAME",), text="Vidya")
+    f2 = _tspan(13388, 13763, "el_scribe_v1", cats=("FULL_NAME",),
+                text="Ritika")
+    items = cluster_spans([f1, f2])
+    case("name-slot guard: cross-engine respelling merges",
+         len(items) == 1 and set(items[0]["engines"]) ==
+         {"el_scribe_v1", "gemini"}, str(items))
+
+    # 3e. name-slot ambiguity discriminator: an engine hearing TWO names in
+    #     the window marks genuinely distinct names — no forced merge
+    g1 = _tspan(13000, 13300, "gemini", cats=("FULL_NAME",), text="Ramesh")
+    g2 = _tspan(13350, 13700, "gemini", cats=("FULL_NAME",), text="Vidya")
+    g3 = _tspan(13720, 14100, "el_scribe_v1", cats=("FULL_NAME",),
+                text="Ritika")
+    items = cluster_spans([g1, g2, g3])
+    case("name-slot guard: two-name engine disables the merge",
+         len(items) == 3, str(items))
+
+    # 3f. name-slot guard leaves non-name categories alone: adjacent
+    #     dissimilar PHONE spans stay separate
+    h1 = _tspan(13000, 13400, "gemini", text="nine eight")
+    h2 = _tspan(13450, 13800, "el_scribe_v1", text="four two")
+    items = cluster_spans([h1, h2])
+    case("name-slot guard: non-name categories unaffected",
+         len(items) == 2, str(items))
 
     # 4. leak coverage math incl. channel semantics (channel None covers all;
     #    wrong channel leaks; 90% coverage still leaks)

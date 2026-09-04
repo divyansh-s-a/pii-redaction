@@ -67,7 +67,10 @@ body.append(para("Transcripts, gates and costs come from the fresh end-to-end co
                  "2026-09-02 (no cached results reused). Detection and all judge-based metrics were "
                  "re-measured on those same transcripts under detection policy v4 on 2026-09-03 "
                  "(the v4 consistency pass, section 5.8) — the numbers in this report describe the "
-                 "policy the repository ships.",
+                 "policy the repository ships. Later on 2026-09-03 the judge reference was rebuilt on "
+                 "listeners independent of every configuration's transcription engine (section 5.9); "
+                 "all judge-based numbers in this report are measured against that independent "
+                 "reference.",
                  size=18, color=MUTED, center=True, space_before=400))
 body.append(para(page_break=True))
 
@@ -93,10 +96,12 @@ body.append(para(f"Safety gates run on every delivery by default (signal QC, bee
                  f"telephone calls were correctly HELD for human review by the beep-edge listen check — "
                  f"the gates ship nothing they cannot verify. Judge text-leak audits: zero leak candidates "
                  f"on every delivered file.", bullet=True))
-body.append(para(f"Gemini end-to-end scored highest on raw detection ({frac(gem['ref_matched'], gem['ref_items'])} "
-                 f"recall) but costs ~40x more to transcribe; Whisper-based configurations collapse "
-                 f"(~50% recall — the transcripts never surface many values), and ElevenLabs' built-in "
-                 f"detection remains eliminated (3.8% precision vs the policy reference).", bullet=True))
+body.append(para(f"Against the independent reference the production configuration leads detection "
+                 f"outright ({frac(prod['ref_matched'], prod['ref_items'])} recall vs Gemini end-to-end's "
+                 f"{frac(gem['ref_matched'], gem['ref_items'])}, at ~1/40th of its transcription cost); "
+                 f"Whisper-based configurations collapse (~55% recall — the transcripts never surface "
+                 f"many values), and ElevenLabs' built-in detection remains eliminated (3.8% precision "
+                 f"vs the policy reference).", bullet=True))
 body.append(para("Every user-reported defect from sample reviews became a permanent, tested defense: "
                  "word-timestamp repair, word-aware beep corridors (neighbouring words stay audible), a "
                  "300 ms name-onset guard calibrated by ear, and an empirical beep-edge listen check "
@@ -180,11 +185,16 @@ body.append(para("Figure 2 — reference construction, six-configuration scoring
 body.append(h2("5.1 Metric definitions"))
 for name, d in pr.get("metric_definitions", {}).items():
     body.append(para(f"{name}: {d}", bullet=True))
-body.append(para("Reference construction: the judge (GPT-5.6-sol) applies the SAME policy v3 file as the "
-                 "detector to BOTH listener transcripts (ElevenLabs and Gemini) of each file; every "
-                 "finding passes an adversarial verifier (GPT-5.6-luna: cite the include rule or reject); "
-                 "verified spans are clustered into unique items by temporal overlap or same canonicalized "
-                 "value within +/-2.5 s. The reference is a shared benchmark for comparing configurations "
+body.append(para("Reference construction: the judge (GPT-5.6-sol) applies the SAME versioned policy file "
+                 "as the detector (v4) to two INDEPENDENT listener transcripts of each file — ElevenLabs "
+                 "Scribe v1 and Gemini 3.8 Flash, deliberately different model versions from every "
+                 "configuration's transcription engine (Scribe v2, Gemini 3.1 Pro, Whisper), so no "
+                 "configuration is scored against an answer key built from its own transcript (section "
+                 "5.9). Every finding passes an adversarial verifier (GPT-5.6-luna: cite the include rule "
+                 "or reject); verified spans are clustered into unique items by temporal overlap, same "
+                 "canonicalized value within +/-2.5 s, or the same-slot name rule (cross-listener "
+                 "respellings of one spoken name merge; a listener hearing two names in the window keeps "
+                 "them distinct). The reference is a shared benchmark for comparing configurations "
                  "fairly; values neither listener transcribed sit outside its scope, so human spot-checks "
                  "complement these numbers. Configurations with a GPT detector share a model family with "
                  "the judge — the cross-family read (Gemini detector, GPT judge) is the cleaner comparison.", space_before=100))
@@ -203,16 +213,17 @@ rows.append(["ElevenLabs inbuilt (carried over)", "35% union coverage",
               "3.8% vs policy reference", "-", "-"])
 body.append(table([2700, 1900, 1900, 1650, 1750],
                   ["Configuration", "Detection recall", "Detection precision",
-                   "Render leak rate", "Policy-verified precision"], rows))
-body.append(para("The render-leak column measures the RENDERED audio of every configuration; in "
-                 "production the gates decide what ships — the files carrying the production "
-                 "configuration's render leaks were exactly the ones the beep-edge listen check "
-                 "quarantined (5.5), so its delivered leak count is zero-known. Gemini end-to-end leads "
-                 "raw detection but costs ~40x more to transcribe (section 6). Whisper configurations "
-                 "collapse on recall because the transcripts never surface many values — with tight "
-                 "word-aware beeps, Whisper's timestamp skew also becomes visible as render leaks that "
-                 "fat pads previously masked. The GPT detector tracks the Gemini detector closely on the "
-                 "same transcripts: transcript quality, not detector choice, dominates.", space_before=100))
+                   "Render leak rate (all files)", "Policy-verified precision"], rows))
+body.append(para("The render-leak column measures the RENDERED audio of every configuration across ALL "
+                 "corpus files, quarantined ones included; in production the gates decide what ships — "
+                 "every file carrying a production render leak is one the beep-edge listen check "
+                 "quarantined (5.5), so the DELIVERED-file leak rate is 0/4 for every configuration "
+                 "(the split is a standing column in the md report). The production configuration leads "
+                 "detection outright against the independent reference; Gemini end-to-end trails it "
+                 "slightly and costs ~40x more to transcribe (section 6). Whisper configurations "
+                 "collapse on recall because the transcripts never surface many values. The GPT "
+                 "detector tracks the Gemini detector closely on the same transcripts: transcript "
+                 "quality, not detector choice, dominates.", space_before=100))
 
 # per-file detection table (production + gemini for readability; full set in the md report)
 body.append(para("Per-file results, production configuration:", space_before=150))
@@ -230,7 +241,8 @@ body.append(table([2900, 1500, 2000, 2000, 1500],
                   ["File", "Reference items", "Detection recall",
                    "Detection precision", "Render leaks"], rows))
 body.append(para("The four narrated-episode files produced zero reference items — the fiction rule held "
-                 "on both listeners across hundreds of character-name mentions (a standing false-positive "
+                 "on every listener pair evaluated (the production ears and the independent reference "
+                 "ears alike) across hundreds of character-name mentions (a standing false-positive "
                  "control). Per-category and per-file tables for all configurations are in "
                  "output/judge/precision_recall/precision_recall_report.md.", space_before=100))
 
@@ -300,9 +312,11 @@ for eng in ("elevenlabs", "gemini", "openai"):
 body.append(table([2600, 2200, 2200, 2200],
                   ["Pipeline", "Judge-detector agreement", "Union coverage",
                    "Judge over-reach rejected"], rows))
-body.append(para("A second view of the same story from the cross-listener union (ElevenLabs + Gemini "
-                 "as listeners; Whisper is scored but deliberately NOT a union listener - see 5.8 for "
-                 "what happens when it is). Corpus languages (engine consensus, judge-verified): "
+body.append(para("A second view of the same story from the cross-listener union (the production ears — "
+                 "ElevenLabs Scribe v2 + Gemini 3.1 Pro — as listeners: this table is each pipeline's "
+                 "SELF-check against what its own ears surfaced, complementary to the independent "
+                 "reference of 5.2/5.9; Whisper is scored but deliberately NOT a union listener - see "
+                 "5.8 for what happens when it is). Corpus languages (engine consensus, judge-verified): "
                  "Indian-English telephone calls (code-switching to Hindi), Bengali narrated episodes, one "
                  "Telugu call. ElevenLabs and Gemini agree on speaker counts; Whisper cannot diarize. "
                  "Known limitation, observed on this corpus: BOTH listeners can mis-hear the same proper "
@@ -402,9 +416,11 @@ for txt in [
     "designed safe direction, and it makes Whisper's elimination visible in a single number.",
     "The same effect pollutes a three-listener judge union: the judge reading Whisper's episode "
     "transcripts contributed 16 phantom reference items on one episode. The evaluation of record "
-    "therefore uses the two-listener reference (unaffected: episodes contribute zero), the 5.4 "
-    "cross-check uses the two-listener union, and the three-listener run is retained as a "
-    "diagnostic exhibit.",
+    "at the time of this pass therefore used the two-listener reference (unaffected: episodes "
+    "contribute zero), the 5.4 cross-check uses that union, and the three-listener run is retained "
+    "as a diagnostic exhibit. Later the same day the reference was rebuilt on independent "
+    "listeners (5.9); the v4-pass numbers in THIS section are the historical two-listener "
+    "measurements.",
     "Leak audit under v4: production configuration ZERO findings and ZERO candidates (24 outputs "
     "audited). One candidate appeared on the non-shipped Gemini configuration of an "
     "already-quarantined call - an amount-less payment-mode statement of the exact shape rule 11 "
@@ -416,6 +432,70 @@ for txt in [
     "v4 re-detection cost: ~$1.9 across all five configurations (text-only; transcription reused).",
 ]:
     body.append(para(txt, bullet=True))
+
+# ------------------------------------- 5.9 independent reference rebuild
+body.append(h2("5.9 Independent reference rebuild (2026-09-03)"))
+body.append(para("The original reference was built on the production ears (ElevenLabs Scribe v2 + "
+                 "Gemini 3.1 Pro) — the same engines two configurations use for transcription, so "
+                 "those configurations were scored against an answer key partly built from their own "
+                 "transcripts. To make the comparison ear-independent, the reference listeners were "
+                 "replaced by different model versions on the same vendor keys: ElevenLabs Scribe v1 "
+                 "and Gemini 3.8 Flash. Candidates were auditioned against the three human reference "
+                 "transcripts first (same discipline as the engine bench): Scribe v1 aggregate WER "
+                 "0.33 (beats production's v2 on the Hindi and Odia files); Gemini 3.8 Flash 0.48 "
+                 "with native scripts and correct language identification on every file (the "
+                 "incumbent 3.1 Pro ear reads 0.64 and romanized the Hindi file); Gemini 2.5 Pro was "
+                 "disqualified for romanizing the entire Odia file, and the dedicated "
+                 "gemini-3.5-transcribe model for lacking JSON output support. Independence remains "
+                 "partial by necessity — v1/v2 share the ElevenLabs family, 3.8/3.1 the Google family; "
+                 "full vendor independence is unreachable on the pilot's keys — but no configuration "
+                 "is scored against its own transcript any longer."))
+body.append(para("Two listener-mode adaptations were required and are confined to the reference "
+                 "adapters: 120 s transcription windows for the Flash ear (at 240 s it silently "
+                 "under-transcribes dense speech — a Kannada call read 14-29 words/min against ~195 "
+                 "actual; at 120 s its word counts match 3.1 Pro within a few percent), and bisection "
+                 "of safety-blocked windows (Flash refuses some episode segments that 3.1 Pro "
+                 "transcribes; bisection isolated every block with zero skipped audio on this corpus). "
+                 "Production transcription is unchanged and still fails loudly on any blocked window.", space_before=100))
+body.append(para("Rebuilding on independent ears also exposed a scoring artifact: raw span-coverage "
+                 "redaction scoring charged cross-engine CLOCK SKEW as leaks once no configuration's "
+                 "engine was a reference listener (one configuration read a 59.5% leak rate while the "
+                 "text-leak audit found nothing readable in its redacted transcripts). Redaction "
+                 "recall is now scored on each configuration's own clock — a detected item counts as "
+                 "covered when the configuration's matching interval is >= 95% beep-covered; items the "
+                 "configuration never detected are still judged on reference-span coverage alone (the "
+                 "genuinely transcription-lost class). The same rule applies to every configuration, "
+                 "which also removed a hidden bias of the old scoring in favour of listener-sharing "
+                 "configurations. For transparency, the production headline moved as: 18.4% (original "
+                 "ears, original scoring) -> 16.7% (independent ears, original scoring) -> 7.1% "
+                 "(independent ears, own-clock scoring); its DELIVERED-file leak rate is 0/4.", space_before=100))
+_pre = None
+_pre_path = ROOT / "output/judge/precision_recall/pre_rebuild_snapshot.json"
+if _pre_path.exists():
+    _pre = json.loads(_pre_path.read_text())["aggregate"]
+if _pre:
+    body.append(para("Before/after, all configurations (detection recall | detection precision | "
+                     "render leak rate, all files):", space_before=150))
+    rows = []
+    for cfg in CFG_ORDER:
+        o, n = _pre.get(cfg), agg[cfg]
+        if not o:
+            continue
+        rows.append([CFG_NAME[cfg],
+                     f"{pct(o['detection_recall'])} -> {pct(n['detection_recall'])}",
+                     f"{pct(o['detection_precision'])} -> {pct(n['detection_precision'])}",
+                     f"{pct(o['leak_rate'])} -> {pct(n['leak_rate'])}"])
+    body.append(table([2700, 2300, 2300, 2300],
+                      ["Configuration", "Detection recall", "Detection precision",
+                       "Leak rate (all files)"], rows))
+body.append(para("The reference grew from 39 to 44 verified items (all on the four call files; the "
+                 "episodes stay at zero under the independent ears too). The production "
+                 "configuration's numbers IMPROVED against ears it does not share: the original "
+                 "reference had been under-crediting precision — real detections its ears never "
+                 "transcribed were charged as false positives. The Whisper configurations' low recall "
+                 "survived the rebuild unchanged, confirming it as a genuine transcript deficit rather "
+                 "than a reference artifact. Rebuild evaluation cost, measured: ~$5.4 (Flash corpus "
+                 "transcription $3.9 including a discarded first pass; judge + verifier ~$1.5).", space_before=100))
 
 # ------------------------------------------------------------ 6 cost
 body.append(h1("6. Cost x performance — end-to-end, measured"))

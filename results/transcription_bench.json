@@ -6,8 +6,7 @@
     "engines": [
       "gemini",
       "elevenlabs",
-      "openai",
-      "el_scribe_v1"
+      "openai"
     ],
     "beep_pad_ms": 300,
     "beep_freq_hz": 1000
@@ -145,46 +144,6 @@
           "words_dropped_beep": 16,
           "words_excluded_redacted": 27,
           "hyp_words": 210
-        },
-        "el_scribe_v1": {
-          "utts_scored": 53,
-          "utts_skipped_redacted": 7,
-          "mean_utt_wer": 0.5496,
-          "pct_utt_wer0": 0.0755,
-          "global_wer": 0.2026,
-          "global_cer": 0.1288,
-          "ref_tokens": 701,
-          "hyp_tokens": 703,
-          "script_ref": {
-            "devanagari": 0.732,
-            "bengali_odia": 0.0,
-            "latin": 0.189,
-            "chars": 2667
-          },
-          "script_hyp": {
-            "devanagari": 0.755,
-            "bengali_odia": 0.0,
-            "latin": 0.214,
-            "chars": 2580
-          },
-          "lang_expected": "hi",
-          "lang_engine_primary": "hin",
-          "lang_engine_norm": "hi",
-          "lang_match": true,
-          "ref_speaker_count": 2,
-          "eng_speaker_count": 2,
-          "ref_speakers": [
-            "डॉक्टर",
-            "पर्सन १"
-          ],
-          "eng_speakers": [
-            "S1",
-            "S2"
-          ],
-          "engine_words_total": 750,
-          "words_dropped_beep": 15,
-          "words_excluded_redacted": 33,
-          "hyp_words": 702
         }
       }
     },
@@ -320,46 +279,6 @@
           "words_dropped_beep": 0,
           "words_excluded_redacted": 6,
           "hyp_words": 91
-        },
-        "el_scribe_v1": {
-          "utts_scored": 52,
-          "utts_skipped_redacted": 4,
-          "mean_utt_wer": 1.5605,
-          "pct_utt_wer0": 0.0577,
-          "global_wer": 0.5159,
-          "global_cer": 0.3249,
-          "ref_tokens": 409,
-          "hyp_tokens": 385,
-          "script_ref": {
-            "devanagari": 0.024,
-            "bengali_odia": 0.748,
-            "latin": 0.204,
-            "chars": 1850
-          },
-          "script_hyp": {
-            "devanagari": 0.027,
-            "bengali_odia": 0.733,
-            "latin": 0.214,
-            "chars": 1818
-          },
-          "lang_expected": "or",
-          "lang_engine_primary": "ori",
-          "lang_engine_norm": "or",
-          "lang_match": true,
-          "ref_speaker_count": 2,
-          "eng_speaker_count": 2,
-          "ref_speakers": [
-            "ଡାକ୍ତର",
-            "ପର୍ସନ ୧"
-          ],
-          "eng_speakers": [
-            "S1",
-            "S2"
-          ],
-          "engine_words_total": 417,
-          "words_dropped_beep": 3,
-          "words_excluded_redacted": 28,
-          "hyp_words": 386
         }
       }
     },
@@ -495,46 +414,6 @@
           "words_dropped_beep": 9,
           "words_excluded_redacted": 29,
           "hyp_words": 146
-        },
-        "el_scribe_v1": {
-          "utts_scored": 90,
-          "utts_skipped_redacted": 12,
-          "mean_utt_wer": 0.5072,
-          "pct_utt_wer0": 0.1444,
-          "global_wer": 0.2556,
-          "global_cer": 0.1496,
-          "ref_tokens": 716,
-          "hyp_tokens": 749,
-          "script_ref": {
-            "devanagari": 0.03,
-            "bengali_odia": 0.702,
-            "latin": 0.216,
-            "chars": 3531
-          },
-          "script_hyp": {
-            "devanagari": 0.033,
-            "bengali_odia": 0.707,
-            "latin": 0.219,
-            "chars": 3560
-          },
-          "lang_expected": "bn",
-          "lang_engine_primary": "ben",
-          "lang_engine_norm": "bn",
-          "lang_match": true,
-          "ref_speaker_count": 2,
-          "eng_speaker_count": 2,
-          "ref_speakers": [
-            "ডাক্তার",
-            "পার্সন ১"
-          ],
-          "eng_speakers": [
-            "S1",
-            "S2"
-          ],
-          "engine_words_total": 788,
-          "words_dropped_beep": 10,
-          "words_excluded_redacted": 29,
-          "hyp_words": 749
         }
       }
     }
@@ -569,16 +448,6 @@
       "lang_match": 1,
       "speaker_exact": 0,
       "words_dropped_beep": 25
-    },
-    "el_scribe_v1": {
-      "files_scored": 3,
-      "mean_utt_wer": 0.8724,
-      "pct_utt_wer0": 0.0925,
-      "global_wer": 0.3247,
-      "global_cer": 0.2011,
-      "lang_match": 3,
-      "speaker_exact": 3,
-      "words_dropped_beep": 28
     }
   }
 }

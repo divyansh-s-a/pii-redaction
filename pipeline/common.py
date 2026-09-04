@@ -119,6 +119,16 @@ def generate(model: str, parts: list, response_schema=None,
                         "output_tokens": um.get("candidatesTokenCount"),
                         "thinking_tokens": um.get("thoughtsTokenCount"),
                         "total_tokens": um.get("totalTokenCount")}) + "\n")
+            if not resp.get("candidates"):
+                # 200 with no candidates: promptFeedback block or a transient
+                # empty response — retry like a 5xx, then fail with the body
+                fb = json.dumps(resp.get("promptFeedback", resp))[:300]
+                if attempt < 3:
+                    wait = 15 * (attempt + 1)
+                    print(f"  empty candidates ({fb}), retrying in {wait}s ...")
+                    time.sleep(wait)
+                    continue
+                raise RuntimeError(f"no candidates in response: {fb}")
             cand = resp["candidates"][0]
             fr = cand.get("finishReason", "")
             text = "".join(p.get("text", "")
