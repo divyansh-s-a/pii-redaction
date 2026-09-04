@@ -476,15 +476,17 @@ if _pre_path.exists():
 if _pre:
     body.append(para("Before/after, all configurations (detection recall | detection precision | "
                      "render leak rate, all files):", space_before=150))
+    def pct1(x):
+        return "-" if x is None else f"{x:.1%}"
     rows = []
     for cfg in CFG_ORDER:
         o, n = _pre.get(cfg), agg[cfg]
         if not o:
             continue
         rows.append([CFG_NAME[cfg],
-                     f"{pct(o['detection_recall'])} -> {pct(n['detection_recall'])}",
-                     f"{pct(o['detection_precision'])} -> {pct(n['detection_precision'])}",
-                     f"{pct(o['leak_rate'])} -> {pct(n['leak_rate'])}"])
+                     f"{pct1(o['detection_recall'])} -> {pct1(n['detection_recall'])}",
+                     f"{pct1(o['detection_precision'])} -> {pct1(n['detection_precision'])}",
+                     f"{pct1(o['leak_rate'])} -> {pct1(n['leak_rate'])}"])
     body.append(table([2700, 2300, 2300, 2300],
                       ["Configuration", "Detection recall", "Detection precision",
                        "Leak rate (all files)"], rows))
