@@ -19,18 +19,35 @@ _SCHEMA = {
     "properties": {
         "domain": {"type": "STRING"},
         "confidence": {"type": "STRING", "enum": ["high", "medium", "low"]},
+        "usability": {"type": "STRING",
+                      "enum": ["usable", "limited", "not usable"]},
         "rationale": {"type": "STRING"},
     },
     "required": ["domain", "confidence"],
 }
 
 _PROMPT = (
-    "You classify the BUSINESS/CONTENT DOMAIN of a call-centre transcript. "
-    "Reply with a concise free-form domain label of 1-3 words (examples: "
-    "'health insurance', 'retail banking', 'telecom support', 'debt "
-    "collection', 'e-commerce delivery', 'travel booking'). Base it only on "
-    "the subject matter. Give a confidence and a rationale of at most 15 "
-    "words that contains NO personal data (no names, numbers, addresses).\n\n"
+    "You classify the BUSINESS/CONTENT DOMAIN of a call-centre transcript and "
+    "assess how usable the conversation is as speech data.\n\n"
+    "Return:\n"
+    "- domain: a concise free-form label of 1-3 words (examples: 'health "
+    "insurance', 'retail banking', 'telecom support', 'debt collection', "
+    "'e-commerce delivery', 'travel booking'). Base it only on the subject "
+    "matter.\n"
+    "- confidence: high | medium | low.\n"
+    "- usability: 'usable', 'limited', or 'not usable' — judged on whether the "
+    "call is a substantive conversation with real content, versus a trivial one "
+    "(greetings only, 'hello hello' / test call, wrong number, mostly dead air, "
+    "silence or repeated filler, or no meaningful exchange).\n"
+    "- rationale: a VERBOSE explanation of 3-5 full sentences in plain prose "
+    "that covers BOTH (a) the specific topics and subject matter discussed and "
+    "why they point to this domain, AND (b) an honest assessment of the "
+    "conversation's substance and usability for training or evaluation — "
+    "explicitly call it out when the call is low-content, greeting-only, "
+    "repetitive, dominated by silence, or otherwise not a very usable "
+    "conversation. If the domain is uncertain because there is too little "
+    "content, say so. Contain NO personal data (no names, numbers, addresses "
+    "or IDs).\n\n"
     "TRANSCRIPT:\n")
 
 # Coarse offline fallback — first domain with the most keyword hits wins.
@@ -63,8 +80,15 @@ def _heuristic(text: str):
             best, score = dom, n
     return {"domain": best or "unknown",
             "confidence": "low" if best else "unknown",
-            "rationale": (f"keyword heuristic ({score} term matches)"
-                          if best else "no domain keywords matched"),
+            "usability": "limited" if len(low.split()) < 40 else "usable",
+            "rationale": (
+                f"Offline keyword heuristic: matched {score} domain term(s) "
+                f"for '{best}'. This is a coarse fallback (the LLM classifier "
+                f"was unavailable), so treat the domain as approximate and the "
+                f"usability judgement as tentative."
+                if best else
+                "Offline keyword heuristic found no domain terms; the transcript "
+                "may be too short or low-content to classify reliably."),
             "source": "heuristic"}
 
 
