@@ -145,10 +145,19 @@ def tag_interval_s(dur_s: float) -> float:
     return WM.get("interval_long_s", 60)
 
 
+MIN_SPEECH_FRAC = WM.get("tag_min_speech_frac", 0.4)
+
+
 def schedule_tags(dur_ms: int, tag_ms: int, words, beeps):
     """Choose tag start times. words: [(s,e)] spoken words; beeps: [(s,e)]
-    rendered beep intervals. Score candidates toward silence; hard-reject any
-    overlap with a beep +/- BEEP_BUFFER_MS."""
+    rendered beep intervals.
+
+    Anti-strip rule (owner review 2026-09-10): every tag must OVERLAP SPEECH
+    by >= MIN_SPEECH_FRAC of its duration — a tag placed in pure silence can
+    be excised losslessly, defeating the watermark. Preference order: the tag
+    ANCHORS in content (speech overlap), its onset lands in a pause when one
+    exists (audibility without clobbering a word onset), and any overlap with
+    a beep +/- BEEP_BUFFER_MS is a hard reject."""
     interval = tag_interval_s(dur_ms / 1000.0) * 1000.0
     blocked = [(max(0, s - BEEP_BUFFER_MS), e + BEEP_BUFFER_MS)
                for s, e in beeps]
@@ -171,19 +180,31 @@ def schedule_tags(dur_ms: int, tag_ms: int, words, beeps):
     placements = []
     t = interval
     while t + tag_ms < dur_ms - 5000:
-        best, best_score = None, -1.0
+        best, best_key = None, None
         lo = int(max(0, t - SEARCH_S * 1000))
         hi = int(min(dur_ms - tag_ms - 1000, t + SEARCH_S * 1000))
         for cand in range(lo, hi + 1, 250):
             a, b = cand, cand + tag_ms
             if hits_beep(a, b):
                 continue
-            score = silence_frac(a, b) + (0.5 if not in_word(a) else 0.0)
-            if score > best_score:
-                best, best_score = cand, score
+            speech = 1.0 - silence_frac(a, b) if words else 1.0
+            anchored = speech >= MIN_SPEECH_FRAC
+            onset_silent = not in_word(a)
+            # anchored candidates always beat unanchored ones; among anchored,
+            # prefer a silent onset, then the most speech overlap (capped so a
+            # silent onset is never traded away for marginal extra speech)
+            key = (1 if anchored else 0,
+                   0.5 if onset_silent else 0.0,
+                   min(speech, 0.85))
+            if best_key is None or key > best_key:
+                best, best_key = cand, key
         if best is not None:
+            a, b = best, best + tag_ms
+            speech = 1.0 - silence_frac(a, b) if words else 1.0
             placements.append({"start_ms": best,
-                               "silence_frac": round(best_score, 3)})
+                               "speech_frac": round(speech, 3),
+                               "onset_in_silence": not in_word(best),
+                               "anchored": speech >= MIN_SPEECH_FRAC})
         t += interval
     return placements
 
@@ -369,8 +390,16 @@ def self_test():
          all(not (p["start_ms"] < 32000 + BEEP_BUFFER_MS
                   and 30000 - BEEP_BUFFER_MS < p["start_ms"] + 2000)
              for p in pl), str(pl))
-    case("placements favour silence", all(p["silence_frac"] > 0 for p in pl),
-         str(pl))
+    case("every tag anchored in speech (anti-strip: >= %.0f%% overlap)"
+         % (100 * MIN_SPEECH_FRAC),
+         all(p["anchored"] and p["speech_frac"] >= MIN_SPEECH_FRAC
+             for p in pl), str(pl))
+    # a tag window offering BOTH a pure-silence spot and a speech-anchored
+    # spot must choose the anchored one (the silence spot is strippable)
+    long_words = [(i * 1000, i * 1000 + 700) for i in range(30, 45)]
+    pl2 = schedule_tags(60000, 2000, long_words, [])
+    case("pure-silence placement rejected when speech is reachable",
+         all(p["speech_frac"] >= MIN_SPEECH_FRAC for p in pl2), str(pl2))
 
     mixed, mfs, mch = audio_utils.read_wav(out)
     case("output = leader + program length",
