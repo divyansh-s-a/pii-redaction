@@ -84,6 +84,17 @@ DIGIT_WORDS = {
     "ਛੇ": "6", "ਸੱਤ": "7", "ਅੱਠ": "8", "ਨੌਂ": "9",
     "sifar": "0", "ikk": "1", "tinn": "3", "panj": "5", "satt": "7",
     "atth": "8", "naun": "9",
+    # Malay / Indonesian (Latin; the two share most numerals; "sifar" (0,
+    # Malay) is already mapped by Punjabi above). "dua" (2) also romanizes
+    # the Hindi/Urdu word for blessing/prayer — harmless behind the
+    # >=7-digit run rule, which no isolated word can trigger.
+    "kosong": "0", "nol": "0", "satu": "1", "dua": "2", "tiga": "3",
+    "empat": "4", "lima": "5", "enam": "6", "tujuh": "7", "lapan": "8",
+    "delapan": "8", "sembilan": "9",
+    # Swahili. "sita" (6) collides with the romanized Indian name Sita and
+    # "saba" (7) with given names — likewise safe behind the run rule.
+    "sifuri": "0", "moja": "1", "mbili": "2", "tatu": "3", "nne": "4",
+    "tano": "5", "sita": "6", "saba": "7", "nane": "8", "tisa": "9",
 }
 MULTIPLIERS = {"double": 2, "triple": 3, "quadruple": 4,
                # Hinglish transcripts often write these in Devanagari
@@ -386,4 +397,26 @@ if __name__ == "__main__":
     assert norm_digit("൮") == "8"           # Malayalam numeral
     assert norm_digit("੭") == "7"           # Gurmukhi numeral
     assert norm_digit("be") is None         # deliberately excluded (English)
-    print("detect_pii self-test OK (incl. 7-language extension)")
+    # 2026-09-10 extension: Malay/Indonesian + Swahili (target datasets)
+    assert norm_digit("satu") == "1"        # Malay/Indonesian
+    assert norm_digit("dua") == "2"
+    assert norm_digit("lapan") == "8"       # Malay 8
+    assert norm_digit("delapan") == "8"     # Indonesian 8
+    assert norm_digit("sembilan") == "9"
+    assert norm_digit("kosong") == "0"
+    assert norm_digit("sifuri") == "0"      # Swahili
+    assert norm_digit("mbili") == "2"
+    assert norm_digit("sita") == "6"
+    assert norm_digit("tisa") == "9"
+    # collision words cannot fire alone: the net needs a >=7-digit run
+    lone = [{"w": w, "i": k, "start_ms": k * 500, "end_ms": k * 500 + 300,
+             "speaker": "S1"} for k, w in enumerate(
+        ["meri", "dua", "hai", "aapke", "saath", "Sita", "ji", "namaste"])]
+    assert safety_net(lone) == []
+    # a real Malay number readout does fire
+    run = [{"w": w, "i": k, "start_ms": k * 500, "end_ms": k * 500 + 300,
+            "speaker": "S1"} for k, w in enumerate(
+        ["kosong", "satu", "dua", "tiga", "empat", "lima", "enam", "tujuh"])]
+    hits = safety_net(run)
+    assert len(hits) == 1 and hits[0]["reason"] == "8-digit spoken sequence"
+    print("detect_pii self-test OK (incl. Malay/Indonesian + Swahili)")

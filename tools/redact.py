@@ -251,6 +251,10 @@ def main():
     ap.add_argument("--profile", default=common.CONFIG["profile"],
                     choices=["strict", "medical_consult"])
     ap.add_argument("--outdir", default=str(ROOT / "deliveries"))
+    ap.add_argument("--mono", action="store_true",
+                    help="treat stereo input as a mono mix (disable "
+                         "split-channel mode; for crosstalk-heavy stereo "
+                         "where channels are not one speaker each)")
     ap.add_argument("--assurance", action="store_true",
                     help="also gemini-transcribe and union detections into "
                          "the audio beeps (high-risk content)")
@@ -266,6 +270,8 @@ def main():
                          "beep edge)")
     args = ap.parse_args()
 
+    if args.mono:
+        common.CONFIG["channel_split"] = "never"
     model = common.resolve_model()
     import policy as _policy
     print(f"workflow: EL scribe_v2 (+keyterms) -> Gemini {model} "

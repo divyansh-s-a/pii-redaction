@@ -27,7 +27,9 @@ Removes spoken personal information (PII) from audio: every detected PII value
 is replaced by a 1 kHz beep in the audio and a `<CATEGORY REDACTED>` marker in
 the transcript. Handles any language/accent (validated on Indian English,
 Hindi, Bengali, Odia, Telugu incl. code-switching), multiple speakers, and
-telephone-quality recordings. Full results:
+telephone-quality recordings — plus initial validation on Malay/Indonesian
+and Swahili calls (2026-09-10: spoken-digit safety net and QC digit tripwire
+cover both; see System notes in the report). Full results:
 `outputs/Audio_PII_Project_Report_v2.docx`.
 
 ## Requirements

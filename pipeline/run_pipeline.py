@@ -72,6 +72,13 @@ def run_file(path: Path, model: str, profile: str, force: set,
         native16 = out / "work_16k_native.wav"
         audio_utils.decode_to_wav(path, native16, rate=16000)
         chan = audio_utils.channel_analysis(native16)
+        if (common.CONFIG.get("channel_split", "auto") == "never"
+                and chan["split"]):
+            # crosstalk-heavy stereo (e.g. the Malay/Swahili call sets) breaks
+            # the one-speaker-per-channel assumption; config/--mono forces the
+            # mono-mix path
+            print("  channel_split=never: treating stereo as a mono mix")
+            chan["split"] = False
         ch_wav_names = []
         if chan["split"]:
             outs = [out / f"work_16k_ch{k}.wav" for k in range(chan["channels"])]
