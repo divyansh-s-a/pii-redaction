@@ -8,7 +8,7 @@
   "openrouter_api_base": "https://openrouter.ai/api/v1",
   "openrouter_model_map": {
     "gemini-3.1-pro-preview": "google/gemini-3.1-pro-preview",
-    "gemini-3.5-flash": "google/gemini-2.5-flash",
+    "gemini-3.5-flash": "google/gemini-3.5-flash",
     "gemini-2.5-pro": "google/gemini-2.5-pro"
   },
   "profile": "medical_consult",

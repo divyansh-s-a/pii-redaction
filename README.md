@@ -13,7 +13,10 @@ telephone-quality recordings. Full results:
 
 ## Requirements
 
-- Python >= 3.9 (standard library only — no pip installs)
+- Python >= 3.9. The redaction workflow and evaluation harness are standard
+  library only — no pip installs. EXCEPTION: the dataset dedupe pipeline
+  (dedupe/) needs `numpy` and `scipy` (`pip install numpy scipy`), or
+  Chromaprint's `fpcalc` on PATH for its fastest fingerprint backend.
 - An audio converter: macOS ships `afconvert` (nothing to install);
   Linux/Windows need `ffmpeg` on PATH. NOTE: the ffmpeg branch is written to
   produce identical formats but has not yet been exercised on a Linux box —
@@ -34,12 +37,13 @@ telephone-quality recordings. Full results:
 
 One command per file (multiple paths allowed). Stages: prepare -> transcribe
 (ElevenLabs scribe_v2 + keyterms; automatic Gemini fallback) -> detect (Gemini,
-policy v3, 31 categories + spoken-digit safety net) -> redact (word-aware
+versioned policy, 31 categories + spoken-digit safety net) -> redact (word-aware
 1 kHz beeps + redacted transcript from ONE interval list) -> gates: signal QC,
 beep-edge listen check, independent judge audit (all default ON; --no-audit
 opts out of the audit).
 
-- PASS -> `deliveries/<file_id>/`: beeped .m4a, redacted .txt, qc_report.md,
+- PASS -> `deliveries/<file_id>/`: beeped audio (lossless FLAC by default;
+  config `beep_format`), redacted .txt, qc_report.md,
   manifest.json (models, prompt hashes, source sha, gate outcomes).
 - Any unresolved gate -> `quarantine/<file_id>/` for human review. Nothing
   ships silently.
@@ -86,8 +90,10 @@ Self-tests (run after install, especially on Linux):
 
 ## Changing policy (no code changes)
 
-Behavior lives in versioned files: `prompts/detection_policy_prompt_v3.txt`
-(shared by detector AND judges), `outputs/Audio_PII_Taxonomy_v0.2.md`,
+Behavior lives in versioned files: the detection policy prompt in `prompts/`
+(current version named in `pipeline/policy.py` and prompts/README; shared by
+detector AND judges)
+, `outputs/Audio_PII_Taxonomy_v0.2.md`,
 `pipeline/policy.py` (profiles / Action Matrix), `prompts/keyterms_india_v1.txt`.
 Edit, bump the version, re-run with `--force detect`.
 
@@ -97,6 +103,13 @@ Edit, bump the version, re-run with `--force detect`.
                 QC, edge listen check, judge client)
     tools/      production workflow, evaluation harness, report generators
     prompts/    versioned prompts + keyterms (see prompts/README.md)
+    dedupe/     dataset dedupe (exact + acoustic + transcript tiers)
+    metadata_qc_pipeline/  per-delivery metadata.json (domain, usability,
+                signal + conversation analytics; classifies the REDACTED
+                transcript only)
+    run_all.py  driver: dedupe -> redact -> metadata over a folder
+    generate_final_report.py  dataset report (deterministic, or --llm
+                buyer-facing narrative via OpenRouter)
     docs/       screenshots used by this README
     outputs/    deliverable documents (taxonomy, schema, reports, figures)
     results/    fresh-run evaluation reports (markdown + json)

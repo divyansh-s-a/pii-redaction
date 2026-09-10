@@ -7,7 +7,7 @@
 
 Configuration (fixed by the 2026-09-01 decision gate):
   stage B  ElevenLabs scribe_v2 + keyterms vocabulary  (best ear, ~$0.22/hr)
-  stage C  Gemini + detection policy v3 on canonicalized words (best reader)
+  stage C  Gemini + the versioned detection policy on canonicalized words
   stage D  1 kHz beep render + redacted transcript from ONE interval list
   stage E  signal-verified QC gate
           (+ empirical beep-edge verification, OFF by default: --edge-verify;
@@ -267,8 +267,9 @@ def main():
     args = ap.parse_args()
 
     model = common.resolve_model()
+    import policy as _policy
     print(f"workflow: EL scribe_v2 (+keyterms) -> Gemini {model} "
-          f"(policy v3) | profile {args.profile}")
+          f"({_policy.POLICY_PROMPT_FILE}) | profile {args.profile}")
     outdir = Path(args.outdir)
     for m in args.media:
         p = Path(m).resolve()

@@ -9,7 +9,8 @@ transcript never enter version control.
 
 1. Transcribed with ElevenLabs scribe_v2 (+ keyterms vocabulary),
    word-level timestamps, diarization.
-2. Gemini applied detection policy v3 (Taxonomy v0.2) to the
+2. Gemini applied the versioned detection policy (Taxonomy v0.2)
+   to the
    canonicalized word stream and found 5 PII intervals:
    - FULL_NAME at 0:12.69-0:12.76
    - ORGANIZATION_PERSON_LINKED at 0:13.38-0:14.72
