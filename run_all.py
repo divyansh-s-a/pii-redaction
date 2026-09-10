@@ -32,9 +32,24 @@ def run(cmd, **kw):
     return subprocess.run(cmd, cwd=str(ROOT), **kw)
 
 
-def find_work_dir(fid, engine):
+def find_work_dir(fid, engine, delivered=None):
+    """The engine-fallback path leaves an abandoned <fid>__<engine> dir
+    (transcript only) next to the real <fid> dir; prefer the manifest's
+    engine record, then any dir with BOTH transcript and render."""
     out = ROOT / "output"
-    for d in [out / f"{fid}__{engine}", out / fid, *sorted(out.glob(f"{fid}*"))]:
+    cands = []
+    mf = (Path(delivered) / "manifest.json") if delivered else None
+    if mf and mf.exists():
+        eng = (json.loads(mf.read_text()).get("transcription", {})
+               .get("engine", ""))
+        cands.append(out / (fid if eng.startswith("gemini")
+                            else f"{fid}__{engine}"))
+    cands += [out / f"{fid}__{engine}", out / fid, *sorted(out.glob(f"{fid}*"))]
+    for d in cands:
+        if (d.exists() and (d / "transcript.json").exists()
+                and (d / "rendered_intervals.json").exists()):
+            return d
+    for d in cands:
         if d.exists() and (d / "transcript.json").exists():
             return d
     return None
@@ -107,7 +122,7 @@ def main():
 
         print(f"########## [3/3] METADATA {i}/{len(uniques)}: "
               f"{fid} ##########", flush=True)
-        wd = find_work_dir(fid, args.engine)
+        wd = find_work_dir(fid, args.engine, delivered)
         if wd and delivered:
             mcmd = [PY, "metadata_qc_pipeline/run_metadata_qc.py",
                     "--dir", str(wd), "--delivery", str(delivered)]

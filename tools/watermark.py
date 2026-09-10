@@ -213,21 +213,40 @@ def schedule_tags(dur_ms: int, tag_ms: int, words, beeps):
 
 def _mix_overlay(pcm, fs, ch, tag, start_ms, duck_factor):
     """Duck the program under the tag (cosine ramps) and add the tag to every
-    channel, with a clip guard over the mixed region."""
+    channel. Saturation-safe: a first pass measures the region's ducked-
+    program and tag peaks and rescales the TAG so the sum stays in range —
+    hard clamping would distort and is kept only as a last resort."""
     n_tag = len(tag)
     start = int(start_ms * fs / 1000)
     ramp = int(RAMP_MS * fs / 1000)
+
+    def gain(i):
+        if i < ramp:
+            return 1.0 - (1.0 - duck_factor) * (i / ramp)
+        if i < ramp + n_tag:
+            return duck_factor
+        return duck_factor + (1.0 - duck_factor) * ((i - ramp - n_tag) / ramp)
+
+    max_prog = max_tag = 0
     for i in range(n_tag + 2 * ramp):
         idx = start - ramp + i
         if idx < 0 or (idx + 1) * ch > len(pcm):
             continue
-        if i < ramp:
-            g = 1.0 - (1.0 - duck_factor) * (i / ramp)
-        elif i < ramp + n_tag:
-            g = duck_factor
-        else:
-            g = duck_factor + (1.0 - duck_factor) * ((i - ramp - n_tag) / ramp)
+        g = gain(i)
         add = tag[i - ramp] if 0 <= i - ramp < n_tag else 0
+        max_tag = max(max_tag, abs(add))
+        for c in range(ch):
+            max_prog = max(max_prog, abs(int(pcm[idx * ch + c] * g)))
+    tscale = 1.0
+    if max_prog + max_tag > 32700 and max_tag > 0:
+        tscale = max(0.25, (32700 - max_prog) / max_tag)
+
+    for i in range(n_tag + 2 * ramp):
+        idx = start - ramp + i
+        if idx < 0 or (idx + 1) * ch > len(pcm):
+            continue
+        g = gain(i)
+        add = int((tag[i - ramp] if 0 <= i - ramp < n_tag else 0) * tscale)
         for c in range(ch):
             j = idx * ch + c
             v = int(pcm[j] * g) + add
@@ -323,10 +342,21 @@ def _resolve(target: Path, work_dir):
     fid = audio.name.split("_beeped.")[0]
     wd = Path(work_dir) if work_dir else None
     if wd is None:
-        for cand in sorted((ROOT / "output").glob(f"{fid}__*")) + [ROOT / "output" / fid]:
-            if (cand / "transcript.json").exists():
-                wd = cand
-                break
+        # the engine-fallback path leaves an ABANDONED <fid>__elevenlabs dir
+        # (transcript only) next to the real <fid> dir — prefer the manifest's
+        # engine hint, then any dir carrying BOTH transcript and render
+        cands = []
+        mf = (target / "manifest.json") if target.is_dir() else None
+        if mf and mf.exists():
+            eng = (json.loads(mf.read_text()).get("transcription", {})
+                   .get("engine", ""))
+            cands.append(ROOT / "output" / (fid if eng.startswith("gemini")
+                                            else f"{fid}__elevenlabs"))
+        cands += sorted((ROOT / "output").glob(f"{fid}__*")) + [ROOT / "output" / fid]
+        wd = next((c for c in cands if (c / "transcript.json").exists()
+                   and (c / "rendered_intervals.json").exists()),
+                  next((c for c in cands
+                        if (c / "transcript.json").exists()), None))
     words, beeps = [], []
     if wd and (wd / "transcript.json").exists():
         t = json.loads((wd / "transcript.json").read_text())
