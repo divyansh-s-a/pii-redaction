@@ -81,14 +81,15 @@ def extend(fid, beep_s, beep_e, side, ms=400):
     audio_utils.decode_to_wav(original, nat)
     audio_utils.mix_beeps(nat, bp, merged, common.CONFIG["beep_freq_hz"],
                           common.CONFIG["beep_gain_db"])
-    audio_utils.encode_wav(bp, out / f"{fid}_beeped.m4a")
+    beeped_name = common.beeped_name(fid)
+    audio_utils.encode_audio(bp, out / beeped_name)
     nat.unlink(missing_ok=True)
     bp.unlink(missing_ok=True)
     ri["rendered_merged"] = [{"start_ms": a, "end_ms": b, "channel": ch}
                              for a, b, ch in merged]
     ri["human_extended"] = True
     common.save_json(out / "rendered_intervals.json", ri)
-    shutil.copy2(out / f"{fid}_beeped.m4a", q / f"{fid}_beeped.m4a")
+    shutil.copy2(out / beeped_name, q / beeped_name)
     _log_review(m, {"action": "extend", "beep": [beep_s, beep_e],
                     "side": side, "ms": ms,
                     "new_beep": list(merged[hit][:2])})

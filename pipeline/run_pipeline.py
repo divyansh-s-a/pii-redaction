@@ -143,7 +143,7 @@ def run_file(path: Path, model: str, profile: str, force: set,
         print("  detect: cached")
 
     # D redact
-    beeped = out / f"{fid}_beeped.m4a"
+    beeped = out / common.beeped_name(fid)
     if "redact" in force or not beeped.exists():
         redact.redact_file(path, work, iv, tr, out, fid, profile,
                            channel_wavs=channel_wavs)

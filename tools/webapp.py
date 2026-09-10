@@ -32,6 +32,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "pipeline"))
 sys.path.insert(0, str(ROOT / "tools"))
 import audio_utils      # noqa: E402
+import common           # noqa: E402
 import gemini_transcribe  # noqa: E402  (cut_wav_chunk)
 import release as rel   # noqa: E402
 
@@ -88,7 +89,7 @@ def quarantine_summary():
 
 def snippet_wav(fid: str, a_ms: int, b_ms: int) -> bytes:
     """A WAV slice of the quarantined file's CURRENT beeped audio."""
-    src = ROOT / "quarantine" / fid / f"{fid}_beeped.m4a"
+    src = ROOT / "quarantine" / fid / common.beeped_name(fid)
     tmp = ROOT / "quarantine" / fid / "_web_snip_src.wav"
     out = ROOT / "quarantine" / fid / "_web_snip.wav"
     audio_utils.decode_to_wav(src, tmp, rate=16000, mono=True)
@@ -150,7 +151,7 @@ if(!js.length){el.textContent='none yet';return;}
 el.innerHTML=js.map(j=>{
  let b={running:'b-run',delivered:'b-del',quarantined:'b-q',error:'b-err'}[j.state]||'b-run';
  let extra='';
- if(j.state==='delivered')extra=' &nbsp; <a href="/download/'+j.fid+'/'+j.fid+'_beeped.m4a">beeped audio</a>'
+ if(j.state==='delivered')extra=' &nbsp; <a href="/download/'+j.fid+'/'+j.fid+'_beeped.__BEEP_EXT__">beeped audio</a>'
   +' &middot; <a href="/download/'+j.fid+'/'+j.fid+'_redacted.txt">redacted transcript</a>'
   +' &middot; <a href="/download/'+j.fid+'/qc_report.md">QC</a>'
   +' &middot; <a href="/download/'+j.fid+'/manifest.json">manifest</a>';
@@ -208,7 +209,9 @@ class H(BaseHTTPRequestHandler):
         u = urllib.parse.urlparse(self.path)
         q = urllib.parse.parse_qs(u.query)
         if u.path == "/":
-            return self._send(200, PAGE.encode(), "text/html; charset=utf-8")
+            return self._send(200,
+                               PAGE.replace("__BEEP_EXT__", common.BEEP_FORMAT)
+                               .encode(), "text/html; charset=utf-8")
         if u.path == "/api/jobs":
             with JOBS_LOCK:
                 js = [dict(job_id=k, **{kk: v[kk] for kk in
@@ -231,7 +234,8 @@ class H(BaseHTTPRequestHandler):
                 name = re.sub(r"[^A-Za-z0-9._-]", "", parts[3])
                 p = ROOT / "deliveries" / fid / name
                 if p.exists():
-                    ctype = ("audio/mp4" if name.endswith(".m4a")
+                    ctype = ("audio/flac" if name.endswith(".flac")
+                             else "audio/mp4" if name.endswith(".m4a")
                              else "text/plain; charset=utf-8")
                     return self._send(200, p.read_bytes(), ctype)
             return self._send(404, {"error": "not found"})

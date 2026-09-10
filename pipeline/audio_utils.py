@@ -52,7 +52,8 @@ def decode_to_wav(src: Path, dst: Path, rate=None,
 
 def encode_wav(src: Path, dst: Path) -> Path:
     """WAV -> m4a (AAC). Neither converter writes mp3 freely; m4a plays
-    everywhere."""
+    everywhere. (Kept for the OpenAI upload path; the beeped deliverable uses
+    encode_flac / encode_audio.)"""
     if _converter() == "afconvert":
         cmd = ["afconvert", "-f", "m4af", "-d", "aac", "-q", "127",
                str(src), str(dst)]
@@ -61,6 +62,29 @@ def encode_wav(src: Path, dst: Path) -> Path:
                "-c:a", "aac", "-b:a", "160k", str(dst)]
     subprocess.run(cmd, check=True, capture_output=True)
     return dst
+
+
+def encode_flac(src: Path, dst: Path) -> Path:
+    """WAV -> FLAC (lossless). The redacted/beeped deliverable is rendered
+    lossless so the tone-replaced audio is bit-exact and re-decodable without
+    generation loss."""
+    if _converter() == "afconvert":
+        cmd = ["afconvert", "-f", "flac", "-d", "flac", str(src), str(dst)]
+    else:
+        cmd = ["ffmpeg", "-y", "-v", "error", "-i", str(src),
+               "-c:a", "flac", str(dst)]
+    subprocess.run(cmd, check=True, capture_output=True)
+    return dst
+
+
+def encode_audio(src: Path, dst: Path) -> Path:
+    """Encode a WAV to the codec implied by dst's extension (.flac / .m4a)."""
+    ext = Path(dst).suffix.lower().lstrip(".")
+    if ext == "flac":
+        return encode_flac(src, dst)
+    if ext in ("m4a", "mp4", "m4af"):
+        return encode_wav(src, dst)
+    raise ValueError(f"unsupported beep output extension: {ext!r}")
 
 
 def read_wav(path: Path):

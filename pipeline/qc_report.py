@@ -58,10 +58,10 @@ def qc_file(out_dir: Path, file_id: str, transcript_path: Path,
     rendered = common.load_json(out_dir / "rendered_intervals.json")
     merged = [(iv["start_ms"], iv["end_ms"], iv.get("channel"))
               for iv in rendered["rendered_merged"]]
-    beeped_m4a = out_dir / f"{file_id}_beeped.m4a"
+    beeped_audio = out_dir / common.beeped_name(file_id)
     check_wav = out_dir / "qc_check.wav"
     # keep native channel count so channel-targeted beeps can be verified
-    audio_utils.decode_to_wav(beeped_m4a, check_wav, rate=16000)
+    audio_utils.decode_to_wav(beeped_audio, check_wav, rate=16000)
     import audio_utils as _au
     _, _, n_ch = _au.read_wav(check_wav)
 

@@ -1,0 +1,9 @@
+{
+  "domain_model": "gemini-3.5-flash",
+  "domain_thinking_budget": 256,
+  "domain_max_chars": 6000,
+  "frame_ms": 20,
+  "silence_dbfs": -40.0,
+  "clip_dbfs": -0.1,
+  "noise_floor_percentile": 10
+}

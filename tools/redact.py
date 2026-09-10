@@ -3,12 +3,15 @@
 
     python3 tools/redact.py MEDIA [MEDIA ...] [--profile strict|medical_consult]
                             [--outdir deliveries] [--assurance] [--no-audit]
+                            [--edge-verify]
 
 Configuration (fixed by the 2026-09-01 decision gate):
   stage B  ElevenLabs scribe_v2 + keyterms vocabulary  (best ear, ~$0.22/hr)
   stage C  Gemini + detection policy v3 on canonicalized words (best reader)
   stage D  1 kHz beep render + redacted transcript from ONE interval list
-  stage E  signal-verified QC gate + empirical beep-edge verification
+  stage E  signal-verified QC gate
+          (+ empirical beep-edge verification, OFF by default: --edge-verify;
+           it re-transcribes the audio around every beep edge and is slow)
   stage F  independent LLM-judge leak audit (default ON; --no-audit skips)
 
 --assurance : additionally transcribe with Gemini and UNION the detected
@@ -78,7 +81,7 @@ def union_assurance(fid, el_dir: Path, media: Path, work: Path, model,
 
 
 def deliver(media: Path, profile: str, outdir: Path, assurance: bool,
-            audit: bool, model: str):
+            audit: bool, model: str, edge_verify_on: bool = False):
     fid = run_pipeline.file_id_for(media)
     engine_used = ENGINE
     fallback_note = None
@@ -132,18 +135,21 @@ def deliver(media: Path, profile: str, outdir: Path, assurance: bool,
                               src_dir / "intervals.json",
                               common.CONFIG["beep_freq_hz"])
 
-    # empirical beep-edge verification: transcribe the audio around every
-    # beep edge; audible fragments of a beeped value extend the beep (defends
-    # against engine clock skew at value onsets — user-reported defect)
-    print("  [edge-verify] checking beep edges by ear ...")
-    ev = edge_verify.verify_and_fix(src_dir, fid, media, model,
-                                    common.CONFIG["beep_freq_hz"],
-                                    common.CONFIG["beep_gain_db"])
-    if ev.get("extensions"):
-        res2 = qc_report.qc_file(src_dir, fid, src_dir / "transcript.json",
-                                 src_dir / "intervals.json",
-                                 common.CONFIG["beep_freq_hz"])
-        res["qc"] = res2[0]
+    # empirical beep-edge verification (opt-in via --edge-verify; slow because
+    # it re-transcribes the audio around every beep edge). Audible fragments
+    # of a beeped value extend the beep — defends against engine clock skew at
+    # value onsets. Disabled by default.
+    ev = None
+    if edge_verify_on:
+        print("  [edge-verify] checking beep edges by ear ...")
+        ev = edge_verify.verify_and_fix(src_dir, fid, media, model,
+                                        common.CONFIG["beep_freq_hz"],
+                                        common.CONFIG["beep_gain_db"])
+        if ev.get("extensions"):
+            res2 = qc_report.qc_file(src_dir, fid, src_dir / "transcript.json",
+                                     src_dir / "intervals.json",
+                                     common.CONFIG["beep_freq_hz"])
+            res["qc"] = res2[0]
 
     audit_summary = None
     if audit:
@@ -170,7 +176,7 @@ def deliver(media: Path, profile: str, outdir: Path, assurance: bool,
     quarantined_reason = None
     if res["qc"] != "PASS":
         quarantined_reason = f"QC {res['qc']}"
-    elif not ev.get("clean", True):
+    elif ev is not None and not ev.get("clean", True):
         quarantined_reason = "edge verification unresolved (audible fragments at beep edges)"
     elif audit_summary and audit_summary.get("leak_candidates", 0):
         quarantined_reason = (f"judge audit found "
@@ -184,7 +190,8 @@ def deliver(media: Path, profile: str, outdir: Path, assurance: bool,
         if prev and prev != sha(media):
             dst = base / f"{fid}-{sha(media)[:8]}"
     dst.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(src_dir / f"{fid}_beeped.m4a", dst / f"{fid}_beeped.m4a")
+    beeped_name = common.beeped_name(fid)
+    shutil.copy2(src_dir / beeped_name, dst / beeped_name)
     shutil.copy2(src_dir / f"{fid}_redacted.txt", dst / f"{fid}_redacted.txt")
     shutil.copy2(src_dir / "qc_report.md", dst / "qc_report.md")
 
@@ -220,7 +227,7 @@ def deliver(media: Path, profile: str, outdir: Path, assurance: bool,
             src_dir / "intervals.json")["intervals"]),
         "judge_audit": audit_summary,
         "languages": res.get("languages"),
-        "deliverables": [f"{fid}_beeped.m4a", f"{fid}_redacted.txt",
+        "deliverables": [beeped_name, f"{fid}_redacted.txt",
                          "qc_report.md"],
     }
     (dst / "manifest.json").write_text(json.dumps(manifest, indent=2,
@@ -252,6 +259,11 @@ def main():
     ap.add_argument("--no-audit", dest="audit", action="store_false",
                     help="skip the judge leak audit (not recommended for "
                          "deliveries)")
+    ap.add_argument("--edge-verify", dest="edge_verify", action="store_true",
+                    default=False,
+                    help="run empirical beep-edge verification (OFF by "
+                         "default; slow — re-transcribes audio around every "
+                         "beep edge)")
     args = ap.parse_args()
 
     model = common.resolve_model()
@@ -265,7 +277,8 @@ def main():
             continue
         print(f"\n=== {p.name} ===")
         try:
-            deliver(p, args.profile, outdir, args.assurance, args.audit, model)
+            deliver(p, args.profile, outdir, args.assurance, args.audit, model,
+                    args.edge_verify)
         except Exception as e:
             print(f"  ERROR {p.name}: {str(e)[:200]} — continuing with next file")
 

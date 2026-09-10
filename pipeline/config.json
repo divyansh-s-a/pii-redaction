@@ -5,10 +5,17 @@
     "gemini-2.5-pro"
   ],
   "api_base": "https://generativelanguage.googleapis.com",
+  "openrouter_api_base": "https://openrouter.ai/api/v1",
+  "openrouter_model_map": {
+    "gemini-3.1-pro-preview": "google/gemini-3.1-pro-preview",
+    "gemini-3.5-flash": "google/gemini-2.5-flash",
+    "gemini-2.5-pro": "google/gemini-2.5-pro"
+  },
   "profile": "medical_consult",
   "pad_ms": 250,
   "beep_freq_hz": 1000,
   "beep_gain_db": -10.0,
+  "beep_format": "flac",
   "chunk_len_s": 240,
   "chunk_step_s": 215,
   "chunk_threshold_s": 480,
