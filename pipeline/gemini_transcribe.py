@@ -82,8 +82,9 @@ def cut_wav_chunk(wav: Path, out: Path, start_s: float, len_s: float) -> Path:
 
 def transcribe_bytes(model: str, media: Path, mime: str, context_text: str = "",
                      extra_text: str = "", thinking_budget=None):
-    info = common.upload_file(media, mime, media.name)
-    parts = [{"file_data": {"file_uri": info["uri"], "mime_type": mime}}]
+    # Audio travels as a backend-neutral part so common.generate() can serve
+    # it via AI Studio (Files API upload) OR the OpenRouter Gemini fallback
+    # (inline base64) without this caller knowing which backend is live.
     prompt = TRANSCRIBE_PROMPT
     if context_text:
         prompt += ("\n\nThis audio CONTINUES a longer recording. The previous "
@@ -91,7 +92,7 @@ def transcribe_bytes(model: str, media: Path, mime: str, context_text: str = "",
                    "\nKeep the same speaker labels for the same voices.")
     if extra_text:
         prompt += "\n\n" + extra_text
-    parts.append({"text": prompt})
+    parts = [{"audio_path": str(media), "mime": mime}, {"text": prompt}]
     raw = common.generate(model, parts, TRANSCRIBE_SCHEMA,
                           thinking_budget=thinking_budget)
     import json

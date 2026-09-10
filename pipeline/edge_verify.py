@@ -164,7 +164,7 @@ def verify_and_fix(out_dir: Path, fid: str, original: Path, model: str,
 
     for rnd in range(MAX_ROUNDS + 1):
         chk = out_dir / "_edge_chk.wav"
-        audio_utils.decode_to_wav(out_dir / f"{fid}_beeped.m4a", chk,
+        audio_utils.decode_to_wav(out_dir / common.beeped_name(fid), chk,
                                   rate=16000, mono=True)
         beeps = audio_utils.find_pure_tones(chk, freq)
         dur = audio_utils.duration_ms(chk)
@@ -303,7 +303,7 @@ def verify_and_fix(out_dir: Path, fid: str, original: Path, model: str,
         beeped = out_dir / "_ev_beeped.wav"
         audio_utils.decode_to_wav(original, native)
         audio_utils.mix_beeps(native, beeped, adjusted, freq, gain_db)
-        audio_utils.encode_wav(beeped, out_dir / f"{fid}_beeped.m4a")
+        audio_utils.encode_audio(beeped, out_dir / common.beeped_name(fid))
         native.unlink(missing_ok=True)
         beeped.unlink(missing_ok=True)
         # keep rendered_intervals.json truthful

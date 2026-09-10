@@ -113,18 +113,18 @@ def render_audio(original: Path, work_wav: Path, beep_intervals, out_dir: Path,
         placed.append((s, e, chn))
     merged = audio_utils.pad_and_merge(placed, 0, dur)
 
-    # decode the ORIGINAL at native rate/channels, mix, encode m4a
+    # decode the ORIGINAL at native rate/channels, mix, encode the deliverable
     native_wav = out_dir / f"{file_id}_native.wav"
     beeped_wav = out_dir / f"{file_id}_beeped.wav"
-    out_m4a = out_dir / f"{file_id}_beeped.m4a"
+    out_audio = out_dir / common.beeped_name(file_id)
     audio_utils.decode_to_wav(original, native_wav)
     audio_utils.mix_beeps(native_wav, beeped_wav, merged, freq, gain_db)
     # NOTE: channel indices in `merged` refer to source channels; mix_beeps
     # beeps only that channel, so the other speaker's audio is preserved.
-    audio_utils.encode_wav(beeped_wav, out_m4a)
+    audio_utils.encode_audio(beeped_wav, out_audio)
     native_wav.unlink(missing_ok=True)
     beeped_wav.unlink(missing_ok=True)
-    return out_m4a, merged
+    return out_audio, merged
 
 
 def redact_transcript(transcript, intervals, out_path: Path):
@@ -172,7 +172,7 @@ def redact_file(original: Path, work_wav: Path, intervals_path: Path,
         iv["action"] = policy.action_for(iv["categories"],
                                          iv.get("public_figure", False), profile)
     to_beep = [iv for iv in intervals if iv["action"] == "beep"]
-    out_m4a, merged = render_audio(
+    out_audio, merged = render_audio(
         original, work_wav, to_beep, out_dir, file_id,
         cfg["pad_ms"], cfg.get("min_pad_ms", 50), cfg["beep_freq_hz"],
         cfg["beep_gain_db"], words=_flat_words(transcript),
@@ -187,8 +187,8 @@ def redact_file(original: Path, work_wav: Path, intervals_path: Path,
         "rendered_merged": [{"start_ms": s, "end_ms": e, "channel": c}
                             for s, e, c in merged],
     })
-    print(f"  beeped audio -> {out_m4a}")
+    print(f"  beeped audio -> {out_audio}")
     print(f"  redacted transcript -> {txt}")
     print(f"  {len(to_beep)} beeped, {len(intervals) - len(to_beep)} annotate-only "
           f"(profile={profile})")
-    return out_m4a, txt
+    return out_audio, txt
