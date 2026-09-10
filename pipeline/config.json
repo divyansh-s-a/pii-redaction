@@ -21,5 +21,17 @@
   "chunk_threshold_s": 480,
   "edge_snap_ms": 150,
   "value_gap_merge_ms": 700,
-  "min_pad_ms": 50
+  "min_pad_ms": 50,
+  "watermark": {
+    "statement_text": "This file is a watermarked sample provided by Deccan AI for evaluation. It is not a production dataset, does not confer a licence to train, and must not be copied, shared, or used beyond the stated evaluation purpose.",
+    "tag_text": "Deccan AI evaluation sample — not for production use.",
+    "tag_gain_db": 2.0,
+    "duck_db": 6.0,
+    "leader_gap_ms": 400,
+    "beep_buffer_ms": 300,
+    "interval_medium_s": 40,
+    "interval_long_s": 60,
+    "voice_name": "Roger",
+    "tts_model": "eleven_multilingual_v2"
+  }
 }

@@ -69,6 +69,20 @@ Triage tips: cross-script mishearings (the listener writing Devanagari where
 the transcript romanized) are the most common false flag; spoken digit words
 or value-token hits at an amount boundary deserve real ears — see the report.
 
+## Watermark evaluation samples (before sharing with a buyer)
+
+    python3 tools/watermark.py --make-assets     # once (ElevenLabs TTS, cached
+                                                 # in prompts/watermark/)
+    python3 tools/watermark.py deliveries/<fid> [...]
+
+Prepends the full spoken evaluation notice, then overlays a short
+"Deccan AI evaluation sample" tag at length-scaled intervals — placed
+transcript-aware (favours silence gaps, never touches a beep) with the
+program ducked 6 dB under the tag. Writes `*_watermarked.flac` + a
+`*_watermark.json` sidecar (schedule, levels, source sha); the original
+deliverable is never modified. Deterrent + provenance notice, not DRM.
+Config: the `watermark` block in pipeline/config.json.
+
 ## Evaluation harness (rerunnable on any corpus, no human annotation needed)
 
     python3 pipeline/run_pipeline.py --engine elevenlabs|gemini|openai \
@@ -92,8 +106,7 @@ Self-tests (run after install, especially on Linux):
 
 Behavior lives in versioned files: the detection policy prompt in `prompts/`
 (current version named in `pipeline/policy.py` and prompts/README; shared by
-detector AND judges)
-, `outputs/Audio_PII_Taxonomy_v0.2.md`,
+detector AND judges), `outputs/Audio_PII_Taxonomy_v0.2.md`,
 `pipeline/policy.py` (profiles / Action Matrix), `prompts/keyterms_india_v1.txt`.
 Edit, bump the version, re-run with `--force detect`.
 
