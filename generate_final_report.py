@@ -216,7 +216,8 @@ def build_facts(metas, dedupe, title):
                  for d in dia), 1),
         },
         "language_distribution": dict(Counter(
-            (d.get("language") or {}).get("primary_language") or "n/a" for d in dia)),
+            (m.get("language") or d.get("language") or {}).get("primary_language")
+            or "n/a" for m, d in zip(metas, dia))),
         "code_switching_files": sum(
             1 for d in dia if (d.get("language") or {}).get("code_switching")),
         "deduplication": dd,
@@ -230,8 +231,9 @@ def build_facts(metas, dedupe, title):
             "speakers": m.get("diarization", {}).get("speaker_count"),
             "turns": m.get("diarization", {}).get("turn_count"),
             "wpm": m.get("diarization", {}).get("words_per_minute"),
-            "language": (m.get("diarization", {}).get("language") or {})
-            .get("primary_language"),
+            "language": (m.get("language")
+                         or m.get("diarization", {}).get("language")
+                         or {}).get("primary_language"),
             "usability": (m.get("domain") or {}).get("usability"),
             "peak_dbfs": m.get("signal", {}).get("peak_dbfs"),
             "rms_dbfs": m.get("signal", {}).get("rms_dbfs"),
@@ -354,8 +356,9 @@ def build_report(metas, dedupe, title):
                 [(d.get("longest_monologue_ms") or 0) / 1000 for d in dia], nd=1))
     A("")
 
-    lang = Counter((d.get("language") or {}).get("primary_language") or "n/a"
-                   for d in dia)
+    lang = Counter((m.get("language") or m.get("diarization", {})
+                    .get("language") or {}).get("primary_language") or "n/a"
+                   for m in metas)
     A("## 8. Language distribution\n")
     A(_dist_table(lang, "Primary language", n))
     A("")

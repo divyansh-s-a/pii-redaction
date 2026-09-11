@@ -79,6 +79,47 @@ def redaction_stats(intervals, rendered, duration_ms):
     }
 
 
+def _norm_lang(code):
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "tools"))
+    import score_run
+    return score_run.norm_lang(code)
+
+
+def language_block(engine_lang: dict, dom: dict):
+    """Two-signal language reconciliation (owner decision 2026-09-10):
+    assert a primary language ONLY when the transcription engine's LID and
+    the text-based check agree; otherwise primary_language='unknown' with the
+    detected components listed, both raw signals kept with provenance, and a
+    review flag set. The flag NEVER quarantines — language is not a
+    redaction-safety concern."""
+    eng_primary = _norm_lang((engine_lang or {}).get("primary_language"))
+    eng_langs = [_norm_lang(l.get("lang"))
+                 for l in (engine_lang or {}).get("languages", [])]
+    raw_txt = str(dom.get("language") or "unknown").strip().lower()
+    txt = _norm_lang(raw_txt.split()[0].split("(")[0] if raw_txt else "unknown")
+    agree = (txt not in ("unknown", "mixed") and eng_primary == txt)
+    detected = []
+    for cand in [txt] + [eng_primary] + eng_langs:
+        if cand not in ("unknown", "mixed") and cand not in detected:
+            detected.append(cand)
+    block = {
+        "primary_language": txt if agree else "unknown",
+        "languages_detected": detected,
+        "signals_agree": agree,
+        "engine_lid": {"primary_language": eng_primary,
+                       "languages": eng_langs, "source": "transcription engine"},
+        "text_check": {"language": txt,
+                       "share": dom.get("language_share"),
+                       "source": "LLM read of the redacted transcript"},
+    }
+    if not agree:
+        block["review_flag"] = ("engine LID and text check disagree or are "
+                                "unsure — primary left 'unknown' pending "
+                                "human confirmation (never a quarantine "
+                                "reason)")
+    return block
+
+
 def build_metadata(work_dir: Path, delivery_dir, fid, use_domain=True):
     prepare = _load(work_dir / "prepare.json")
     transcript = _load(work_dir / "transcript.json") or {}
@@ -113,9 +154,12 @@ def build_metadata(work_dir: Path, delivery_dir, fid, use_domain=True):
               "quarantined": bool(manifest.get("quarantined_reason")),
               "quarantined_reason": manifest.get("quarantined_reason")}
 
+    lang = language_block((diar or {}).get("language"), dom)
+
     return {
         "file_id": fid,
         "generated_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
+        "language": lang,
         "domain": dom,
         "audio": {
             "deliverable": deliverable.name if deliverable else None,
@@ -183,7 +227,8 @@ def main():
           f"dBFS silence {s.get('silence_pct')}% snr {s.get('estimated_snr_db')}dB")
     print(f"  speakers: {dia.get('speaker_count')} | turns "
           f"{dia.get('turn_count')} | wpm {dia.get('words_per_minute')} | "
-          f"langs {(dia.get('language') or {}).get('primary_language')}")
+          f"lang {meta.get('language', {}).get('primary_language')} "
+          f"(engine LID {(dia.get('language') or {}).get('primary_language')})")
     print(f"  redaction: {meta['redaction']['pii_count']} PII, "
           f"{meta['redaction']['beeped_pct']}% beeped")
     print(f"  -> {out}")

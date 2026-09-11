@@ -21,9 +21,11 @@ _SCHEMA = {
         "confidence": {"type": "STRING", "enum": ["high", "medium", "low"]},
         "usability": {"type": "STRING",
                       "enum": ["usable", "limited", "not usable"]},
+        "language": {"type": "STRING"},
+        "language_share": {"type": "STRING"},
         "rationale": {"type": "STRING"},
     },
-    "required": ["domain", "confidence"],
+    "required": ["domain", "confidence", "language"],
 }
 
 _PROMPT = (
@@ -35,6 +37,13 @@ _PROMPT = (
     "'e-commerce delivery', 'travel booking'). Base it only on the subject "
     "matter.\n"
     "- confidence: high | medium | low.\n"
+    "- language: the dominant spoken language of the conversation as an ISO "
+    "639-1 code, e.g. 'ms', 'id', 'sw', 'en', 'hi'. Judge ONLY from the text "
+    "itself. Distinguish Malay from Indonesian by usage (e.g. 'awak/nak/"
+    "ringgit' vs 'anda/mau/rupiah'); if you cannot tell the language "
+    "confidently, answer exactly 'unknown'.\n"
+    "- language_share: a short mix description, e.g. 'sw 80% / en 20%', or "
+    "'unknown'.\n"
     "- usability: 'usable', 'limited', or 'not usable' — judged on whether the "
     "call is a substantive conversation with real content, versus a trivial one "
     "(greetings only, 'hello hello' / test call, wrong number, mostly dead air, "

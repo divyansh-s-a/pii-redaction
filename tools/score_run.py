@@ -444,6 +444,10 @@ _LANG_FAMILIES = {
     "ml": ["ml", "mal", "malayalam"],
     "pa": ["pa", "pan", "punjabi", "panjabi"],
     "ur": ["ur", "urd", "urdu"],
+    "ms": ["ms", "msa", "may", "malay"],
+    "id": ["id", "ind", "indonesian", "bahasa indonesia"],
+    "sw": ["sw", "swa", "swahili", "kiswahili"],
+    "eo": ["eo", "epo", "esperanto"],
     "mixed": ["mixed"],
     "unknown": ["unknown"],
 }

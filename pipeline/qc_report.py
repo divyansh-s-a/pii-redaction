@@ -30,7 +30,9 @@ def qc_file(out_dir: Path, file_id: str, transcript_path: Path,
         common.save_json(transcript_path, transcript)
     langs = ", ".join(f"{l['lang']} ({l['word_share']:.0%})"
                       for l in transcript.get("languages", []))
-    notes.append(f"primary language: {transcript.get('primary_language')} | "
+    notes.append(f"primary language (engine LID; reconciled value in "
+                 f"metadata.json 'language'): "
+                 f"{transcript.get('primary_language')} | "
                  f"all: {langs}")
 
     # 0b. speakers vs channels
