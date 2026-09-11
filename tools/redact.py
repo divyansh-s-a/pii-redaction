@@ -81,9 +81,112 @@ def union_assurance(fid, el_dir: Path, media: Path, work: Path, model,
     return common.load_json(iv)["intervals"]
 
 
+def _remediate_audit_findings(src_dir, fid, media, profile, findings,
+                              channel_wavs):
+    """Owner decision 2026-09-11: twice-confirmed audit findings are missed
+    PII with exact quotes — map each back to its word span and BEEP it, then
+    re-render. More redaction, never less checking. Returns
+    (n_added, unmatched)."""
+    import detect_pii
+    transcript = common.load_json(src_dir / "transcript.json")
+    utts = transcript["utterances"]
+
+    def norm(w):
+        return "".join(ch for ch in w.lower() if ch.isalnum())
+
+    def tok_match(wtok, qtok):
+        # real speech stutters ("Pe-permanent" vs quote "permanent"):
+        # containment for tokens of >= 4 chars, exact match otherwise
+        if wtok == qtok:
+            return True
+        return len(qtok) >= 4 and (qtok in wtok or wtok in qtok)
+
+    flat = detect_pii.flatten_words(transcript)
+    # flat index range per utterance (line N maps to utterance N-1)
+    ranges, pos = [], 0
+    for u in utts:
+        n = len(u["words"])
+        ranges.append((pos, pos + n))
+        pos += n
+
+    added, unmatched = [], []
+    data = common.load_json(src_dir / "intervals.json")
+    # idempotent across reruns (and cleans any partial state from a prior
+    # crashed round): each remediation starts from a clean AFB set
+    n_before = len(data["intervals"])
+    data["intervals"] = [iv for iv in data["intervals"]
+                         if iv.get("source") != "audit_feedback"]
+    stripped = n_before - len(data["intervals"])
+    for k, f in enumerate(findings):
+        toks = [norm(t) for t in str(f.get("quoted_text", "")).split()
+                if norm(t)]
+        if not toks:
+            unmatched.append(f)
+            continue
+        li = max(0, int(f.get("line", 1)) - 1)
+        # policy beeps EVERY repetition of a value: search the cited line
+        # first, then the whole transcript, and beep every occurrence
+        spans = []
+        order = [li] + [li + d for d in (-1, 1, -2, 2)
+                        if 0 <= li + d < len(utts)]
+        order += [u for u in range(len(utts)) if u not in order]
+        for ui in order:
+            lo, hi = ranges[ui]
+            nw = [norm(flat[g]["w"]) for g in range(lo, hi)]
+            i = 0
+            while i < len(nw):
+                if not tok_match(nw[i], toks[0]):
+                    i += 1
+                    continue
+                j, ti = i, 0
+                while j < len(nw) and ti < len(toks):
+                    if tok_match(nw[j], toks[ti]):
+                        ti += 1
+                    j += 1
+                if ti == len(toks):
+                    g0, g1 = lo + i, lo + j - 1
+                    spans.append((g0, g1, flat[g0]["start_ms"],
+                                  flat[g1]["end_ms"],
+                                  utts[ui].get("speaker", "unknown"),
+                                  utts[ui].get("channel")))
+                    i = j
+                else:
+                    i += 1
+            if len(spans) >= 20:
+                break
+        span = spans[0] if spans else None
+        if span is None:
+            unmatched.append(f)
+            continue
+        for oc, (w0, w1, s0, e0, spk, chn) in enumerate(spans):
+            data["intervals"].append({
+                "annotation_id": f"{fid}_AFB{k + 1:02d}_{oc + 1:02d}",
+                "start_word": w0, "end_word": w1,
+                "start_ms": s0, "end_ms": e0, "speaker": spk, "channel": chn,
+                "categories": f.get("categories", ["OTHER"]),
+                "spoken_text": str(f.get("quoted_text", ""))[:80],
+                "public_figure": False, "confidence": "low",
+                "source": "audit_feedback", "needs_review": True,
+                "notes": ("audit finding fed back into redaction (every "
+                          "occurrence beeped): "
+                          + str(f.get("reason", ""))[:100])})
+            added.append((s0, e0))
+    if added or stripped:
+        # re-render whenever the interval set CHANGED — stripping old AFB
+        # entries without re-rendering leaves audio that no longer matches
+        # the plan (QC then rightly flags orphan tones)
+        common.save_json(src_dir / "intervals.json", data)
+        redact_mod.redact_file(media, src_dir / "work_16k.wav",
+                               src_dir / "intervals.json",
+                               src_dir / "transcript.json",
+                               src_dir, fid, profile,
+                               channel_wavs=channel_wavs)
+    return added, unmatched
+
+
 def deliver(media: Path, profile: str, outdir: Path, assurance: bool,
             audit: bool, model: str, edge_verify_on: bool = False,
-            auto_extend: bool = True):
+            auto_extend: bool = True, remediate_audit: bool = False):
     fid = run_pipeline.file_id_for(media)
     engine_used = ENGINE
     fallback_note = None
@@ -227,6 +330,11 @@ def deliver(media: Path, profile: str, outdir: Path, assurance: bool,
                              "rejected_by_verifier":
                                  s.get("findings_rejected_by_verifier", 0)}
             print(f"  [audit] leak candidates: {audit_summary['leak_candidates']}")
+            pf0 = src_dir / "audit" / f"{fid}__{engine_used}.json"
+            if pf0.exists():
+                audit_summary["_findings_first_read"] = [
+                    f for f in json.loads(pf0.read_text()).get("findings", [])
+                    if not f.get("profile_dependent")]
             if audit_summary.get("leak_candidates"):
                 # confirm-on-second-audit (owner decision 2026-09-10): the
                 # audit judge is unstable on borderline classes (observed 0 ->
@@ -255,6 +363,7 @@ def deliver(media: Path, profile: str, outdir: Path, assurance: bool,
                     audit_summary["leak_candidates_first_read"] = \
                         audit_summary["leak_candidates"]
                     audit_summary["leak_candidates"] = len(confirmed)
+                    audit_summary["_confirmed_findings"] = confirmed
                     audit_summary["unconfirmed_candidates"] = [
                         {"quote": str(f.get("quoted_text", ""))[:60],
                          "line": f.get("line")}
@@ -264,6 +373,117 @@ def deliver(media: Path, profile: str, outdir: Path, assurance: bool,
                           f"{audit_summary['leak_candidates_first_read']}")
         else:
             audit_summary = {"error": (r.stdout + r.stderr)[-400:]}
+
+    # ---- audit-feedback remediation (one round, opt-in) ----
+    remediation = None
+    if (remediate_audit and audit_summary
+            and audit_summary.get("_findings_first_read")):
+        prep = common.load_json(src_dir / "prepare.json")
+        ch_wavs = [src_dir / n for n in prep.get("channel_wavs", [])] or None
+        print(f"  [remediate] beeping "
+              f"{len(audit_summary['_findings_first_read'])} first-read "
+              "audit finding(s) (safe direction) and re-running gates ...")
+        added, unmatched = _remediate_audit_findings(
+            src_dir, fid, media, profile,
+            audit_summary["_findings_first_read"], ch_wavs)
+        remediation = {"beeped": len(added),
+                       "unmatched": [str(f.get("quoted_text", ""))[:60]
+                                     for f in unmatched]}
+        if added:
+            st3, _ = qc_report.qc_file(src_dir, fid,
+                                       src_dir / "transcript.json",
+                                       src_dir / "intervals.json",
+                                       common.CONFIG["beep_freq_hz"])
+            res["qc"] = st3
+            # remediation beeps create NEW digit-word adjacencies the earlier
+            # auto-extend never saw — run one more extend round over them
+            de2 = src_dir / "qc_digit_edges.json"
+            if auto_extend and st3 != "PASS" and de2.exists():
+                edges2 = json.loads(de2.read_text())
+                if edges2:
+                    rendered2 = common.load_json(
+                        src_dir / "rendered_intervals.json")
+                    spans2 = [(r["start_ms"], r["end_ms"], r.get("channel"))
+                              for r in rendered2["rendered_merged"]]
+                    pad2 = common.CONFIG.get("min_pad_ms", 50)
+                    for ed in edges2:
+                        spans2.append((max(0, min(ed["w_start"],
+                                                  ed["iv_start"]) - pad2),
+                                       max(ed["w_end"], ed["iv_end"]) + pad2,
+                                       ed.get("channel")))
+                        auto_ext.append({"word": ed["word"],
+                                         "w_start": ed["w_start"],
+                                         "w_end": ed["w_end"],
+                                         "interval": ed["interval_id"],
+                                         "round": "post-remediation"})
+                    dur2 = common.load_json(
+                        src_dir / "prepare.json")["duration_ms"]
+                    m2 = audio_utils.pad_and_merge(spans2, 0, dur2)
+                    nat2 = src_dir / "_ae2_native.wav"
+                    bp2 = src_dir / "_ae2_beeped.wav"
+                    audio_utils.decode_to_wav(media, nat2)
+                    audio_utils.mix_beeps(nat2, bp2, m2,
+                                          common.CONFIG["beep_freq_hz"],
+                                          common.CONFIG["beep_gain_db"])
+                    audio_utils.encode_audio(
+                        bp2, src_dir / common.beeped_name(fid))
+                    nat2.unlink(missing_ok=True)
+                    bp2.unlink(missing_ok=True)
+                    rendered2["rendered_merged"] = [
+                        {"start_ms": a2, "end_ms": b2, "channel": c2}
+                        for a2, b2, c2 in m2]
+                    common.save_json(src_dir / "rendered_intervals.json",
+                                     rendered2)
+                    print(f"  [auto-extend] {len(edges2)} post-remediation "
+                          "digit-boundary extension(s)")
+                    st4, _ = qc_report.qc_file(
+                        src_dir, fid, src_dir / "transcript.json",
+                        src_dir / "intervals.json",
+                        common.CONFIG["beep_freq_hz"])
+                    res["qc"] = st4
+            listen = [(max(0, a - 400), b + 400) for a, b in added]
+            ev = edge_verify.verify_and_fix(
+                src_dir, fid, media, model,
+                common.CONFIG["beep_freq_hz"],
+                common.CONFIG["beep_gain_db"], only_overlapping=listen)
+            print("  [remediate] re-auditing ...")
+            subprocess.run(
+                [sys.executable, str(ROOT / "tools" / "judge_leak_audit.py"),
+                 "--engines", engine_used, "--files", fid, "--force",
+                 "--out", str(src_dir / "audit")],
+                capture_output=True, text=True)
+            rep2 = src_dir / "audit" / "leak_audit_report.json"
+            if rep2.exists():
+                s2 = json.loads(rep2.read_text())["engines"][engine_used]["summary"]
+                n2 = s2.get("leak_candidates", 0)
+                if n2:
+                    subprocess.run(
+                        [sys.executable,
+                         str(ROOT / "tools" / "judge_leak_audit.py"),
+                         "--engines", engine_used, "--files", fid, "--force",
+                         "--out", str(src_dir / "audit_confirm")],
+                        capture_output=True, text=True)
+                    pf1 = src_dir / "audit" / f"{fid}__{engine_used}.json"
+                    pf2 = (src_dir / "audit_confirm"
+                           / f"{fid}__{engine_used}.json")
+                    n_conf = n2
+                    if pf1.exists() and pf2.exists():
+                        def _k2(f):
+                            return " ".join(str(f.get("quoted_text", ""))
+                                            .lower().split())
+                        g1 = [f for f in json.loads(pf1.read_text())
+                              .get("findings", [])
+                              if not f.get("profile_dependent")]
+                        g2 = json.loads(pf2.read_text()).get("findings", [])
+                        n_conf = sum(1 for f in g1 if any(
+                            _k2(f) == _k2(g)
+                            and abs(f.get("line", 0) - g.get("line", 0)) <= 3
+                            for g in g2))
+                    audit_summary["leak_candidates"] = n_conf
+                else:
+                    audit_summary["leak_candidates"] = 0
+                print(f"  [remediate] post-remediation confirmed "
+                      f"candidates: {audit_summary['leak_candidates']}")
 
     # ---- gate: QC must PASS; with --audit, zero leak candidates too ----
     quarantined_reason = None
@@ -320,6 +540,7 @@ def deliver(media: Path, profile: str, outdir: Path, assurance: bool,
             src_dir / "intervals.json")["intervals"]),
         "judge_audit": audit_summary,
         "auto_extensions": auto_ext,
+        "audit_remediation": remediation,
         "languages": res.get("languages"),
         "deliverables": [beeped_name, f"{fid}_redacted.txt",
                          "qc_report.md"],
@@ -357,6 +578,11 @@ def main():
     ap.add_argument("--no-audit", dest="audit", action="store_false",
                     help="skip the judge leak audit (not recommended for "
                          "deliveries)")
+    ap.add_argument("--remediate-audit", dest="remediate_audit",
+                    action="store_true",
+                    help="beep twice-confirmed audit findings back into the "
+                         "render and re-run the gates (one round; more "
+                         "redaction, never less checking)")
     ap.add_argument("--no-auto-extend", dest="auto_extend",
                     action="store_false",
                     help="hold files on digit-boundary QC flags instead of "
@@ -384,7 +610,8 @@ def main():
         print(f"\n=== {p.name} ===")
         try:
             deliver(p, args.profile, outdir, args.assurance, args.audit, model,
-                    args.edge_verify, args.auto_extend)
+                    args.edge_verify, args.auto_extend,
+                    args.remediate_audit)
         except Exception as e:
             print(f"  ERROR {p.name}: {str(e)[:200]} — continuing with next file")
 
