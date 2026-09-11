@@ -39,7 +39,8 @@ import cluster as clusterer                         # noqa: E402
 
 CFG = json.loads((Path(__file__).resolve().parent / "config.json").read_text())
 AUDIO_EXTS = {".mp3", ".m4a", ".wav", ".mp4", ".mov", ".m4v", ".aac",
-              ".flac", ".ogg", ".opus", ".wma", ".avi"}
+              ".flac", ".ogg", ".opus", ".wma", ".avi", ".mpeg", ".mpga",
+              ".mp2", ".webm"}
 
 # worker globals (set once per process; avoids re-pickling cfg per task)
 _W = {}
