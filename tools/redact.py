@@ -198,7 +198,8 @@ def _remediate_audit_findings(src_dir, fid, media, profile, findings,
 
 def deliver(media: Path, profile: str, outdir: Path, assurance: bool,
             audit: bool, model: str, edge_verify_on: bool = False,
-            auto_extend: bool = True, remediate_audit: bool = False):
+            auto_extend: bool = True, remediate_audit: bool = False,
+            seed_findings=None):
     fid = run_pipeline.file_id_for(media)
     engine_used = ENGINE
     fallback_note = None
@@ -412,6 +413,31 @@ def deliver(media: Path, profile: str, outdir: Path, assurance: bool,
         else:
             audit_summary = {"error": (r.stdout + r.stderr)[-400:]}
 
+    # ---- seeded findings (triage recovery) ----
+    # findings recovered from an out-of-band audit read (e.g. extra
+    # verification reads on a delivered file) join the remediation set;
+    # the judge's instability means a finding seen in ANY validated read
+    # is evidence worth beeping — more redaction, never less checking
+    if remediate_audit and seed_findings:
+        try:
+            seeds = [f for f in json.loads(Path(seed_findings).read_text())
+                     .get("findings", []) if not f.get("profile_dependent")]
+        except Exception as exc:
+            seeds = []
+            print(f"  [remediate] seed findings unreadable: {exc}")
+        if seeds:
+            if not isinstance(audit_summary, dict):
+                audit_summary = {}
+            def _qk(f):
+                return " ".join(str(f.get("quoted_text", "")).lower().split())
+            have = {_qk(f)
+                    for f in audit_summary.get("_findings_first_read", [])}
+            extra = [f for f in seeds if _qk(f) not in have]
+            audit_summary.setdefault("_findings_first_read", []).extend(extra)
+            audit_summary["seeded_findings"] = len(extra)
+            print(f"  [remediate] seeded {len(extra)} finding(s) from "
+                  f"{Path(seed_findings).name} into the remediation set")
+
     # ---- audit-feedback remediation (one round, opt-in) ----
     remediation = None
     if (remediate_audit and audit_summary
@@ -621,6 +647,11 @@ def main():
                     help="beep twice-confirmed audit findings back into the "
                          "render and re-run the gates (one round; more "
                          "redaction, never less checking)")
+    ap.add_argument("--seed-findings", dest="seed_findings", default=None,
+                    help="path to a judge_leak_audit per-file JSON whose "
+                         "findings join the remediation set (triage "
+                         "recovery for findings surfaced out-of-band); "
+                         "requires --remediate-audit")
     ap.add_argument("--no-auto-extend", dest="auto_extend",
                     action="store_false",
                     help="hold files on digit-boundary QC flags instead of "
@@ -649,7 +680,7 @@ def main():
         try:
             deliver(p, args.profile, outdir, args.assurance, args.audit, model,
                     args.edge_verify, args.auto_extend,
-                    args.remediate_audit)
+                    args.remediate_audit, args.seed_findings)
         except Exception as e:
             print(f"  ERROR {p.name}: {str(e)[:200]} — continuing with next file")
 
