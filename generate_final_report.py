@@ -459,7 +459,7 @@ _SYSTEM = (
 )
 
 
-def _user_prompt(facts, template_text):
+def _user_prompt(facts, template_text, include_limitations=True):
     outline = (
         "Produce a COMPLETE, detailed dataset delivery report that mirrors the "
         "TEMPLATE section-for-section and is at least as long and thorough. Use "
@@ -492,14 +492,16 @@ def _user_prompt(facts, template_text):
         "6. Samples and access — describe the two-stage sample preparation (PII "
         "handled first via the generic policy; watermarking second) and the "
         "controlled access path, with a Stage|What you get|Turnaround table.\n"
-        "7. Known limitations — bulleted and candid (scale, language balance, "
-        "bandwidth, transcription is machine-generated, source codec metadata "
-        "unspecified, re-encoded pairs, rights under review). ALSO include a "
-        "'Conversation usability' bullet: give the usability mix from "
-        "FACTS.usability_distribution and explicitly name any file(s) in "
-        "FACTS.low_usability_files as low-content / greeting-only / dead-air "
-        "calls that a buyer may wish to exclude.\n"
-        "8. Appendix A — Full metadata report. Reproduce EVERY sub-table with "
+        + (("7. Known limitations — bulleted and candid (scale, language "
+            "balance, bandwidth, transcription is machine-generated, source "
+            "codec metadata unspecified, re-encoded pairs, rights under "
+            "review). ALSO include a 'Conversation usability' bullet: give "
+            "the usability mix from FACTS.usability_distribution and "
+            "explicitly name any file(s) in FACTS.low_usability_files as "
+            "low-content / greeting-only / dead-air calls that a buyer may "
+            "wish to exclude.\n")
+           if include_limitations else "")
+        + "8. Appendix A — Full metadata report. Reproduce EVERY sub-table with "
         "min/mean/median/max where applicable: A.1 Domain distribution (+ "
         "confidence), A.2 Audio format, A.3 Duration distribution + length "
         "bands, A.4 Signal quality (peak/RMS/crest/SNR/noise floor/silence/"
@@ -534,6 +536,11 @@ def main():
                     help="style exemplar (.docx/.md); defaults to the bundled "
                          "reference if present")
     ap.add_argument("--max-tokens", type=int, default=32000)
+    ap.add_argument("--no-limitations", dest="limitations",
+                    action="store_false",
+                    help="omit the Known-limitations section (client-facing "
+                         "packs; the measured internal report keeps all "
+                         "caveats regardless)")
     ap.add_argument("--rename-map", default=None,
                     help="folder_mapping.json from a final-deliverables "
                          "build: every file id / source name in the report "
@@ -591,8 +598,9 @@ def main():
         facts = build_facts(metas, dedupe, args.title)
         print(f"  calling {args.model} via OpenRouter ...")
         report = _openrouter_chat(args.model, _SYSTEM,
-                                  _apply_rename(_user_prompt(facts,
-                                                             template_text)),
+                                  _apply_rename(_user_prompt(
+                                      facts, template_text,
+                                      include_limitations=args.limitations)),
                                   args.max_tokens)
         default_out = result / "FINAL_REPORT_llm.md"
     else:
