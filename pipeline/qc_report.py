@@ -96,15 +96,48 @@ def qc_file(out_dir: Path, file_id: str, transcript_path: Path,
     work_wav = out_dir / "work_16k.wav"
     original_tones = (audio_utils.find_pure_tones(work_wav, freq)
                       if work_wav.exists() else [])
+    # symmetric source scan (owner review 2026-09-11): the output is scanned
+    # PER CHANNEL, so the source must be too — a telephony tone in one source
+    # channel averages away in the mono mix and used to raise a false
+    # "orphan tone". True orphans (in no source channel) still flag.
+    if n_ch > 1:
+        ch_srcs = sorted(out_dir.glob("work_16k_ch*.wav"))
+        if not ch_srcs and work_wav.exists():
+            native = out_dir / "_qc_src_native.wav"
+            try:
+                prep_src = prep.get("source") or prep.get("source_file") or ""
+                if prep_src and Path(prep_src).exists():
+                    audio_utils.decode_to_wav(Path(prep_src), native,
+                                              rate=16000)
+                    outs = [out_dir / f"_qc_src_ch{k}.wav"
+                            for k in range(n_ch)]
+                    audio_utils.split_channels(native, outs)
+                    ch_srcs = outs
+            except Exception:
+                ch_srcs = []
+        for cs in ch_srcs:
+            original_tones += audio_utils.find_pure_tones(cs, freq)
+        for tmpf in list(out_dir.glob("_qc_src_*.wav")):
+            tmpf.unlink(missing_ok=True)
     check_channels = range(n_ch) if n_ch > 1 else [None]
     n_tones = 0
     for cch in check_channels:
         tones = audio_utils.find_pure_tones(check_wav, freq, channel=cch)
         n_tones += len(tones)
+        # adjacent planned beeps with tiny gaps render as ONE audible tone;
+        # match each found tone against the UNION of applicable plan spans
+        # (>=90% coverage with 200 ms edge slack), not individual spans
+        appl = sorted((s, e) for s, e, chn in merged
+                      if chn is None or cch is None or chn == cch)
+        fused = []
+        for s0, e0 in appl:
+            if fused and s0 - fused[-1][1] <= 200:
+                fused[-1][1] = max(fused[-1][1], e0)
+            else:
+                fused.append([s0, e0])
         for ts, te in tones:
             planned = any(s - 200 <= ts and te <= e + 200
-                          and (chn is None or cch is None or chn == cch)
-                          for s, e, chn in merged)
+                          for s, e in fused)
             in_source = any(os_ - 300 <= ts and te <= oe + 300
                             for os_, oe in original_tones)
             if not planned and not in_source:
