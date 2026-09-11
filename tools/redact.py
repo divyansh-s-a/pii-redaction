@@ -199,19 +199,21 @@ def _remediate_audit_findings(src_dir, fid, media, profile, findings,
 def deliver(media: Path, profile: str, outdir: Path, assurance: bool,
             audit: bool, model: str, edge_verify_on: bool = False,
             auto_extend: bool = True, remediate_audit: bool = False,
-            seed_findings=None):
+            seed_findings=None, force_stages=None):
     fid = run_pipeline.file_id_for(media)
     engine_used = ENGINE
     fallback_note = None
     try:
-        res = run_pipeline.run_file(media, model, profile, set(), ENGINE, None)
+        res = run_pipeline.run_file(media, model, profile,
+                                    set(force_stages or []), ENGINE, None)
         src_dir = ROOT / "output" / f"{fid}__{ENGINE}"
     except (RuntimeError, SystemExit) as e:
         print(f"  !! elevenlabs stage failed ({str(e)[:120]}) — "
               "FALLING BACK to Gemini transcription (higher cost)")
         engine_used = "gemini"
         fallback_note = f"elevenlabs unavailable: {str(e)[:200]}"
-        res = run_pipeline.run_file(media, model, profile, set(), "gemini", None)
+        res = run_pipeline.run_file(media, model, profile,
+                                    set(force_stages or []), "gemini", None)
         src_dir = ROOT / "output" / fid
 
     # ---- clean AFB slate on re-runs ----
@@ -608,6 +610,7 @@ def deliver(media: Path, profile: str, outdir: Path, assurance: bool,
              "categories": iv["categories"]} for iv in extra_beeps],
         "qc_status": res["qc"],
         "edge_verification": ev,
+        "langpack": __import__("langpack").active(),
         "quarantined_reason": quarantined_reason,
         "video_note": ("video track not re-attached (audio-only delivery; "
                        "video remux requires ffmpeg)" if is_video else None),
@@ -663,6 +666,15 @@ def main():
                          "findings join the remediation set (triage "
                          "recovery for findings surfaced out-of-band); "
                          "requires --remediate-audit")
+    ap.add_argument("--langpack", default=None,
+                    help="language pack id (e.g. 'ms' for Malay/Indonesian): "
+                         "selects per-language transcription keyterms and a "
+                         "detection-prompt supplement from prompts/langpacks/")
+    ap.add_argument("--force-detect", dest="force_detect",
+                    action="store_true",
+                    help="re-run detection and render even when cached — "
+                         "required for a changed detection prompt (e.g. a "
+                         "new language pack) to take effect on cached files")
     ap.add_argument("--no-auto-extend", dest="auto_extend",
                     action="store_false",
                     help="hold files on digit-boundary QC flags instead of "
@@ -677,6 +689,11 @@ def main():
 
     if args.mono:
         common.CONFIG["channel_split"] = "never"
+    if args.langpack:
+        common.CONFIG["langpack"] = args.langpack
+        import langpack as _lp
+        print(f"langpack: {_lp.active() or 'NONE (unknown id?)'}")
+    forces = {"detect", "redact"} if args.force_detect else set()
     model = common.resolve_model()
     import policy as _policy
     print(f"workflow: EL scribe_v2 (+keyterms) -> Gemini {model} "
@@ -691,7 +708,7 @@ def main():
         try:
             deliver(p, args.profile, outdir, args.assurance, args.audit, model,
                     args.edge_verify, args.auto_extend,
-                    args.remediate_audit, args.seed_findings)
+                    args.remediate_audit, args.seed_findings, forces)
         except Exception as e:
             print(f"  ERROR {p.name}: {str(e)[:200]} — continuing with next file")
 

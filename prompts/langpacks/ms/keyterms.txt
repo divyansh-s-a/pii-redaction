@@ -1,0 +1,102 @@
+# Malay/Indonesian pack v1 — GENERIC recognition-biasing vocabulary.
+# Public institution names + common name particles/given names + PII marker
+# words. Deliberately NOT harvested from corpus transcripts (same principle
+# as keyterms_india_v1.txt). Cap: first 100 non-comment lines are used.
+# --- Malaysian / regional banks & financial institutions ---
+Maybank
+CIMB
+Public Bank
+RHB
+Hong Leong Bank
+AmBank
+UOB
+OCBC
+Alliance Bank
+Standard Chartered
+HSBC
+Bank Islam
+Bank Rakyat
+Bank Muamalat
+BSN
+Al-Rajhi Bank
+Citibank
+Affin Bank
+MBSB
+AEON Credit
+RinggitPlus
+AKPK
+PTPTN
+EPF
+KWSP
+SOCSO
+PERKESO
+LHDN
+Touch 'n Go
+GrabPay
+Boost
+ASNB
+Tabung Haji
+Great Eastern
+Prudential
+AIA
+Allianz
+Etiqa
+Takaful
+Zurich
+# --- Indonesian institutions (id shares this pack) ---
+Bank Mandiri
+BCA
+BRI
+BNI
+Bank Danamon
+OVO
+GoPay
+Dana
+BPJS
+# --- Malay name particles, honorifics, common given names ---
+Wan
+Nik
+Che
+Syed
+Syarifah
+Tengku
+Megat
+Puteri
+bin
+binti
+Encik
+Puan
+Cik
+Datuk
+Dato
+Ahmad
+Muhammad
+Mohd
+Abdul
+Aisyah
+Afiq
+Aiman
+Amir
+Farah
+Hafiz
+Izzat
+Nur
+Nurul
+Siti
+Syafiq
+Zainab
+Faizal
+Azlan
+Rosnah
+Kamarul
+# --- PII marker / value words ---
+MyKad
+kad pengenalan
+nombor akaun
+nombor telefon
+pinjaman
+ansuran
+gaji
+ringgit
+seribu
+seratus

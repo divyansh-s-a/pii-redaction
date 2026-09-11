@@ -91,6 +91,10 @@ DIGIT_WORDS = {
     "kosong": "0", "nol": "0", "satu": "1", "dua": "2", "tiga": "3",
     "empat": "4", "lima": "5", "enam": "6", "tujuh": "7", "lapan": "8",
     "delapan": "8", "sembilan": "9",
+    # Malay/Indonesian se- contractions are complete VALUES (seribu = satu
+    # ribu = 1000), unlike the bare magnitude words ribu/ratus which are
+    # unit words (exempt as edge spill per owner policy 2026-09-11)
+    "sepuluh": "10", "sebelas": "11", "seratus": "100", "seribu": "1000",
     # Swahili. "sita" (6) collides with the romanized Indian name Sita and
     # "saba" (7) with given names — likewise safe behind the run rule.
     "sifuri": "0", "moja": "1", "mbili": "2", "tatu": "3", "nne": "4",
@@ -195,7 +199,8 @@ def llm_detect(model, words, backend="gemini"):
     CHUNK = 5000
     for base in range(0, len(words), CHUNK):
         sub = words[base: base + CHUNK]
-        prompt = (policy.DETECTION_POLICY +
+        import langpack
+        prompt = (policy.DETECTION_POLICY + langpack.detection_supplement() +
                   "\n\nTRANSCRIPT WORDS:\n" + words_as_prompt(sub, CHUNK))
         if backend == "gpt":
             import judge_client

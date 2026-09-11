@@ -1,0 +1,37 @@
+LANGUAGE SUPPLEMENT — MALAY / INDONESIAN (Bahasa Melayu / Bahasa Indonesia),
+usually CODE-SWITCHED with English mid-sentence. All categories and global
+rules above apply unchanged; this calibrates observed under-detection in this
+language pair. ALL of the following ARE findings (examples are synthetic):
+
+- ORGANIZATION_PERSON_LINKED: a bank, lender, fund, agency or comparison
+  service named as handling THIS speaker's own account, loan, card,
+  application or case — "saya ada loan dengan Alliance Bank", "kad UOB
+  saya", "saya apply melalui RinggitPlus", "duit KWSP saya", "saya pergi
+  AKPK", "pinjaman PTPTN saya", "guna Maybank punya app". Rule 4 applies
+  with force: once the person link is established in the call, EVERY later
+  mention of that institution ("UOB punya offer", "yang Alliance tu",
+  "dekat BSN") is a separate span. Only a bare institution name in general
+  talk with no person link anywhere in the call is excluded.
+- FINANCIAL_INFO: Malay word-form amounts are values — "seribu" (= satu
+  ribu), "seribu lima" (1500), "empat ribu tiga ratus", "dua puluh ribu" —
+  including hedged colloquial forms: "seribu lah kot", "seribu lebih",
+  "tiga ribu macam tu", "dalam lima ribu". Hedge words (lah, kot, lebih,
+  macam tu, dalam, kut) join the span when they bound or interrupt the
+  amount. Salary (gaji), instalment (ansuran), debt (hutang), balance,
+  limit and spending amounts are personal financial facts.
+- CHILD_INFO: dependants statements — "empat orang anak", "anak saya dua
+  orang", "anak tiga lah", "anak I pergi sekolah [named school]" — mark the
+  count/school span; stacks with the specific category.
+- FULL_NAME: Malay name particles and chains — Wan, Nik, Che, Syed,
+  Tengku, bin/binti chains ("Syed Afiq bin Wan Ahmad"). A single
+  particle-name used to address or identify a real person ("Encik Wan",
+  "ya, Afiq") is a FULL_NAME finding (exclude the separable honorific).
+- IMMIGRATION_STATUS: explicit residency/PR statements in Malay — "saya
+  bukan permanent resident", "tak ada pegang mana-mana PR dekat negara
+  luar", "saya warganegara Malaysia" (the latter is NATIONALITY).
+- SENSITIVE_DEMOGRAPHIC: explicit person-linked ethnicity/religion words —
+  "saya Chinese", "dia Melayu", "orang India" when stating a specific
+  person's ethnicity (never inferred from name or language).
+- Spoken digits in Malay/Indonesian count everywhere digits count: kosong/
+  nol, satu, dua, tiga, empat, lima, enam, tujuh, lapan/delapan, sembilan,
+  and compounds/contractions: sepuluh, sebelas, dua puluh, seratus, seribu.

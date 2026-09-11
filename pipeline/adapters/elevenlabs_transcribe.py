@@ -36,6 +36,10 @@ def _keyterms():
     given names + major insurers/TPAs/hospitals — maintained in
     prompts/keyterms_india_v1.txt, deliberately not harvested from corpus
     transcripts (documented in System_Design)."""
+    import langpack
+    pack_terms = langpack.keyterms()
+    if pack_terms:
+        return pack_terms      # active language pack replaces the base list
     f = common.ROOT / "prompts" / "keyterms_india_v1.txt"
     if not f.exists():
         return None
