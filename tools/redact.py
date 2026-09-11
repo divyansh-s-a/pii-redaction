@@ -560,6 +560,17 @@ def deliver(media: Path, profile: str, outdir: Path, assurance: bool,
                               f"{audit_summary['leak_candidates']} leak candidate(s)")
     base = (ROOT / "quarantine") if quarantined_reason else outdir
     dst = base / fid
+    # a re-run can flip the verdict: drop the OPPOSITE side's stale bundle,
+    # or the old copy keeps presenting the file under its previous verdict
+    other = (outdir if quarantined_reason else ROOT / "quarantine") / fid
+    if (other / "manifest.json").exists():
+        stale_sha = json.loads(
+            (other / "manifest.json").read_text()).get("source_sha256")
+        if not stale_sha or stale_sha == sha(media):
+            shutil.rmtree(other)
+            print(f"  [verdict] removed stale "
+                  f"{'delivery' if quarantined_reason else 'quarantine'} "
+                  f"bundle from a prior run: {other}")
     # collision: same fid, different source -> suffix with source sha
     mf = dst / "manifest.json"
     if mf.exists():
