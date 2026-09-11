@@ -133,16 +133,24 @@ def verify(bundle: Path, work_dir: Path):
         rd2 = json.loads((work_dir / "rendered_intervals.json").read_text())
         chans = {iv.get("channel") for iv in rd2["rendered_merged"]}
         tones_by_chan = {}
+        # scan the wm CONTENT with the same window phase as the source:
+        # trim the leader first (sample-exact) so Goertzel windows align and
+        # short tones are not clipped by phase misalignment
+        wm16 = TMP / "wm16_full.wav"
+        audio_utils.decode_to_wav(wm_audio, wm16, rate=16000,
+                                  mono=(chans == {None} or ch == 1))
+        pcm16, fs16, ch16 = audio_utils.read_wav(wm16)
+        cut = int(round((off / (len(spcm) + off)) * 0))  # placeholder
+        skip = (len(wpcm) - len(spcm)) // ch  # leader length in frames @native
+        skip16 = int(round(skip * 16000 / fs)) * ch16
+        content16 = TMP / "wm16_content.wav"
+        audio_utils.write_wav(content16, pcm16[skip16:], fs16, ch16)
         if chans == {None} or ch == 1:
-            chk = TMP / "chk16.wav"
-            audio_utils.decode_to_wav(wm_audio, chk, rate=16000, mono=True)
-            tones_by_chan[None] = audio_utils.find_pure_tones(chk, 1000)
+            tones_by_chan[None] = audio_utils.find_pure_tones(content16, 1000)
         else:
             # channel-targeted render: scan each channel separately
-            st = TMP / "chk16st.wav"
-            audio_utils.decode_to_wav(wm_audio, st, rate=16000)
             outs = [TMP / f"chk16_c{k}.wav" for k in range(ch)]
-            audio_utils.split_channels(st, outs)
+            audio_utils.split_channels(content16, outs)
             for k, o in enumerate(outs):
                 tones_by_chan[k] = audio_utils.find_pure_tones(o, 1000)
             tones_by_chan[None] = [t for v in tones_by_chan.values() for t in v]
@@ -153,15 +161,19 @@ def verify(bundle: Path, work_dir: Path):
         audio_utils.decode_to_wav(src_audio, src_chk, rate=16000, mono=True)
         src_tones = _merge_tones(audio_utils.find_pure_tones(src_chk, 1000))
         pool = _merge_tones(tones_by_chan[None])
-        pres = sum(1 for ts, te in src_tones
-                   if any(abs(ws - (ts + off_ms)) < 150
-                          and abs(we - (te + off_ms)) < 150
-                          for ws, we in pool))
+        def covered(ts, te):
+            # coverage-based: scan fragmentation (purity dips of any width)
+            # must not fail a tone that is materially present
+            span = max(1, te - ts)
+            got = sum(max(0, min(we, te) - max(ws, ts))
+                      for ws, we in pool)
+            return got >= 0.9 * span
+        pres = sum(1 for ts, te in src_tones if covered(ts, te))
         hit = 0
         for iv in rd2["rendered_merged"]:
             s0, e0, c0 = iv["start_ms"], iv["end_ms"], iv.get("channel")
             pl = tones_by_chan.get(c0, tones_by_chan[None])
-            if any(abs(ts - (s0 + off_ms)) < 250 and abs(te - (e0 + off_ms)) < 250
+            if any(abs(ts - s0) < 250 and abs(te - e0) < 250
                    for ts, te in pl):
                 hit += 1
         r["beeps_found"] = f"{hit}/{len(beeps)} ivs, {pres}/{len(src_tones)} src-tones"
