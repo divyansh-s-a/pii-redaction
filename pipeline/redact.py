@@ -14,6 +14,10 @@ import common
 import policy
 
 WORD_GRAZE_MS = 20      # privacy floor against a transcribed neighbour word
+MIN_BEEP_MS = 200       # narrowest rendered beep: degenerate (bunched) word
+                        # timing can shrink a value interval to a few ms; the
+                        # tone must stay audible and detectable by the QC
+                        # tone scan (over-redaction is the safe direction)
 # Person-name onsets are the empirically worst-stamped edge (defect class 4:
 # engines place a name's start late — ~300 ms observed there, and confirmed
 # by ear-calibration on the shared sample 2026-09-02: a beep 150 ms before
@@ -110,6 +114,10 @@ def render_audio(original: Path, work_wav: Path, beep_intervals, out_dir: Path,
         hi2 = min(dur, e0 + pad_ms, max(next_start, lo2))
         e = (audio_utils.quietest_point(pcm, fs, lo2, hi2) if lo2 < hi2
              else lo2)
+        if e - s < MIN_BEEP_MS:
+            deficit = MIN_BEEP_MS - (e - s)
+            s = max(0.0, s - deficit / 2)
+            e = min(dur, s + MIN_BEEP_MS)
         placed.append((s, e, chn))
     merged = audio_utils.pad_and_merge(placed, 0, dur)
 
