@@ -48,6 +48,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "pipeline"))
 import audio_utils
 import common
 import detect_pii
+import audio_utils
 import edge_verify
 import qc_report
 import redact as redact_mod
@@ -81,7 +82,8 @@ def union_assurance(fid, el_dir: Path, media: Path, work: Path, model,
 
 
 def deliver(media: Path, profile: str, outdir: Path, assurance: bool,
-            audit: bool, model: str, edge_verify_on: bool = False):
+            audit: bool, model: str, edge_verify_on: bool = False,
+            auto_extend: bool = True):
     fid = run_pipeline.file_id_for(media)
     engine_used = ENGINE
     fallback_note = None
@@ -135,11 +137,67 @@ def deliver(media: Path, profile: str, outdir: Path, assurance: bool,
                               src_dir / "intervals.json",
                               common.CONFIG["beep_freq_hz"])
 
+    # ---- digit-boundary auto-extension (owner decision 2026-09-10) ----
+    # A digit word at a beep boundary almost always belongs to the beeped
+    # number: extend the beep over the word (over-redaction, the safe
+    # direction), re-render, re-QC — then LISTEN to exactly the extended
+    # beeps (targeted edge check). The empirical listen stays the gate; the
+    # transcript-level flag alone no longer quarantines. --no-auto-extend
+    # restores the old hold-everything behavior.
+    auto_ext = []
+    ev = None
+    de_path = src_dir / "qc_digit_edges.json"
+    if auto_extend and res["qc"] != "PASS" and de_path.exists():
+        edges = json.loads(de_path.read_text())
+        if edges:
+            rendered = common.load_json(src_dir / "rendered_intervals.json")
+            spans = [(r["start_ms"], r["end_ms"], r.get("channel"))
+                     for r in rendered["rendered_merged"]]
+            pad = common.CONFIG.get("min_pad_ms", 50)
+            for ed in edges:
+                a = max(0, min(ed["w_start"], ed["iv_start"]) - pad)
+                b = max(ed["w_end"], ed["iv_end"]) + pad
+                spans.append((a, b, ed.get("channel")))
+                auto_ext.append({"word": ed["word"],
+                                 "w_start": ed["w_start"],
+                                 "w_end": ed["w_end"],
+                                 "interval": ed["interval_id"]})
+            dur = common.load_json(src_dir / "prepare.json")["duration_ms"]
+            merged_ae = audio_utils.pad_and_merge(spans, 0, dur)
+            native = src_dir / "_ae_native.wav"
+            beeped_w = src_dir / "_ae_beeped.wav"
+            audio_utils.decode_to_wav(media, native)
+            audio_utils.mix_beeps(native, beeped_w, merged_ae,
+                                  common.CONFIG["beep_freq_hz"],
+                                  common.CONFIG["beep_gain_db"])
+            audio_utils.encode_audio(beeped_w,
+                                     src_dir / common.beeped_name(fid))
+            native.unlink(missing_ok=True)
+            beeped_w.unlink(missing_ok=True)
+            rendered["rendered_merged"] = [
+                {"start_ms": s0, "end_ms": e0, "channel": c0}
+                for s0, e0, c0 in merged_ae]
+            common.save_json(src_dir / "rendered_intervals.json", rendered)
+            print(f"  [auto-extend] {len(auto_ext)} digit-boundary "
+                  "extension(s) applied -> re-QC + targeted edge listen")
+            st2, _ = qc_report.qc_file(src_dir, fid,
+                                       src_dir / "transcript.json",
+                                       src_dir / "intervals.json",
+                                       common.CONFIG["beep_freq_hz"])
+            res["qc"] = st2
+            listen_spans = [(max(0, min(ed["w_start"], ed["iv_start"]) - 400),
+                             max(ed["w_end"], ed["iv_end"]) + 400)
+                            for ed in edges]
+            ev = edge_verify.verify_and_fix(
+                src_dir, fid, media, model,
+                common.CONFIG["beep_freq_hz"],
+                common.CONFIG["beep_gain_db"],
+                only_overlapping=listen_spans)
+
     # empirical beep-edge verification (opt-in via --edge-verify; slow because
     # it re-transcribes the audio around every beep edge). Audible fragments
     # of a beeped value extend the beep — defends against engine clock skew at
     # value onsets. Disabled by default.
-    ev = None
     if edge_verify_on:
         print("  [edge-verify] checking beep edges by ear ...")
         ev = edge_verify.verify_and_fix(src_dir, fid, media, model,
@@ -169,6 +227,41 @@ def deliver(media: Path, profile: str, outdir: Path, assurance: bool,
                              "rejected_by_verifier":
                                  s.get("findings_rejected_by_verifier", 0)}
             print(f"  [audit] leak candidates: {audit_summary['leak_candidates']}")
+            if audit_summary.get("leak_candidates"):
+                # confirm-on-second-audit (owner decision 2026-09-10): the
+                # audit judge is unstable on borderline classes (observed 0 ->
+                # 15 on identical transcripts). A candidate only gates when it
+                # appears in TWO independent reads (same quote, line +/-3);
+                # unconfirmed ones are recorded, never shipped silently.
+                print("  [audit] confirming with a second independent read ...")
+                subprocess.run(
+                    [sys.executable, str(ROOT / "tools" / "judge_leak_audit.py"),
+                     "--engines", engine_used, "--files", fid, "--force",
+                     "--out", str(src_dir / "audit_confirm")],
+                    capture_output=True, text=True)
+                pf1 = src_dir / "audit" / f"{fid}__{engine_used}.json"
+                pf2 = src_dir / "audit_confirm" / f"{fid}__{engine_used}.json"
+                if pf1.exists() and pf2.exists():
+                    def _k(f):
+                        return " ".join(str(f.get("quoted_text", ""))
+                                        .lower().split())
+                    f1 = [f for f in json.loads(pf1.read_text())
+                          .get("findings", []) if not f.get("profile_dependent")]
+                    f2 = json.loads(pf2.read_text()).get("findings", [])
+                    confirmed = [f for f in f1 if any(
+                        _k(f) == _k(g)
+                        and abs(f.get("line", 0) - g.get("line", 0)) <= 3
+                        for g in f2)]
+                    audit_summary["leak_candidates_first_read"] = \
+                        audit_summary["leak_candidates"]
+                    audit_summary["leak_candidates"] = len(confirmed)
+                    audit_summary["unconfirmed_candidates"] = [
+                        {"quote": str(f.get("quoted_text", ""))[:60],
+                         "line": f.get("line")}
+                        for f in f1 if f not in confirmed]
+                    print(f"  [audit] confirmed on second read: "
+                          f"{len(confirmed)} of "
+                          f"{audit_summary['leak_candidates_first_read']}")
         else:
             audit_summary = {"error": (r.stdout + r.stderr)[-400:]}
 
@@ -226,6 +319,7 @@ def deliver(media: Path, profile: str, outdir: Path, assurance: bool,
         "redaction_count": len(common.load_json(
             src_dir / "intervals.json")["intervals"]),
         "judge_audit": audit_summary,
+        "auto_extensions": auto_ext,
         "languages": res.get("languages"),
         "deliverables": [beeped_name, f"{fid}_redacted.txt",
                          "qc_report.md"],
@@ -263,6 +357,11 @@ def main():
     ap.add_argument("--no-audit", dest="audit", action="store_false",
                     help="skip the judge leak audit (not recommended for "
                          "deliveries)")
+    ap.add_argument("--no-auto-extend", dest="auto_extend",
+                    action="store_false",
+                    help="hold files on digit-boundary QC flags instead of "
+                         "auto-extending the beep over the digit word "
+                         "(auto-extend + targeted edge listen is the default)")
     ap.add_argument("--edge-verify", dest="edge_verify", action="store_true",
                     default=False,
                     help="run empirical beep-edge verification (OFF by "
@@ -285,7 +384,7 @@ def main():
         print(f"\n=== {p.name} ===")
         try:
             deliver(p, args.profile, outdir, args.assurance, args.audit, model,
-                    args.edge_verify)
+                    args.edge_verify, args.auto_extend)
         except Exception as e:
             print(f"  ERROR {p.name}: {str(e)[:200]} — continuing with next file")
 

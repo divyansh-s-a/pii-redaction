@@ -123,11 +123,14 @@ def qc_file(out_dir: Path, file_id: str, transcript_path: Path,
         notes.append(f"markers {n_markers} != beeped intervals {n_beeped} "
                      "(adjacent intervals can merge into one beep; verify by ear)")
 
-    # 4. leak heuristic: digit words just outside beeped edges
+    # 4. leak heuristic: digit words just outside beeped edges. Structured
+    # entries go to qc_digit_edges.json so the delivery workflow can apply
+    # the safe fix (extend the beep over the word) instead of only holding.
     import detect_pii
     words = detect_pii.flatten_words(transcript)
     data = common.load_json(intervals_path)
     beeped = [iv for iv in data["intervals"]]
+    digit_edges = []
     for iv in beeped:
         for w in words:
             if detect_pii.norm_digit(w["w"]) is None:
@@ -140,6 +143,13 @@ def qc_file(out_dir: Path, file_id: str, transcript_path: Path,
                 problems.append(
                     f"digit word '{w['w']}' at {w['start_ms']}ms borders "
                     f"interval {iv['annotation_id']} — possible partial leak")
+                digit_edges.append({
+                    "word": w["w"], "w_start": w["start_ms"],
+                    "w_end": w["end_ms"],
+                    "interval_id": iv["annotation_id"],
+                    "iv_start": iv["start_ms"], "iv_end": iv["end_ms"],
+                    "channel": iv.get("channel")})
+    common.save_json(out_dir / "qc_digit_edges.json", digit_edges)
 
     check_wav.unlink(missing_ok=True)
     status = "PASS" if not problems else "FLAGGED"

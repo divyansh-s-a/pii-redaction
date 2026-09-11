@@ -123,7 +123,8 @@ def _fragment_match(heard, value_toks):
 
 
 def verify_and_fix(out_dir: Path, fid: str, original: Path, model: str,
-                   freq: int = 1000, gain_db: float = -10.0):
+                   freq: int = 1000, gain_db: float = -10.0,
+                   only_overlapping=None):
     """Check every beep edge; extend + re-render until clean or MAX_ROUNDS.
     Returns a report dict for the manifest."""
     intervals = common.load_json(out_dir / "intervals.json")["intervals"]
@@ -171,6 +172,9 @@ def verify_and_fix(out_dir: Path, fid: str, original: Path, model: str,
         flagged = []      # (beep_index, side)
         report["unchecked"] = []      # edges the snippet ASR failed on
         for bi, (s, e) in enumerate(beeps):
+            if only_overlapping is not None and not any(
+                    s < oe and os_ < e for os_, oe in only_overlapping):
+                continue          # targeted mode: only the requested beeps
             vtoks = _value_tokens(intervals, s, e)
             if not vtoks:
                 continue

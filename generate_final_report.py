@@ -92,9 +92,12 @@ def _dedupe_facts(dedupe):
         return None
     clusters = []
     for c in dedupe.get("clusters", []):
-        rep = Path(c["representative"]).stem
-        members = [Path(m).stem for m in c.get("members", [])]
-        dropped = [m for m in members if m != rep]
+        rep_path = c["representative"]
+        rep = Path(rep_path).stem
+        # compare full paths (wav/mp3 twins share a stem); show the extension
+        # whenever the stem alone would be ambiguous
+        dropped = [Path(m).name if Path(m).stem == rep else Path(m).stem
+                   for m in c.get("members", []) if m != rep_path]
         m0 = (c.get("matches") or [{}])[0]
         tier = m0.get("tier") or "?"
         clusters.append({
@@ -531,6 +534,10 @@ def main():
                     help="style exemplar (.docx/.md); defaults to the bundled "
                          "reference if present")
     ap.add_argument("--max-tokens", type=int, default=32000)
+    ap.add_argument("--rename-map", default=None,
+                    help="folder_mapping.json from a final-deliverables "
+                         "build: every file id / source name in the report "
+                         "is replaced by its numbered folder name")
     args = ap.parse_args()
 
     result = Path(args.result).resolve()
@@ -538,6 +545,26 @@ def main():
         else [result / "deliveries"]
     if args.include_quarantine:
         scan.append(result / "quarantine")
+
+    rename = {}
+    if args.rename_map:
+        mp = json.loads(Path(args.rename_map).read_text())
+        for m in mp.get("mapping", []):
+            if m.get("file_id"):
+                rename[m["file_id"]] = m["folder"]
+            if m.get("source_file"):
+                rename[m["source_file"]] = m["folder"]
+                rename[Path(m["source_file"]).stem] = m["folder"]
+
+    def _apply_rename(text):
+        for old in sorted(rename, key=len, reverse=True):
+            text = text.replace(old, rename[old])
+        if rename:
+            # client-facing mode: internal ids of files NOT in this delivery
+            # (e.g. dedupe-kept but quarantined) must not leak raw hashes
+            import re as _re
+            text = _re.sub(r"[0-9a-f]{32}(\.\w+)?", "withheld sample", text)
+        return text
 
     metas = _load_all(scan)
     if not metas:
@@ -564,7 +591,8 @@ def main():
         facts = build_facts(metas, dedupe, args.title)
         print(f"  calling {args.model} via OpenRouter ...")
         report = _openrouter_chat(args.model, _SYSTEM,
-                                  _user_prompt(facts, template_text),
+                                  _apply_rename(_user_prompt(facts,
+                                                             template_text)),
                                   args.max_tokens)
         default_out = result / "FINAL_REPORT_llm.md"
     else:
@@ -573,7 +601,7 @@ def main():
 
     out = Path(args.out).resolve() if args.out else default_out
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(report)
+    out.write_text(_apply_rename(report))
     print(f"wrote {out}  ({len(metas)} files, "
           f"{sum(_nums(m.get('audio', {}).get('duration_ms') for m in metas)) / 3_600_000:.2f} h)")
 
