@@ -138,18 +138,30 @@ def _remediate_audit_findings(src_dir, fid, media, profile, findings,
                 if not tok_match(nw[i], toks[0]):
                     i += 1
                     continue
+                # a spoken value is contiguous: allow a small stutter/
+                # filler budget between quote tokens, never an unbounded
+                # gap — subsequence matching without it built 53-101s
+                # spans from distant anchor words and beeped the whole
+                # exchange in between (QC width-flagged those renders)
                 j, ti = i, 0
-                while j < len(nw) and ti < len(toks):
+                budget = i + 2 * len(toks) + 3
+                while j < len(nw) and ti < len(toks) and j < budget:
                     if tok_match(nw[j], toks[ti]):
                         ti += 1
                     j += 1
                 if ti == len(toks):
                     g0, g1 = lo + i, lo + j - 1
-                    spans.append((g0, g1, flat[g0]["start_ms"],
-                                  flat[g1]["end_ms"],
-                                  utts[ui].get("speaker", "unknown"),
-                                  utts[ui].get("channel")))
-                    i = j
+                    s0, e0 = flat[g0]["start_ms"], flat[g1]["end_ms"]
+                    # duration guard: a long silence inside the word
+                    # budget can still stretch the clock — reject spans
+                    # no spoken value plausibly fills
+                    if e0 - s0 <= max(8000, 1500 * len(toks)):
+                        spans.append((g0, g1, s0, e0,
+                                      utts[ui].get("speaker", "unknown"),
+                                      utts[ui].get("channel")))
+                        i = j
+                    else:
+                        i += 1
                 else:
                     i += 1
             if len(spans) >= 20:
