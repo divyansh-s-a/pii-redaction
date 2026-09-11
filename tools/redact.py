@@ -675,6 +675,9 @@ def main():
                     help="re-run detection and render even when cached — "
                          "required for a changed detection prompt (e.g. a "
                          "new language pack) to take effect on cached files")
+    ap.add_argument("--fresh", action="store_true",
+                    help="force EVERY pipeline stage (prepare, transcribe, "
+                         "detect, redact): no cached artifacts are reused")
     ap.add_argument("--no-auto-extend", dest="auto_extend",
                     action="store_false",
                     help="hold files on digit-boundary QC flags instead of "
@@ -694,6 +697,8 @@ def main():
         import langpack as _lp
         print(f"langpack: {_lp.active() or 'NONE (unknown id?)'}")
     forces = {"detect", "redact"} if args.force_detect else set()
+    if args.fresh:
+        forces = {"prepare", "transcribe", "detect", "redact"}
     model = common.resolve_model()
     import policy as _policy
     print(f"workflow: EL scribe_v2 (+keyterms) -> Gemini {model} "
