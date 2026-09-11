@@ -212,6 +212,30 @@ def deliver(media: Path, profile: str, outdir: Path, assurance: bool,
         fallback_note = f"elevenlabs unavailable: {str(e)[:200]}"
         res = run_pipeline.run_file(media, model, profile, set(), "gemini", None)
         src_dir = ROOT / "output" / fid
+
+    # ---- clean AFB slate on re-runs ----
+    # audit-feedback intervals are derived state from THIS run's audit; a
+    # re-run with cached detection would otherwise render last run's AFB
+    # beeps (including any bad spans) and QC-flag them before remediation
+    # — the only place that strips them — can engage
+    data0 = common.load_json(src_dir / "intervals.json")
+    keep0 = [iv for iv in data0["intervals"]
+             if iv.get("source") != "audit_feedback"]
+    if len(keep0) != len(data0["intervals"]):
+        prep0 = common.load_json(src_dir / "prepare.json")
+        cw0 = [src_dir / n for n in prep0.get("channel_wavs", [])] or None
+        print(f"  [remediate] stripped "
+              f"{len(data0['intervals']) - len(keep0)} stale audit-feedback "
+              "interval(s) from a prior run — re-rendering clean baseline")
+        data0["intervals"] = keep0
+        common.save_json(src_dir / "intervals.json", data0)
+        redact_mod.redact_file(media, src_dir / "work_16k.wav",
+                               src_dir / "intervals.json",
+                               src_dir / "transcript.json",
+                               src_dir, fid, profile, channel_wavs=cw0)
+        qc_report.qc_file(src_dir, fid, src_dir / "transcript.json",
+                          src_dir / "intervals.json",
+                          common.CONFIG["beep_freq_hz"])
     is_video = media.suffix.lower().lstrip(".") in ("mp4", "mov", "m4v", "avi")
 
     extra_beeps = []
