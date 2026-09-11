@@ -19,6 +19,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import audio_utils
 import common
+import detect_pii
 import gemini_transcribe
 from textnorm import fold_indic
 
@@ -60,7 +61,34 @@ STOPWORDS = {
     "right", "please", "thanks", "thank", "hello", "hmm", "huh", "haan", "ji",
     "acha", "accha", "theek", "hai", "nahi", "aur", "toh", "kya", "mein",
     "paid", "call", "calling", "speaking", "name",
+    # multilingual function/filler words (fold_indic'd forms — हाँ->han,
+    # अच्छा->achchha, नहीं->nhin): the snippet ASR renders code-switched
+    # neighbours in their own script; folded they must not read as leaks
+    # (owner policy 2026-09-11: adjoining-word spill is benign)
+    "thik", "theik", "achha", "achchha", "haa", "han", "nahin", "nhin",
+    "abhi", "arre", "bas", "bilkul", "matlab", "bhi", "gya", "hoga", "kbhi",
+    "bat", "tum", "apka", "apki", "aap", "hain", "hun", "mera", "meri",
+    "kaise", "kyun", "aha", "lah", "kan", "tak", "dah", "pun", "sudah",
+    "boleh", "macam", "saja", "sahaja", "ndiyo", "sawa", "asante", "karibu",
 }
+
+# Spill of a value's UNIT/MAGNITUDE words identifies nobody (owner decision
+# 2026-09-11): "…ribu" trailing an amount beep is ignorable even though it is
+# a token of the value. Digits stay zero-tolerance.
+UNIT_WORDS = {
+    "ribu", "ratus", "juta", "sen", "ringgit", "rm", "rupiah", "dollar",
+    "dollars", "cents", "cent", "thousand", "hundred", "million", "lakh",
+    "crore", "hazaar", "hazar", "rupees", "rupee", "paise", "elfu", "mia",
+    "shilingi", "laki",
+}
+
+# Word-valued categories: the value is words, so an UNEXPECTED word heard at
+# the edge may be the value rendered differently by the snippet ASR
+# (observed: listeners wrote 'Ritika', snippet ASR heard 'Vidya') — the
+# unexpected-word rule stays for these. Digit-valued categories are protected
+# by the digit rules; unexpected non-digit words there are benign spill.
+WORD_VALUE_CATS = {"FULL_NAME", "ORGANIZATION_PERSON_LINKED", "ADDRESS",
+                   "EMAIL", "SENSITIVE_DEMOGRAPHIC"}
 
 
 def _norm(tok):
@@ -88,38 +116,105 @@ def _unexpected(heard, expected_norms):
 
 
 def _value_tokens(intervals, s, e, tol_ms=500):
-    """Tokens of every detected value whose interval touches beep [s,e],
-    with tol_ms of slack: a skewed interval sitting just outside a beep edge
-    is exactly the geometry this module exists to catch, so its value must
-    still contribute tokens."""
-    toks = set()
+    """Tokens and categories of every detected value whose interval touches
+    beep [s,e], with tol_ms of slack: a skewed interval sitting just outside
+    a beep edge is exactly the geometry this module exists to catch, so its
+    value must still contribute tokens. Returns (tokens, categories)."""
+    toks, cats, quotes = set(), set(), []
     for iv in intervals:
         if iv["start_ms"] <= e + tol_ms and iv["end_ms"] >= s - tol_ms:
-            for t in str(iv.get("spoken_text", "")).split():
+            cats.update(iv.get("categories") or [])
+            q = str(iv.get("spoken_text", "")).strip()
+            if q and q not in quotes:
+                quotes.append(q)
+            for t in q.split():
                 n = _norm(t)
                 if len(n) >= 2:
                     toks.add(n)
-    return toks
+                elif len(n) == 1 and n.isalpha():
+                    toks.add(n)      # spelled-out values ("J K L")
+    return toks, cats, quotes
 
 
 def _fragment_match(heard, value_toks):
     """A heard token betrays the value if it IS a value token, fuzzy-matches
-    one (clipped names transcribe as similar-sounding fragments), or is a
-    digit run (numbers at edges are always suspicious). Function words and
-    short tokens never count — they match everything and converge never."""
+    one (clipped names transcribe as similar-sounding fragments), is a digit
+    run, or is a SPOKEN digit word in any supported language (numbers at
+    edges are always suspicious). Unit/magnitude words of the value are
+    exempt (owner decision 2026-09-11). Spelled single letters count only
+    when the value itself is spelled out. Function words and short tokens
+    never count — they match everything and converge never."""
     h = _norm(heard)
-    if len(h) < 2:
+    if not h:
         return False
     if any(ch.isdigit() for ch in h):
         return True
-    if len(h) < 3 or h in STOPWORDS:
+    if h in detect_pii.DIGIT_WORDS and any(
+            any(ch.isdigit() for ch in v) or v in detect_pii.DIGIT_WORDS
+            for v in value_toks):
+        # spoken digit word at a number-bearing value's edge; the value
+        # guard matters because digit words are cross-language homographs
+        # (Hindi 'do' = two, English 'do' = verb)
+        return True
+    if len(h) == 1:
+        # a spelled letter leaks only spelled values ("J K L"); flagging
+        # bare articles/fillers ("a", "i") would never converge
+        return h.isalpha() and h in value_toks
+    if h in UNIT_WORDS or len(h) < 3 or h in STOPWORDS:
         return False
     for v in value_toks:
+        if v in UNIT_WORDS or len(v) < 2:
+            continue
         if h == v:
             return True
         if difflib.SequenceMatcher(None, h, v).ratio() >= 0.66:
             return True
     return False
+
+
+ADJUDICATOR_MODEL = "gemini-3.5-flash"
+
+
+def _adjudicate_unexpected(frags, value_texts, neighbors):
+    """Semantic value-relevance for unexpected words heard at a WORD-valued
+    beep edge (owner policy 2026-09-11). Different ASRs render a clipped
+    name/word differently — sometimes in another script — so list matching
+    cannot decide the residue; a cheap text model judges whether each heard
+    fragment is plausibly part of the redacted value (fragment, rendering,
+    romanization, partial spelling) rather than ordinary neighbouring
+    speech. FAIL-CLOSED: on any error every fragment counts value-relevant.
+    Returns [bool] aligned with frags (True = value-relevant)."""
+    import json as _json
+    schema = {"type": "OBJECT", "properties": {"verdicts": {
+        "type": "ARRAY", "items": {"type": "OBJECT", "properties": {
+            "fragment": {"type": "STRING"},
+            "value_fragment": {"type": "BOOLEAN"}},
+            "required": ["fragment", "value_fragment"]}}},
+        "required": ["verdicts"]}
+    prompt = (
+        "An audio PII-redaction beep may clip its redacted value; an ASR "
+        "transcribed the audio just OUTSIDE the beep. For each fragment "
+        "below decide: is it plausibly a fragment, rendering, romanization "
+        "or partial spelling OF THE REDACTED VALUE (value_fragment=true), "
+        "or ordinary conversational speech unrelated to the value "
+        "(value_fragment=false)? Fragments may be in a different script or "
+        "language than the value. Judge every fragment.\n\n"
+        f"REDACTED VALUE(S): {value_texts}\n"
+        f"NON-REDACTED WORDS EXPECTED NEAR THE BEEP: "
+        f"{sorted(neighbors)[:40]}\n"
+        f"FRAGMENTS HEARD AT THE BEEP EDGE: {list(frags)}\n")
+    try:
+        raw = common.generate(ADJUDICATOR_MODEL, [{"text": prompt}], schema,
+                              thinking_budget=256)
+        got = {}
+        for v in _json.loads(raw).get("verdicts", []):
+            got[_norm(v.get("fragment", ""))] = bool(
+                v.get("value_fragment", True))
+        return [got.get(_norm(f), True) for f in frags]
+    except Exception as ex:
+        print(f"    edge-adjudicator error ({str(ex)[:60]}) — failing "
+              "closed (fragments count as value-relevant)")
+        return [True] * len(frags)
 
 
 def verify_and_fix(out_dir: Path, fid: str, original: Path, model: str,
@@ -175,9 +270,10 @@ def verify_and_fix(out_dir: Path, fid: str, original: Path, model: str,
             if only_overlapping is not None and not any(
                     s < oe and os_ < e for os_, oe in only_overlapping):
                 continue          # targeted mode: only the requested beeps
-            vtoks = _value_tokens(intervals, s, e)
+            vtoks, vcats, vquotes = _value_tokens(intervals, s, e)
             if not vtoks:
                 continue
+            word_valued = bool(vcats & WORD_VALUE_CATS)
             for side, a, b in (("start", max(0, s - SNIP_MS), s),
                                ("end", e, min(dur, e + SNIP_MS))):
                 if b - a < 300:
@@ -231,14 +327,34 @@ def verify_and_fix(out_dir: Path, fid: str, original: Path, model: str,
                     else:
                         near = [(w, ws, we) for w, ws, we in toks
                                 if ws <= EDGE_ADJ_MS]
-                    found = []
+                    found, pend = [], []
                     for w, ws, we in near:
                         if _on_tone(ws, we):
                             continue
                         if _fragment_match(w, vtoks):
                             found.append(w)
                         elif exp is not None and _unexpected(w, exp):
-                            found.append(w + " (unexpected at edge)")
+                            if word_valued:
+                                # the value is words: an unexpected word may
+                                # be the value as the snippet ASR heard it —
+                                # adjudicate semantically below
+                                pend.append(w)
+                            else:
+                                # digit-valued beep: non-digit spill is
+                                # benign neighbour speech (owner decision
+                                # 2026-09-11) — record, never quarantine
+                                report.setdefault("benign_spill", []).append(
+                                    {"beep": [s, e], "side": side,
+                                     "heard": w})
+                    if pend:
+                        for w, isval in zip(pend, _adjudicate_unexpected(
+                                pend, vquotes, exp or set())):
+                            if isval:
+                                found.append(w + " (unexpected at edge)")
+                            else:
+                                report.setdefault("benign_spill", []).append(
+                                    {"beep": [s, e], "side": side,
+                                     "heard": w, "adjudicated": True})
                     return found, None
 
                 hits, err = listen_once()
