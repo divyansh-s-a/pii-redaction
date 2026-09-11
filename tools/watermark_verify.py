@@ -27,6 +27,29 @@ import audio_utils  # noqa: E402
 TMP = Path(tempfile.mkdtemp(prefix="wmv_"))
 
 
+def _tag_ms(doc):
+    """Actual tag length: sidecar field, else measured from the asset."""
+    if doc.get("tag_ms"):
+        return doc["tag_ms"]
+    asset = ROOT / "prompts" / "watermark" / "tag.wav"
+    if asset.exists():
+        pcm, fs, ch = audio_utils.read_wav(asset)
+        return int(len(pcm) / ch * 1000 / fs)
+    return 3700
+
+
+def _merge_tones(tones, gap_ms=200):
+    """Goertzel scans can split one long tone at a windowing dip; merge
+    adjacent spans before differential matching."""
+    out = []
+    for s, e in sorted(tones):
+        if out and s - out[-1][1] <= gap_ms:
+            out[-1][1] = max(out[-1][1], e)
+        else:
+            out.append([s, e])
+    return [(a, b) for a, b in out]
+
+
 def rms_db(seg):
     if not len(seg):
         return -120.0
@@ -128,8 +151,8 @@ def verify(bundle: Path, work_dir: Path):
         # quirks in rendered_intervals are pre-existing, not watermark damage
         src_chk = TMP / "srcchk16.wav"
         audio_utils.decode_to_wav(src_audio, src_chk, rate=16000, mono=True)
-        src_tones = audio_utils.find_pure_tones(src_chk, 1000)
-        pool = tones_by_chan[None]
+        src_tones = _merge_tones(audio_utils.find_pure_tones(src_chk, 1000))
+        pool = _merge_tones(tones_by_chan[None])
         pres = sum(1 for ts, te in src_tones
                    if any(abs(ws - (ts + off_ms)) < 150
                           and abs(we - (te + off_ms)) < 150
@@ -143,8 +166,9 @@ def verify(bundle: Path, work_dir: Path):
                 hit += 1
         r["beeps_found"] = f"{hit}/{len(beeps)} ivs, {pres}/{len(src_tones)} src-tones"
         r["beeps_ok"] = pres == len(src_tones)
+        tms = _tag_ms(doc)
         r["tag_beep_clearance_ok"] = all(
-            not (p["start_ms"] < e + 300 and s - 300 < p["start_ms"] + 3700)
+            not (p["start_ms"] < e + 300 and s - 300 < p["start_ms"] + tms)
             for p in doc["tag_placements"] for s, e in beeps)
     else:
         r["beeps_found"] = "n/a (no beeps)"
