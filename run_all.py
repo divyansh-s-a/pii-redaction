@@ -62,12 +62,22 @@ def main():
     ap.add_argument("--profile", default=common.CONFIG["profile"])
     ap.add_argument("--engine", default="elevenlabs")
     ap.add_argument("--no-domain", action="store_true")
+    ap.add_argument("--mono", action="store_true",
+                    help="pass --mono to the redactor (crosstalk stereo)")
+    ap.add_argument("--watermark", action="store_true",
+                    help="apply the audible evaluation watermark to each "
+                         "processed bundle (tools/watermark.py)")
+    ap.add_argument("--group", default=None,
+                    help="optional subfolder under result/deliveries "
+                         "(e.g. a language label: deliveries/<group>/<fid>)")
     args = ap.parse_args()
 
     input_dir = Path(args.input).resolve()
     result = Path(args.result).resolve()
+    deliver_root = result / "deliveries" / args.group if args.group \
+        else result / "deliveries"
     (result / "dedupe").mkdir(parents=True, exist_ok=True)
-    (result / "deliveries").mkdir(parents=True, exist_ok=True)
+    deliver_root.mkdir(parents=True, exist_ok=True)
     t_start = time.time()
 
     # ---- Stage 1: DEDUPE -------------------------------------------------
@@ -100,14 +110,16 @@ def main():
         print(f"\n########## [2/3] REDACT {i}/{len(uniques)}: "
               f"{src.name} ##########", flush=True)
         rc = run([PY, "tools/redact.py", str(src), "--outdir",
-                  str(result / "deliveries"), "--profile", args.profile])
+                  str(deliver_root), "--profile", args.profile]
+                 + (["--mono"] if args.mono else []))
         delivered = None
         quarantined = False
-        if (result / "deliveries" / fid / "manifest.json").exists():
-            delivered = result / "deliveries" / fid
+        if (deliver_root / fid / "manifest.json").exists():
+            delivered = deliver_root / fid
         elif (ROOT / "quarantine" / fid / "manifest.json").exists():
             # redactor quarantines inside the project; mirror into result/
-            dst = result / "quarantine" / fid
+            dst = (result / "quarantine" / args.group / fid) if args.group \
+                else (result / "quarantine" / fid)
             dst.parent.mkdir(parents=True, exist_ok=True)
             if dst.exists():
                 shutil.rmtree(dst)
@@ -129,6 +141,9 @@ def main():
             if args.no_domain:
                 mcmd.append("--no-domain")
             run(mcmd)
+            if args.watermark:
+                run([PY, "tools/watermark.py", str(delivered)])
+                entry["watermarked"] = True
             try:
                 meta = json.loads((delivered / "metadata.json").read_text())
                 entry["domain"] = (meta.get("domain") or {}).get("domain")
