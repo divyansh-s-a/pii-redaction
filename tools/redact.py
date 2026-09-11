@@ -233,9 +233,11 @@ def deliver(media: Path, profile: str, outdir: Path, assurance: bool,
                                src_dir / "intervals.json",
                                src_dir / "transcript.json",
                                src_dir, fid, profile, channel_wavs=cw0)
-        qc_report.qc_file(src_dir, fid, src_dir / "transcript.json",
-                          src_dir / "intervals.json",
-                          common.CONFIG["beep_freq_hz"])
+        st0, _ = qc_report.qc_file(src_dir, fid,
+                                   src_dir / "transcript.json",
+                                   src_dir / "intervals.json",
+                                   common.CONFIG["beep_freq_hz"])
+        res["qc"] = st0
     is_video = media.suffix.lower().lstrip(".") in ("mp4", "mov", "m4v", "avi")
 
     extra_beeps = []
