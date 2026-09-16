@@ -68,8 +68,11 @@ overall word accuracy still looks fine. The 2026-09 cross-language evaluation
 (134 files: English, Malay, Swahili, Hindi, Bengali, Odia) found that the
 MAJORITY of missed PII items in every language were absent from the primary
 transcript — undetectable by any downstream improvement. Measured effect on
-the hardest Hindi files: must-beep leak rate fell from 64% to 19% with union
-mode, no other change.
+the full 134-file corpus: overall must-beep leak rate fell from 35.9% to
+11.3% with union mode alone (English 13%->3.7%, Malay 28.6%->9.5%, Odia
+53.5%->4.7%), and detection recall rose to 87-96% for English/Malay/Swahili.
+On Indic languages union fixes coverage but single-pass detection still
+caps recall (~66-68%) — pair it with per-language packs there.
 
 **When to use it:** whenever high recall matters and the audio is not
 well-served English — multilingual corpora, code-switched speech, telephony
