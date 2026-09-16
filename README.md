@@ -50,8 +50,41 @@ opts out of the audit).
 - Any unresolved gate -> `quarantine/<file_id>/` for human review. Nothing
   ships silently.
 - Profiles: `--profile strict|medical_consult` (Action Matrix; extensible).
-- High-risk content: `--assurance` unions a second listener's detections into
-  the beeps.
+- High-risk content / non-English audio: use union mode (next section).
+
+## Union mode (`--assurance`): high recall across languages
+
+    python3 tools/redact.py path/to/audio.mp3 --assurance
+
+Union mode transcribes the audio a SECOND time with an independent engine
+(Gemini), runs the same detection policy over that transcript too, and adds
+every union-only detection to the beeps. Everything else — gates, quarantine,
+manifests — is unchanged.
+
+**Why it exists:** a single-engine pipeline can only redact what its own
+transcript contains, and on many languages the transcript silently drops
+exactly the tokens PII lives in (ages, spoken digit strings, names) while
+overall word accuracy still looks fine. The 2026-09 cross-language evaluation
+(134 files: English, Malay, Swahili, Hindi, Bengali, Odia) found that the
+MAJORITY of missed PII items in every language were absent from the primary
+transcript — undetectable by any downstream improvement. Measured effect on
+the hardest Hindi files: must-beep leak rate fell from 64% to 19% with union
+mode, no other change.
+
+**When to use it:** whenever high recall matters and the audio is not
+well-served English — multilingual corpora, code-switched speech, telephony
+audio, or any language the pipeline has no proven track record on. For a new
+language, treat union mode as the default until per-language evaluation shows
+the single-engine path meets your recall bar.
+
+**Cost:** roughly one extra transcription plus one extra detection pass per
+file (the second listener can be a lighter model). Expect approximately 1.5-2x
+the per-audio-hour cost of the single-engine path — the price of not being
+blind to what one engine cannot hear.
+
+Notes: works with every other flag (`--mono`, `--langpack`, `--profile`);
+union-only intervals are marked `source: "assurance_gemini"` in
+intervals.json and the manifest records that assurance ran.
 
 ## Local web app (upload + quarantine review)
 
