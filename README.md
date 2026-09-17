@@ -68,9 +68,9 @@ overall word accuracy still looks fine. The 2026-09 cross-language evaluation
 (134 files: English, Malay, Swahili, Hindi, Bengali, Odia) found that the
 MAJORITY of missed PII items in every language were absent from the primary
 transcript — undetectable by any downstream improvement. Measured effect on
-the full 134-file corpus: overall must-beep leak rate fell from 35.9% to
-11.3% with union mode alone (English 13%->3.7%, Malay 28.6%->9.5%, Odia
-53.5%->4.7%), and detection recall rose to 87-96% for English/Malay/Swahili.
+the full corpus: overall must-beep leak rate fell from 35.9% to 11.0% with
+union mode alone (English 13%->3.7%, Malay 28.6%->9.5%, Odia 53.5%->4.7%),
+and detection recall rose to 87-96% for English/Malay/Swahili.
 On Indic languages union fixes coverage but single-pass detection still
 caps recall (~66-68%) — pair it with per-language packs there.
 
@@ -88,6 +88,53 @@ blind to what one engine cannot hear.
 Notes: works with every other flag (`--mono`, `--langpack`, `--profile`);
 union-only intervals are marked `source: "assurance_gemini"` in
 intervals.json and the manifest records that assurance ran.
+
+## Category-sweep detection (`--sweep`)
+
+    python3 tools/redact.py path/to/audio.mp3 --sweep --assurance
+
+Instead of one free-form detection pass over the transcript, `--sweep` runs
+four NARROW passes — identity, numbers/IDs, personal facts, health/child —
+each carrying the full policy plus a directive to be exhaustive for that
+group only. It exists because a single pass lets categories compete for
+attention: on Indic consultations the detector filed nearly everything under
+HEALTH_MEDICAL_INFO, and under the `medical_consult` profile that category is
+annotate-only, so identity values were detected and then never beeped.
+
+**Use `--sweep --assurance` together when recall matters.** They fix
+different failures and compose: union (`--assurance`) supplies content the
+primary transcript never contained, sweep labels it correctly so the action
+matrix beeps it. Measured over the 2026-09 cross-language corpus (134 files;
+English, Malay, Swahili, Hindi, Bengali, Odia; no correction loop):
+
+| Config | Detection recall | Precision | Must-beep leak rate |
+|---|---|---|---|
+| default (single pass, one listener) | 65.1% | 79.6% | 35.9% |
+| `--sweep` | 69.0% | 76.4% | 30.8% |
+| `--assurance` | 72.9% | 80.5% | 11.0% |
+| **`--sweep --assurance`** | **77.8%** | 77.1% | **5.3%** |
+
+Per language with both flags, leak rate falls to 0% (English), 1.1%
+(Swahili), 2.5% (Malay), 4.7% (Odia), 15.1% (Hindi), 30.4% (Bengali). Each
+language is scored over the file set common to all four configurations. See
+`AudioPII_All_Audios/CROSS_LANGUAGE_EVALUATION.md` for per-category tables,
+leak composition, methodology notes and caveats. Bengali is the one exception:
+it responds to neither mechanism (union alone leaks 28.3% there, marginally
+better than 30.4%), and it is the weakest language for both the pipeline and
+the judge reference.
+
+**Cost:** measured ~1.5x the single-pass detection cost on the primary
+transcript (the narrow passes emit far fewer output tokens; only the repeated
+policy prompt grows). Combined with `--assurance`, budget roughly $3 per
+audio-hour against $1.64 for the default path — that combined figure is an
+estimate, since the assurance stage's detection calls were unlabelled in the
+usage log until now; they are attributed as `detect_assurance:<fid>` from
+this change on, so the next run measures it exactly.
+
+**Note on CHILD_INFO:** it stacks additively onto any category and is what
+lifts a child's clinical detail out of `medical_consult`'s annotate-only
+exemption, so it is permitted in every sweep pass — never restricted to its
+own group.
 
 ## Local web app (upload + quarantine review)
 

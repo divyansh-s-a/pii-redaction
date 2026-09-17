@@ -194,37 +194,144 @@ GPT_DETECTION_SCHEMA = {
 }
 
 
+# Category-sweep detection (v2 tier, owner-approved 2026-09-16): several
+# NARROW passes instead of one free-form pass. The cross-language evaluation
+# showed single-pass detection collapses categories on Indic text (a Bengali
+# file: 78/78 intervals HEALTH) even when the content is transcript-visible —
+# the judge, reading the same text with focused attention, finds far more.
+# Each sweep pass carries the FULL policy (definitions intact) plus a
+# directive restricting it to one category group, exhaustively. Language-
+# agnostic by construction. Enabled via CONFIG['detect_sweep'] / --sweep.
+SWEEP_GROUPS = [
+    ("identity", ["FULL_NAME", "USERNAME_HANDLE", "ORGANIZATION_PERSON_LINKED",
+                  "NATIONALITY", "SENSITIVE_DEMOGRAPHIC", "IMMIGRATION_STATUS",
+                  "EMAIL", "ADDRESS"]),
+    ("numbers_ids", ["PHONE", "GOVERNMENT_ID", "PASSPORT_NUMBER",
+                     "DRIVERS_LICENSE", "TAX_ID", "INSURANCE_ID",
+                     "STUDENT_ID", "LEGAL_CASE_ID", "PAYMENT_CARD_NUMBER",
+                     "BANK_ACCOUNT_NUMBER", "FINANCIAL_ACCOUNT_INFO",
+                     "ASSIGNED_ID", "VEHICLE_REGISTRATION",
+                     "DEVICE_IDENTIFIER", "IP_ADDRESS", "BIOMETRIC_ID",
+                     "PASSWORD_CREDENTIAL"]),
+    ("personal_facts", ["AGE", "DATE_OF_BIRTH", "FINANCIAL_INFO"]),
+    ("health_child", ["HEALTH_MEDICAL_INFO", "CHILD_INFO", "OTHER"]),
+]
+
+
+def _sweep_directive(cats):
+    return ("\n\nSWEEP PASS — THIS PASS MARKS ONLY THESE CATEGORIES:\n"
+            + ", ".join(cats) + "\n"
+            "Be EXHAUSTIVE for these categories: every value, every "
+            "repetition (rule 4 applies with force), in every language and "
+            "script present in the transcript. Do NOT mark any other "
+            "category in this pass — other passes handle them. Rule 8 "
+            "(most-specific category) applies only within this pass's "
+            "list.\n"
+            "STACKING EXCEPTION (rule 8's own carve-out, and it decides "
+            "whether a value is redacted at all): when a value in this pass "
+            "concerns an identifiable child, mark CHILD_INFO IN ADDITION TO "
+            "the specific category, never instead of it — a child's symptom "
+            "or diagnosis is ['CHILD_INFO','HEALTH_MEDICAL_INFO'], a child's "
+            "age is ['CHILD_INFO','AGE']. CHILD_INFO is permitted in EVERY "
+            "pass; it is a stacking modifier, not a category this pass can "
+            "exclude.\n")
+
+
+def _dedupe_sweep(spans):
+    """Merge duplicates across sweep passes: a span whose word range is
+    contained in a kept span is absorbed and its categories unioned onto it
+    (the action matrix beeps if ANY category beeps — safe direction; CHILD_INFO
+    stacking is preserved by the union). Partial overlaps are left alone —
+    the renderer's pad-and-merge handles them."""
+    spans.sort(key=lambda s: (s["start_word"], -s["end_word"]))
+    kept = []
+    for s in spans:
+        merged = False
+        for k in kept:
+            if (s["start_word"] >= k["start_word"]
+                    and s["end_word"] <= k["end_word"]):
+                k["categories"] = sorted(set(k["categories"])
+                                         | set(s["categories"]))
+                k["public_figure"] = bool(k.get("public_figure")
+                                          and s.get("public_figure"))
+                merged = True
+                break
+        if not merged:
+            kept.append(s)
+    return kept
+
+
+def sweep_groups():
+    """SWEEP_GROUPS with a taxonomy-drift guard: any policy category not
+    covered by a group is appended to the last group at runtime, so a new
+    category can never be silently unswept; the self-test asserts the
+    static groups form an exact partition of today's taxonomy."""
+    groups = [(n, list(c)) for n, c in SWEEP_GROUPS]
+    covered = {c for _, cats in groups for c in cats}
+    strays = [c for c in policy.CATEGORIES if c not in covered]
+    if strays:
+        print(f"    detect sweep: taxonomy drift — auto-sweeping {strays}")
+        groups[-1] = (groups[-1][0], groups[-1][1] + strays)
+    return groups
+
+
 def llm_detect(model, words, backend="gemini"):
+    sweep = bool(common.CONFIG.get("detect_sweep"))
+    groups = sweep_groups() if sweep else []
+    passes = ([(name, _sweep_directive(cats)) for name, cats in groups]
+              if sweep else [("single", "")])
+    allowed_by_pass = dict(groups)
     spans = []
     CHUNK = 5000
     for base in range(0, len(words), CHUNK):
         sub = words[base: base + CHUNK]
         import langpack
-        prompt = (policy.DETECTION_POLICY + langpack.detection_supplement() +
-                  "\n\nTRANSCRIPT WORDS:\n" + words_as_prompt(sub, CHUNK))
-        if backend == "gpt":
-            import judge_client
-            got = judge_client.judge_call(
-                prompt, GPT_DETECTION_SCHEMA, model=model,
-                log_engine="detector_gpt").get("spans", [])
-        else:
-            raw = common.generate(model, [{"text": prompt}],
-                                  policy.DETECTION_SCHEMA)
-            got = json.loads(raw).get("spans", [])
-        for s in got:
-            a, b = int(s["start_word"]), int(s["end_word"])
-            lo, hi = sub[0]["i"], sub[-1]["i"]
-            if not (lo <= a <= b <= hi):
-                continue
-            cats = [c for c in s.get("categories", []) if c in policy.CATEGORIES]
-            if not cats:
-                continue
-            spans.append({"start_word": a, "end_word": b, "categories": cats,
-                          "spoken_text": s.get("spoken_text", ""),
-                          "speaker": s.get("speaker", ""),
-                          "public_figure": bool(s.get("public_figure", False)),
-                          "confidence": s.get("confidence", "medium"),
-                          "source": "llm", "reason": s.get("reason", "")})
+        for pass_name, directive in passes:
+            got = _detect_pass(model, sub, backend, directive, langpack)
+            if sweep:
+                # CHILD_INFO stacks additively onto ANY category (taxonomy
+                # cat. 26 / rule 8 exception) and is what lifts a child's
+                # clinical detail out of medical_consult's annotate-only
+                # exemption — so it must survive every pass's category
+                # filter, not just its home group's
+                allowed = set(allowed_by_pass[pass_name]) | {"CHILD_INFO"}
+                for s in got:
+                    s["categories"] = [c for c in s.get("categories", [])
+                                       if c in allowed]
+                got = [s for s in got if s.get("categories")]
+                print(f"    detect sweep[{pass_name}]: {len(got)} span(s)")
+            spans.extend(got)
+    return _dedupe_sweep(spans) if sweep else spans
+
+
+def _detect_pass(model, sub, backend, directive, langpack):
+    spans = []
+    prompt = (policy.DETECTION_POLICY + langpack.detection_supplement() +
+              directive +
+              "\n\nTRANSCRIPT WORDS:\n" + words_as_prompt(sub, 5000))
+    if backend == "gpt":
+        import judge_client
+        got = judge_client.judge_call(
+            prompt, GPT_DETECTION_SCHEMA, model=model,
+            log_engine="detector_gpt").get("spans", [])
+    else:
+        raw = common.generate(model, [{"text": prompt}],
+                              policy.DETECTION_SCHEMA)
+        got = json.loads(raw).get("spans", [])
+    for s in got:
+        a, b = int(s["start_word"]), int(s["end_word"])
+        lo, hi = sub[0]["i"], sub[-1]["i"]
+        if not (lo <= a <= b <= hi):
+            continue
+        cats = [c for c in s.get("categories", []) if c in policy.CATEGORIES]
+        if not cats:
+            continue
+        spans.append({"start_word": a, "end_word": b, "categories": cats,
+                      "spoken_text": s.get("spoken_text", ""),
+                      "speaker": s.get("speaker", ""),
+                      "public_figure": bool(s.get("public_figure", False)),
+                      "confidence": s.get("confidence", "medium"),
+                      "source": "llm", "reason": s.get("reason", "")})
     return spans
 
 
@@ -424,4 +531,23 @@ if __name__ == "__main__":
         ["kosong", "satu", "dua", "tiga", "empat", "lima", "enam", "tujuh"])]
     hits = safety_net(run)
     assert len(hits) == 1 and hits[0]["reason"] == "8-digit spoken sequence"
-    print("detect_pii self-test OK (incl. Malay/Indonesian + Swahili)")
+    # --- category-sweep invariants ---
+    _static = [c for _, cats in SWEEP_GROUPS for c in cats]
+    assert len(_static) == len(set(_static)), "sweep groups overlap"
+    assert set(_static) == set(policy.CATEGORIES), (
+        "sweep groups must partition the taxonomy exactly; drift guard "
+        "covers runtime, but the static list should be kept current: "
+        f"missing={set(policy.CATEGORIES) - set(_static)} "
+        f"extra={set(_static) - set(policy.CATEGORIES)}")
+    _d = _dedupe_sweep([
+        {"start_word": 5, "end_word": 9, "categories": ["PHONE"]},
+        {"start_word": 6, "end_word": 8, "categories": ["PHONE"]},
+        {"start_word": 6, "end_word": 8, "categories": ["AGE"]},
+        {"start_word": 20, "end_word": 22, "categories": ["FULL_NAME"]},
+    ])
+    assert len(_d) == 2, _d
+    wide = next(s for s in _d if s["start_word"] == 5)
+    assert wide["categories"] == ["AGE", "PHONE"], _d
+    assert _d[-1]["categories"] == ["FULL_NAME"], _d
+    print("detect_pii self-test OK (incl. Malay/Indonesian + Swahili; "
+          "sweep partition + dedupe)")

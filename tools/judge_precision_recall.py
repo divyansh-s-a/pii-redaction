@@ -252,6 +252,10 @@ def score_config_file(items, cdir, profile):
         "annotate_only": counts["annotate_only"],
         "rendered_missing": rend_doc is None,
         "missed_item_ids": missed,
+        # which must-beep items actually stayed audible — without this the
+        # report gives leak COUNTS but no way to analyse leak COMPOSITION
+        # (categories, transcript visibility, detected-vs-missed)
+        "leaked_item_ids": [items[k]["item_id"] for k in leaked_idx],
         "unmatched_intervals": [
             {"start_ms": iv["start_ms"], "end_ms": iv["end_ms"],
              "categories": iv.get("categories", []),

@@ -76,8 +76,14 @@ def union_assurance(fid, el_dir: Path, media: Path, work: Path, model,
         gemini_transcribe.transcribe_file(model, media, work, tr,
                                           channel_wavs=channel_wavs)
     if not iv.exists():
-        detect_pii.detect_file(model, fid + "_assurance", tr, iv,
-                               common.CONFIG["value_gap_merge_ms"])
+        # attribute assurance-side detection separately, or its cost lands in
+        # an unlabelled bucket and $/audio-hour for union mode is unmeasurable
+        common.set_usage_context(f"detect_assurance:{fid}")
+        try:
+            detect_pii.detect_file(model, fid + "_assurance", tr, iv,
+                                   common.CONFIG["value_gap_merge_ms"])
+        finally:
+            common.set_usage_context("")
     return common.load_json(iv)["intervals"]
 
 
@@ -611,6 +617,7 @@ def deliver(media: Path, profile: str, outdir: Path, assurance: bool,
         "qc_status": res["qc"],
         "edge_verification": ev,
         "langpack": __import__("langpack").active(),
+        "detect_sweep": bool(common.CONFIG.get("detect_sweep")),
         "quarantined_reason": quarantined_reason,
         "video_note": ("video track not re-attached (audio-only delivery; "
                        "video remux requires ffmpeg)" if is_video else None),
@@ -678,6 +685,12 @@ def main():
     ap.add_argument("--fresh", action="store_true",
                     help="force EVERY pipeline stage (prepare, transcribe, "
                          "detect, redact): no cached artifacts are reused")
+    ap.add_argument("--sweep", action="store_true",
+                    help="category-sweep detection: several narrow exhaustive "
+                         "passes (one per category group) instead of one "
+                         "free-form pass — language-agnostic recall fix for "
+                         "category collapse; measured 1.46x detection "
+                         "cost. Best paired with --assurance.")
     ap.add_argument("--no-auto-extend", dest="auto_extend",
                     action="store_false",
                     help="hold files on digit-boundary QC flags instead of "
@@ -699,6 +712,8 @@ def main():
     forces = {"detect", "redact"} if args.force_detect else set()
     if args.fresh:
         forces = {"prepare", "transcribe", "detect", "redact"}
+    if args.sweep:
+        common.CONFIG["detect_sweep"] = True
     model = common.resolve_model()
     import policy as _policy
     print(f"workflow: EL scribe_v2 (+keyterms) -> Gemini {model} "
