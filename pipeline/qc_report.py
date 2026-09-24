@@ -135,11 +135,28 @@ def qc_file(out_dir: Path, file_id: str, transcript_path: Path,
                 fused[-1][1] = max(fused[-1][1], e0)
             else:
                 fused.append([s0, e0])
+        # CONTAINMENT was the wrong test. It required the tone to sit INSIDE
+        # plan +/-200ms, while the renderer pads each beep by config pad_ms
+        # (250ms) and digit-boundary auto-extension and fades widen it further
+        # -- so a correct beep using its own configured padding was reported as
+        # an orphan. Measured: four adjacent FULL_NAME beeps rendered as one
+        # 17680-23440ms tone over a plan fusing to 18000-23000, i.e. 320ms
+        # early and 440ms late, and it was flagged.
+        #
+        # What actually distinguishes an orphan is that it covers audio NOTHING
+        # planned -- so test OVERLAP, not containment. A true orphan has no
+        # planned span beneath it at all and still flags; a correctly padded
+        # beep is >=90% explained by the plan.
+        def _explained(ts, te, spans, slack):
+            dur = max(te - ts, 1)
+            cov = sum(max(0, min(te, e + slack) - max(ts, s - slack))
+                      for s, e in spans)
+            return cov / dur >= 0.90
         for ts, te in tones:
-            planned = any(s - 200 <= ts and te <= e + 200
-                          for s, e in fused)
-            in_source = any(os_ - 300 <= ts and te <= oe + 300
-                            for os_, oe in original_tones)
+            planned = _explained(ts, te, fused, 200)
+            in_source = (any(os_ - 300 <= ts and te <= oe + 300
+                             for os_, oe in original_tones)
+                         or _explained(ts, te, original_tones, 300))
             if not planned and not in_source:
                 problems.append(f"orphan tone at {ts}-{te}ms (ch={cch}) "
                                 "not in plan and not in source audio")

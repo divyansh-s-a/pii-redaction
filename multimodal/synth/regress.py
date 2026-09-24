@@ -105,6 +105,64 @@ def audio_shared_modules():
 
 
 # -------------------------------------------------------------- taxonomy pack
+def qc_verdict_consistency():
+    """A bundle's RECORDED verdict must match the report sitting next to it.
+
+    tools/redact.py calls qc_report.qc_file() at six points; one of them --
+    the re-render after --assurance adds intervals -- discarded the return
+    value, so res["qc"] kept the PRE-assurance status while qc_report.md on
+    disk was rewritten with the post-assurance one. A file whose QC problem
+    the second listener had just resolved was quarantined anyway, with a PASS
+    report inside the quarantine folder. Direction of harm is over-caution,
+    not a leak, but --assurance must not be able to cause a quarantine.
+
+    This asserts the INVARIANT rather than that one call site: for every
+    bundle on disk, manifest qc_status == the status in qc_report.md.
+    """
+    import re as _re
+    roots = [PROJ / "quarantine", PROJ / "deliveries"]
+    checked, bad = 0, []
+    for root in roots:
+        if not root.exists():
+            continue
+        for man in list(root.glob("*/manifest.json"))[:40]:
+            rep = man.parent / "qc_report.md"
+            if not rep.exists():
+                continue
+            try:
+                recorded = json.loads(man.read_text()).get("qc_status")
+                m = _re.search(r"\*\*Status:\s*([A-Z]+)\*\*", rep.read_text())
+            except Exception:
+                continue
+            if not (recorded and m):
+                continue
+            checked += 1
+            if m.group(1) != recorded:
+                bad.append(f"{man.parent.name}: manifest={recorded} "
+                           f"report={m.group(1)}")
+    if not checked:
+        rec("qc verdict matches report", "audio", "SKIP",
+            "no delivered or quarantined bundles on disk to check")
+        return
+    # Bundles produced BEFORE the fix carry the mismatch permanently -- they
+    # are the evidence that found it. Baseline them so this stays a
+    # regression gate rather than a permanently red light nobody reads; a
+    # mismatch in any bundle NOT on the list is a new failure.
+    base_f = ROOT / "synth" / "qc_verdict_baseline.txt"
+    known = set()
+    if base_f.exists():
+        known = {l.split(":")[0].strip()
+                 for l in base_f.read_text().splitlines() if l.strip()}
+    fresh = [b for b in bad if b.split(":")[0].strip() not in known]
+    if fresh:
+        rec("qc verdict matches report", "audio", "FAIL",
+            f"NEW stale verdict in {len(fresh)}: {fresh[:3]}")
+    else:
+        rec("qc verdict matches report", "audio", "PASS",
+            f"{checked} bundle(s) checked; {len(bad)} known pre-fix "
+            f"mismatch(es) baselined, 0 new")
+
+
 def pack_behaviour():
     import base, registry
     p = base.load(ROOT / "taxonomies" / "insurance_medical")
@@ -210,9 +268,13 @@ def pack_behaviour():
     import propagate
     allowed = propagate.propagatable(p)
     live = {c["id"] for c in p.rows()} & allowed
+    live_g = {c["id"] for c in g.rows()} & propagate.propagatable(g)
     rec("propagation live under pack", "document",
-        "PASS" if len(live) >= 10 else "FAIL",
-        f"{len(live)} pack categories are propagatable")
+        "PASS" if len(live) >= 10 and len(live_g) >= 10 else "FAIL",
+        f"insurance {len(live)}, generic {len(live_g)} propagatable categories"
+        if len(live) >= 10 and len(live_g) >= 10 else
+        f"INERT for a pack: insurance={len(live)} generic={len(live_g)} -- the "
+        f"bundle-wide consistency guarantee silently does nothing")
 
     # ambiguity must fall to the conservative pack, never the permissive one
     _, dec = registry.select({"text": ["nothing recognisable here"]})
@@ -519,6 +581,7 @@ def main():
     selftests()
     print("\n== audio arm / shared modules ==")
     audio_shared_modules()
+    qc_verdict_consistency()
     print("\n== taxonomy packs ==")
     pack_behaviour()
     print("\n== detector fallback ==")

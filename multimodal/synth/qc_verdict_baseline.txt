@@ -1,0 +1,14 @@
+# Bundles produced BEFORE the post-assurance QC fix (redact.py:286
+# discarded the qc_file result). They are the evidence that found
+# the bug and cannot be corrected without re-running the pipeline.
+# A mismatch in a bundle NOT listed here is a NEW regression.
+202510251900_ODI_025_beep: manifest=PASS report=FLAGGED
+202510271543_ODI_021_beep: manifest=FLAGGED report=PASS
+202510281201_ODI_022_beep: manifest=PASS report=FLAGGED
+202510300859_ODI_003_beep: manifest=PASS report=FLAGGED
+202510311026_BEN_008_beep: manifest=PASS report=FLAGGED
+202511010825_HIN_006_beep: manifest=PASS report=FLAGGED
+202511021110_HIN_036_beep: manifest=PASS report=FLAGGED
+202511021132_HIN_018_beep: manifest=PASS report=FLAGGED
+202511031344_HIN_006_beep: manifest=PASS report=FLAGGED
+SINGLE_d4ae9009_redactpy: manifest=FLAGGED report=PASS
