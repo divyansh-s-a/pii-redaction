@@ -60,7 +60,6 @@ Outputs beside `OUT.pdf`:
 |---|---|
 | `OUT.pdf` | the redacted document |
 | `OUT.audit.jsonl` | every box: page, action requested vs applied, category, source |
-| `OUT.tokens.json` | **re-identification key.** Store apart from the PDF; never ship together |
 
 ## How a page is processed
 

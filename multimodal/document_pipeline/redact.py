@@ -72,22 +72,24 @@ def resolve_action(finding, pack):
 
 
 def replacement_text(finding, action, pack, tokens):
-    """What goes back into the vacated box, or None."""
+    """What goes back into the vacated box, or None.
+
+    NOTHING IS EVER WRITTEN, so this only ever feeds the audit's record of
+    what was declined. PSEUDONYMIZE used to mint a stable `[PERSON_1]` here
+    and write it into the vacated box; that write-back was removed on the
+    owner's instruction, and apply_action now accepts `text` and discards it.
+
+    The minting outlived the feature. It produced a `*.tokens.json` mapping
+    every token to the REAL name -- a re-identification key -- written by
+    default beside the output, which under dispatch.py's default lands in the
+    source corpus folder. Nothing read it back: not the PDF, not the audit
+    (591/591 rows carried wrote=None and no real values), not verification,
+    not propagation, which matches by value rather than by token. A file of
+    patient names generated for no consumer is a liability with no benefit,
+    so it is no longer produced.
+    """
     if action == "PSEUDONYMIZE":
-        if tokens is None:
-            return None
-        cats = finding.get("categories") or ()
-        role = "THIRD_PARTY"
-        if pack is not None:
-            for c in cats:
-                row = pack.categories.get(c)
-                if row and row.get("role"):
-                    role = row["role"]
-                    break
-        value = finding.get("text") or ""
-        if not value or value.startswith("["):
-            return None            # a region finding has no value to tokenise
-        return tokens.resolve(value, role)
+        return None
     if action == "GENERALIZE":
         return A.generalize(finding.get("text"), finding.get("categories") or ())
     return None
@@ -214,8 +216,6 @@ def redact_document(src, page_findings, dest, cosmetic=False, pad=1.0,
     Path(dest).parent.mkdir(parents=True, exist_ok=True)
     doc.save(dest, garbage=4, deflate=True, clean=True)
     doc.close()
-    if tokens is not None:
-        tokens.save()
     return {"pages_touched": n_pages, "boxes": n_boxes,
             "by_action": dict(tally), "degraded": dict(degraded),
             "mode": "cosmetic" if cosmetic else "true_redaction"}

@@ -127,9 +127,13 @@ verification. If the control ever passes, the verifier is broken.
 
 - Deliverables of real calls remain sensitive recordings; handle them under the
   same rules as the source audio.
-- The document arm writes a `*.tokens.json` sidecar mapping pseudonyms to real
-  values. It is a **re-identification key** — store it apart from the redacted
-  PDF and never ship the two together. It is gitignored.
+- The document arm writes **no re-identification key**. It used to mint a
+  `*.tokens.json` mapping pseudonyms to real values, for a `[PERSON_1]` label
+  that was written into the vacated box; that write-back was removed, and the
+  minting with it. `PSEUDONYMIZE` destroys exactly as `REDACT` does.
+- Outputs default to a `redacted/` subfolder beside the input, never into the
+  input directory itself — originals and redactions do not share a folder, and
+  a batch that globs `*.pdf` cannot pick up its own output as an input.
 - Raw transcripts, detection intervals, redaction outputs, evaluation reports
   and sample media stay in gitignored working directories and never enter this
   repository.

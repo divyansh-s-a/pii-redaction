@@ -136,7 +136,13 @@ def main():
             cmd += ["--outdir", a.outdir]
         cwd = PROJ
     else:
-        out = a.out or str(src.with_name(src.stem + "_redacted.pdf"))
+        # Default into a `redacted/` SUBFOLDER, never beside the input.
+        # Writing outputs into the source directory mixes originals with
+        # redactions, and a later batch that globs *.pdf picks up its own
+        # output as an input and redacts it again. A subfolder keeps the
+        # corpus clean and makes "what did this produce" answerable at a
+        # glance. --out still overrides.
+        out = a.out or str(src.parent / "redacted" / (src.stem + "_redacted.pdf"))
         cmd = [sys.executable, str(DOC_TOOL), str(src), "--out", out,
                "--findings-out", str(Path(out).with_suffix(".jsonl"))]
         if pack:

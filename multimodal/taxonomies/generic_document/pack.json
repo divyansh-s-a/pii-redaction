@@ -93,7 +93,8 @@
    "enforcement": "label_anchored",
    "semantic_keys": "person_name, related_party, third_party, clinician",
    "examples": "Name of Applicant; Patient Name; Father's/Husband's Name; Nominee; Witness 1; Attending Doctor; Drawn By; Sd/- <name>",
-   "note": "FIX ADOPTED (leak): the signature-caption regex must bound its 'of ...' suffix to a CLOSED role vocabulary (applicant|insured|patient|claimant|proposer|witness|guardian|nominee|authorised signatory|doctor|parent|student|deponent). Today '^(signature|sign|thumb impression)(\\s*of\\s*.*)?$' swallows the name into a furniture match and KEEPS it. FIX ADOPTED (destruction): whole-token boundary matching only -- 'Name' must not match inside 'Name of Goods' or 'Name of Bank'; a label of 5 characters or fewer may not use the _fix_token() edit-distance snapper and must carry a trailing colon or value-bearing geometry before it claims anything."
+   "note": "FIX ADOPTED (leak): the signature-caption regex must bound its 'of ...' suffix to a CLOSED role vocabulary (applicant|insured|patient|claimant|proposer|witness|guardian|nominee|authorised signatory|doctor|parent|student|deponent). Today '^(signature|sign|thumb impression)(\\s*of\\s*.*)?$' swallows the name into a furniture match and KEEPS it. FIX ADOPTED (destruction): whole-token boundary matching only -- 'Name' must not match inside 'Name of Goods' or 'Name of Bank'; a label of 5 characters or fewer may not use the _fix_token() edit-distance snapper and must carry a trailing colon or value-bearing geometry before it claims anything.",
+   "propagate": true
   },
   {
    "id": "G02",
@@ -103,7 +104,8 @@
    "enforcement": "value_propagated",
    "semantic_keys": "NONE (consumes values learned by G01)",
    "examples": "'the said RAMESH KUMAR' in a deed clause; 'Dear Mr Kumar'; a name in a page footer repeated on all 40 pages of a bundle",
-   "note": "FIX ADOPTED (inconsistency): the SHIPPED guards are written into the row rather than a looser description -- minimum length 5, an informativeness requirement, and a common-word stop-list, so 'Bill' cannot eat 'Bill of Lading', 'Bill No' and 'Billing Address'. FIX ADOPTED (leak): propagation is OCR-tolerant, not literal substring -- the literal matcher shipped today hits the cleanest instance and misses every degraded one. RESIDUAL: harvest() only learns from a text layer, so on the 79% image-only pages this row learns nothing unless the label pass also emits a candidate value string (marked untrusted) from the answer area."
+   "note": "FIX ADOPTED (inconsistency): the SHIPPED guards are written into the row rather than a looser description -- minimum length 5, an informativeness requirement, and a common-word stop-list, so 'Bill' cannot eat 'Bill of Lading', 'Bill No' and 'Billing Address'. FIX ADOPTED (leak): propagation is OCR-tolerant, not literal substring -- the literal matcher shipped today hits the cleanest instance and misses every degraded one. RESIDUAL: harvest() only learns from a text layer, so on the 79% image-only pages this row learns nothing unless the label pass also emits a candidate value string (marked untrusted) from the answer area.",
+   "propagate": true
   },
   {
    "id": "G03",
@@ -123,7 +125,8 @@
    "enforcement": "label_anchored",
    "semantic_keys": "unlabelled_identity_block",
    "examples": "recipient block at the head of a bank statement page 2; 'To,' followed by a name, a street line, a locality and a PIN",
-   "note": "FIX ADOPTED (leak, HIGH): without this row an unlabelled identity block is claimed by NOTHING -- G01 and G06 are label-anchored, G02 only propagates values already learned from a label, and G03 is text-layer-only and fenced. This is a deterministic positional pass, not a model decision. It requires the label pass to gain a positional / header-anchoring mode; that mechanism change ships with this pack."
+   "note": "FIX ADOPTED (leak, HIGH): without this row an unlabelled identity block is claimed by NOTHING -- G01 and G06 are label-anchored, G02 only propagates values already learned from a label, and G03 is text-layer-only and fenced. This is a deterministic positional pass, not a model decision. It requires the label pass to gain a positional / header-anchoring mode; that mechanism change ships with this pack.",
+   "propagate": true
   },
   {
    "id": "G05",
@@ -133,7 +136,8 @@
    "enforcement": "label_anchored",
    "semantic_keys": "contact",
    "examples": "Mobile No; Contact No; E-mail ID; Tel (Res); a personal gmail address beside 'Email'; a UPI handle beside 'UPI ID'",
-   "note": "FIX ADOPTED (destruction, HIGH): objective.scan_text()'s free-standing EMAIL/UPI regexes currently emit legacy regex names rather than sem: keys, so every letterhead email on every page is destroyed, contradicting G30. Either scan_text() emits sem: keys like every other mechanism, or each pack maps the legacy names -- this pack requires the former. A free-standing email or 10-digit mobile in body text is claimed ONLY when it does not sit in an issuer band. FIX ADOPTED: bare 'cell' and bare 'tel' require a suffix -- unsuffixed 'cell' matched 'Red Blood Cell' and cost a haematology report three results rows."
+   "note": "FIX ADOPTED (destruction, HIGH): objective.scan_text()'s free-standing EMAIL/UPI regexes currently emit legacy regex names rather than sem: keys, so every letterhead email on every page is destroyed, contradicting G30. Either scan_text() emits sem: keys like every other mechanism, or each pack maps the legacy names -- this pack requires the former. A free-standing email or 10-digit mobile in body text is claimed ONLY when it does not sit in an issuer band. FIX ADOPTED: bare 'cell' and bare 'tel' require a suffix -- unsuffixed 'cell' matched 'Red Blood Cell' and cost a haematology report three results rows.",
+   "propagate": true
   },
   {
    "id": "G06",
@@ -143,7 +147,8 @@
    "enforcement": "label_anchored",
    "semantic_keys": "address",
    "examples": "Address; Residential Address; Correspondence Address; Permanent Address; a flat-building-street-locality run under such a label",
-   "note": "FIX ADOPTED (inconsistency): the clipping rule is stated here rather than left to collide with G07. G06 previously claimed 'a multi-line block as one region' while G07 promised city and state survive verbatim -- so the same value survived on a labelled form and died in a free-form block. The region now terminates at the first city/state/postcode line on BOTH layouts. FIX ADOPTED (destruction, HIGH): before G06 fires, a positive organisational test -- the block sits under an org-name label, contains a company/firm suffix, or shares a line with a registration code -- routes it to G30 KEEP instead."
+   "note": "FIX ADOPTED (inconsistency): the clipping rule is stated here rather than left to collide with G07. G06 previously claimed 'a multi-line block as one region' while G07 promised city and state survive verbatim -- so the same value survived on a labelled form and died in a free-form block. The region now terminates at the first city/state/postcode line on BOTH layouts. FIX ADOPTED (destruction, HIGH): before G06 fires, a positive organisational test -- the block sits under an org-name label, contains a company/firm suffix, or shares a line with a registration code -- routes it to G30 KEEP instead.",
+   "propagate": true
   },
   {
    "id": "G07",
@@ -183,7 +188,8 @@
    "enforcement": "label_anchored",
    "semantic_keys": "sensitive_attr",
    "examples": "Religion; Caste; Category (SC/ST/OBC/EWS/General); Community; Nationality; Citizenship; Visa Status; Marital Status",
-   "note": "FIX ADOPTED (leak, HIGH): this row has NO detector today -- the shipped LEXICON has no religion, caste, category or nationality entry, so the row could never fire. sem:sensitive_attr and its lexicon entries ship AS PART OF this pack's landing; a row with no reachable key is a declared leak, not a policy. The value is often a tick-box or a single-letter code rather than a word, so the row claims the whole value region, and on colour pages a tick is reached through G27 ink zoning."
+   "note": "FIX ADOPTED (leak, HIGH): this row has NO detector today -- the shipped LEXICON has no religion, caste, category or nationality entry, so the row could never fire. sem:sensitive_attr and its lexicon entries ship AS PART OF this pack's landing; a row with no reachable key is a declared leak, not a policy. The value is often a tick-box or a single-letter code rather than a word, so the row claims the whole value region, and on colour pages a tick is reached through G27 ink zoning.",
+   "propagate": true
   },
   {
    "id": "G11",
@@ -193,7 +199,8 @@
    "enforcement": "label_anchored",
    "semantic_keys": "minor_flag",
    "examples": "Age: 9; Class/Std: IV; Name of Ward; Guardian's Signature; Minor Account",
-   "note": "FIX ADOPTED (inconsistency, MEDIUM): the flag is DOCUMENT/BUNDLE-scoped and attaches to the person identity, not to the page. Page-scoping treated one child two ways in one file -- the page carrying the guardian signature was escalated and the page carrying the same child's marks was not. DELIBERATELY NOT model_judged: the trigger is arithmetic on the value G09 already parsed, or a literal label match. Requires sem:minor_flag in the lexicon, which ships with this pack. An age under 2 written in months or days often OCRs as a bare number with the unit lost; when the unit is unreadable the block is escalated rather than resolved."
+   "note": "FIX ADOPTED (inconsistency, MEDIUM): the flag is DOCUMENT/BUNDLE-scoped and attaches to the person identity, not to the page. Page-scoping treated one child two ways in one file -- the page carrying the guardian signature was escalated and the page carrying the same child's marks was not. DELIBERATELY NOT model_judged: the trigger is arithmetic on the value G09 already parsed, or a literal label match. Requires sem:minor_flag in the lexicon, which ships with this pack. An age under 2 written in months or days often OCRs as a bare number with the unit lost; when the unit is unreadable the block is escalated rather than resolved.",
+   "propagate": true
   },
   {
    "id": "G12",
@@ -203,7 +210,8 @@
    "enforcement": "label_anchored",
    "semantic_keys": "occupation",
    "examples": "Occupation; Designation; Profession; Employer; Department; a job title generalised to '<PROFESSIONAL>'",
-   "note": "Document-only: audio has no OCCUPATION row because in speech a job is context, not a value; on a form it is a labelled field and 'Senior Actuary at <named insurer> in <named city>' is close to unique. FIX ADOPTED (destruction, MEDIUM): 'grade' and other short tokens may not use the edit-distance snapper and may not claim without a trailing colon or value-bearing geometry -- a CAD title block and a shipping manifest are grids of role labels, and a rule keyed on job-title vocabulary blanks them entirely."
+   "note": "Document-only: audio has no OCCUPATION row because in speech a job is context, not a value; on a form it is a labelled field and 'Senior Actuary at <named insurer> in <named city>' is close to unique. FIX ADOPTED (destruction, MEDIUM): 'grade' and other short tokens may not use the edit-distance snapper and may not claim without a trailing colon or value-bearing geometry -- a CAD title block and a shipping manifest are grids of role labels, and a rule keyed on job-title vocabulary blanks them entirely.",
+   "propagate": true
   },
   {
    "id": "G13",
@@ -213,7 +221,8 @@
    "enforcement": "checksum",
    "semantic_keys": "gov_id",
    "examples": "Aadhaar No; PAN; Passport No; DL No; Voter ID; a glued label+value run such as 'PAN:ABCDE1234F'",
-   "note": "FIX ADOPTED (leak, CRITICAL): THE CHECKSUM IS A CONFIRMER, NOT A GATE. Most identifiers routed here have no checksum at all -- passport, driving licence, voter, ration card and nearly every non-Indian national ID. The row claims on (a printed identity label) OR (a page classified as an ID/KYC artefact under G40) OR (a jurisdictional format match), and RECORDS whether a validator confirmed it. FIX ADOPTED: OCR glues labels onto values and a boxed-character field renders one glyph per cell, so the candidate run is de-glued and de-spaced before validation. COUNTER-GUARD: roughly one in ten arbitrary 12-digit runs passes Verhoeff, so a bare validator pass with no label and no ID-page context is NOT sufficient inside a G35 numeric column."
+   "note": "FIX ADOPTED (leak, CRITICAL): THE CHECKSUM IS A CONFIRMER, NOT A GATE. Most identifiers routed here have no checksum at all -- passport, driving licence, voter, ration card and nearly every non-Indian national ID. The row claims on (a printed identity label) OR (a page classified as an ID/KYC artefact under G40) OR (a jurisdictional format match), and RECORDS whether a validator confirmed it. FIX ADOPTED: OCR glues labels onto values and a boxed-character field renders one glyph per cell, so the candidate run is de-glued and de-spaced before validation. COUNTER-GUARD: roughly one in ten arbitrary 12-digit runs passes Verhoeff, so a bare validator pass with no label and no ID-page context is NOT sufficient inside a G35 numeric column.",
+   "propagate": true
   },
   {
    "id": "G14",
@@ -223,7 +232,8 @@
    "enforcement": "label_anchored",
    "semantic_keys": "policy_id",
    "examples": "Policy No; Member ID; Employee Code; Customer ID; Roll No; Enrolment No; Application No",
-   "note": "FIX ADOPTED (destruction, HIGH): the shipped lexicon entry '^(employee|staff|member|customer|client|file|ref|reference) (no|number|id|code)$' routes 'Ref No' and 'File No' on every business letter, RTI reply and purchase order into a person row. Split it: (employee|staff|member|customer|client|policy|student|roll) -> sem:policy_id here; (ref|reference|file|letter|invoice|bill|po|challan|awb|doc|drawing) -> sem:paper_serial -> G34 KEEP. FIX ADOPTED (destruction, MEDIUM): a docket number indexes a CASE and is published in the court's own cause list -- it is KEPT at G34, a declared divergence from audio's LEGAL_CASE_ID."
+   "note": "FIX ADOPTED (destruction, HIGH): the shipped lexicon entry '^(employee|staff|member|customer|client|file|ref|reference) (no|number|id|code)$' routes 'Ref No' and 'File No' on every business letter, RTI reply and purchase order into a person row. Split it: (employee|staff|member|customer|client|policy|student|roll) -> sem:policy_id here; (ref|reference|file|letter|invoice|bill|po|challan|awb|doc|drawing) -> sem:paper_serial -> G34 KEEP. FIX ADOPTED (destruction, MEDIUM): a docket number indexes a CASE and is published in the court's own cause list -- it is KEPT at G34, a declared divergence from audio's LEGAL_CASE_ID.",
+   "propagate": true
   },
   {
    "id": "G15",
@@ -233,7 +243,8 @@
    "enforcement": "value_propagated",
    "semantic_keys": "patient_id",
    "examples": "UHID; MRN; IP No; a registration number repeated in every page header; the same number inside a sticker, a barcode and a footer",
-   "note": "CARRIER LEDGER RULE: once a value is learned, the bundle does not pass QA until every carrier class is accounted for on every page -- printed text, pen ink, sticker, barcode, burned-in banner and container metadata. A text hit on page 1 and silence on page 2 is a reportable gap, not a clean page. RESIDUAL: propagation is structurally weak on the 79% image-only pages; see residual limits."
+   "note": "CARRIER LEDGER RULE: once a value is learned, the bundle does not pass QA until every carrier class is accounted for on every page -- printed text, pen ink, sticker, barcode, burned-in banner and container metadata. A text hit on page 1 and silence on page 2 is a reportable gap, not a clean page. RESIDUAL: propagation is structurally weak on the 79% image-only pages; see residual limits.",
+   "propagate": true
   },
   {
    "id": "G16",
@@ -243,7 +254,8 @@
    "enforcement": "checksum",
    "semantic_keys": "card",
    "examples": "Card No; Debit/Credit Card Number; a 16-digit run beside 'Valid Thru' and 'CVV'",
-   "note": "Audio's one-interval rule for a card+expiry+CVV disclosure maps directly onto a geometric block on a page and is kept for the same reason. FIX ADOPTED (leak, HIGH): sem:card must exist as a key -- today no lexicon entry routes a card label anywhere, so the row was reachable only by bare Luhn. A 16-digit run at 109 dpi frequently OCRs with one substituted digit and fails Luhn; the label carries it. Embossed digits on a photographed card are often unreadable entirely -- the card rectangle is then handled as an object by G23/G25 and the audit records that the number itself was never read."
+   "note": "Audio's one-interval rule for a card+expiry+CVV disclosure maps directly onto a geometric block on a page and is kept for the same reason. FIX ADOPTED (leak, HIGH): sem:card must exist as a key -- today no lexicon entry routes a card label anywhere, so the row was reachable only by bare Luhn. A 16-digit run at 109 dpi frequently OCRs with one substituted digit and fails Luhn; the label carries it. Embossed digits on a photographed card are often unreadable entirely -- the card rectangle is then handled as an object by G23/G25 and the audit records that the number itself was never read.",
+   "propagate": true
   },
   {
    "id": "G17",
@@ -253,7 +265,8 @@
    "enforcement": "label_anchored",
    "semantic_keys": "bank_personal",
    "examples": "A/c No; Account Number; Customer ID; Cheque No; IBAN; Payable to; Bank A/c Details",
-   "note": "THE TEST, applied per value: a banking value dies if its index space is the customer or the account, and survives if its index space is the branch or the institution. FIX ADOPTED (destruction, HIGH): 'A/C' also means air-conditioning on an equipment list, a maintenance manifest and a BOM -- the match must be whole-token with value-bearing geometry, never a substring. Account numbers read poorly at 109 dpi but their LABEL reads well, which is why this row is label-anchored rather than structural. Cheque MICR is E13B and does not OCR as text at any of these resolutions; it is reached as a symbology region by G24."
+   "note": "THE TEST, applied per value: a banking value dies if its index space is the customer or the account, and survives if its index space is the branch or the institution. FIX ADOPTED (destruction, HIGH): 'A/C' also means air-conditioning on an equipment list, a maintenance manifest and a BOM -- the match must be whole-token with value-bearing geometry, never a substring. Account numbers read poorly at 109 dpi but their LABEL reads well, which is why this row is label-anchored rather than structural. Cheque MICR is E13B and does not OCR as text at any of these resolutions; it is reached as a symbology region by G24.",
+   "propagate": true
   },
   {
    "id": "G18",
@@ -273,7 +286,8 @@
    "enforcement": "label_anchored",
    "semantic_keys": "credential",
    "examples": "PIN; Password; OTP; Activation Code; Security Answer; a PIN mailer scratch panel",
-   "note": "Rare on documents, catastrophic when present, and cheap -- it fires only on an unambiguous credential label WITH a present value, so it cannot contribute to over-redaction. FIX ADOPTED (destruction, HIGH): credential labels appear far more often as INSTRUCTIONS than as values; the value-presence test is dark-pixel density in the value region, not a string match, and G37 suppresses the instruction case outright. FIX ADOPTED (leak, HIGH): sem:credential does not exist in the lexicon today, so this row is currently unreachable; it ships with the pack. PIN mailers print into a tinted or scratch panel that scans as a dark block, so the region rather than the value is claimed."
+   "note": "Rare on documents, catastrophic when present, and cheap -- it fires only on an unambiguous credential label WITH a present value, so it cannot contribute to over-redaction. FIX ADOPTED (destruction, HIGH): credential labels appear far more often as INSTRUCTIONS than as values; the value-presence test is dark-pixel density in the value region, not a string match, and G37 suppresses the instruction case outright. FIX ADOPTED (leak, HIGH): sem:credential does not exist in the lexicon today, so this row is currently unreachable; it ships with the pack. PIN mailers print into a tinted or scratch panel that scans as a dark block, so the region rather than the value is claimed.",
+   "propagate": true
   },
   {
    "id": "G20",
@@ -283,7 +297,8 @@
    "enforcement": "label_anchored",
    "semantic_keys": "device_id",
    "examples": "Registration No; Vehicle No; Chassis No; Engine No; VIN; IMEI; MAC Address; IP Address",
-   "note": "LIVE MECHANISM DEFECT FIXED HERE: the current lexicon routes '(vehicle|registration) (no|number)' to sem:unresolved, so a plate number reaches the catch-all and is destroyed by accident rather than by policy, and 'Registration No' on a company letterhead is destroyed for the same accidental reason. sem:device_id ships with this pack and the lexicon entry is made person-scoped. Plates and VINs mix letters and digits and are a top source of OCR substitution at low dpi, so no pattern validator is trusted -- the label anchors and the region is struck whether or not the value reads."
+   "note": "LIVE MECHANISM DEFECT FIXED HERE: the current lexicon routes '(vehicle|registration) (no|number)' to sem:unresolved, so a plate number reaches the catch-all and is destroyed by accident rather than by policy, and 'Registration No' on a company letterhead is destroyed for the same accidental reason. sem:device_id ships with this pack and the lexicon entry is made person-scoped. Plates and VINs mix letters and digits and are a top source of OCR substitution at low dpi, so no pattern validator is trusted -- the label anchors and the region is struck whether or not the value reads.",
+   "propagate": true
   },
   {
    "id": "G21",
@@ -293,7 +308,8 @@
    "enforcement": "label_anchored",
    "semantic_keys": "clinical",
    "examples": "Diagnosis; Provisional Diagnosis; Complaints; Investigations; a haemoglobin result with units and reference range; Rx; Blood Group",
-   "note": "THE ONE DELIBERATE DIVERGENCE FROM THE INSURANCE PACK, and it is explicit. Insurance KEEPS clinical content because in a claim bundle it is the adjudicator's working data and the data owner ruled it in scope to keep. A generic bundle has no adjudicator, so health conditions are REDACTED here -- mirroring audio, where HEALTH_MEDICAL_INFO is beeped under `strict` and is annotate-only only under `medical_consult`. THREE CONSEQUENCES, STATED RATHER THAN DISCOVERED. (1) BUILD: base.py's self_test currently ASSERTS g.action_for(['sem:clinical']) == 'KEEP'; this pack cannot land until that assertion is flipped to REDACT with a comment naming the divergence, and the anti-inversion guard is rewritten as a per-pack expectation table (generic: clinical -> REDACT; insurance: clinical -> KEEP) so it still catches a genuine inversion. (2) FIX ADOPTED (inconsistency, HIGH): the clinical/results region is resolved ONCE per table identity per BUNDLE and applied whole-table on every page -- a per-page, OCR-quality-dependent predicate gave one pathology report two opposite policies on two pages. (3) FIX ADOPTED (destruction, HIGH): a standalone pathology report, prescription or specialist letter with no insurer signal routes HERE and legitimately goes nearly fully black, so the router prints which pack it chose, the over-redaction metric EXCLUDES G21 area, and a deployment wanting audio's medical_consult behaviour sets an annotate-only profile explicitly rather than getting it by accident. Region-level, not label-level, precisely because of the measured 'Red Blood Cell' failure."
+   "note": "THE ONE DELIBERATE DIVERGENCE FROM THE INSURANCE PACK, and it is explicit. Insurance KEEPS clinical content because in a claim bundle it is the adjudicator's working data and the data owner ruled it in scope to keep. A generic bundle has no adjudicator, so health conditions are REDACTED here -- mirroring audio, where HEALTH_MEDICAL_INFO is beeped under `strict` and is annotate-only only under `medical_consult`. THREE CONSEQUENCES, STATED RATHER THAN DISCOVERED. (1) BUILD: base.py's self_test currently ASSERTS g.action_for(['sem:clinical']) == 'KEEP'; this pack cannot land until that assertion is flipped to REDACT with a comment naming the divergence, and the anti-inversion guard is rewritten as a per-pack expectation table (generic: clinical -> REDACT; insurance: clinical -> KEEP) so it still catches a genuine inversion. (2) FIX ADOPTED (inconsistency, HIGH): the clinical/results region is resolved ONCE per table identity per BUNDLE and applied whole-table on every page -- a per-page, OCR-quality-dependent predicate gave one pathology report two opposite policies on two pages. (3) FIX ADOPTED (destruction, HIGH): a standalone pathology report, prescription or specialist letter with no insurer signal routes HERE and legitimately goes nearly fully black, so the router prints which pack it chose, the over-redaction metric EXCLUDES G21 area, and a deployment wanting audio's medical_consult behaviour sets an annotate-only profile explicitly rather than getting it by accident. Region-level, not label-level, precisely because of the measured 'Red Blood Cell' failure.",
+   "propagate": true
   },
   {
    "id": "G22",
@@ -363,7 +379,8 @@
    "enforcement": "value_propagated",
    "semantic_keys": "in_cell_value",
    "examples": "a UPI narration carrying a mobile-derived VPA and a payee name; an NEFT narration carrying a person's name and an IFSC",
-   "note": "FIX ADOPTED (leak, CRITICAL): G35's KEEP explicitly covers line-item descriptions, so an Indian bank narration column -- which routinely carries a counterparty name, a mobile-number-derived VPA and an account fragment on every row -- was KEPT wholesale. This row is the ONLY thing permitted to enter a kept numeric column, it is value-level rather than region-level, and it may not claim a box larger than the matched run. It is deterministic -- propagated learned values plus VPA, phone and account-adjacent patterns -- not model-judged."
+   "note": "FIX ADOPTED (leak, CRITICAL): G35's KEEP explicitly covers line-item descriptions, so an Indian bank narration column -- which routinely carries a counterparty name, a mobile-number-derived VPA and an account fragment on every row -- was KEPT wholesale. This row is the ONLY thing permitted to enter a kept numeric column, it is value-level rather than region-level, and it may not claim a box larger than the matched run. It is deterministic -- propagated learned values plus VPA, phone and account-adjacent patterns -- not model-judged.",
+   "propagate": true
   },
   {
    "id": "G29",
@@ -373,7 +390,8 @@
    "enforcement": "value_propagated",
    "semantic_keys": "provider_name, org_person_linked",
    "examples": "Name of Hospital; Employer; School Last Attended; Previous Insurer; Treating Facility",
-   "note": "FIX ADOPTED (inconsistency, HIGH): sem:provider_name had to serve two rows with opposite actions, and base.py's resolve() maps one key to exactly one row. The distinction is made at the MECHANISM, not in the pack: person-linking label patterns ('name of the hospital', 'facility', 'treating', 'employer', 'school attended') emit sem:org_person_linked and land here; letterhead, masthead, footer and boilerplate emit sem:org_issuer and land at G30 KEEP. Legacy sem:provider_name maps HERE, because the lexicon entry that emits it today is a person-scoped field label. Carries audio's ORGANIZATION_PERSON_LINKED including its 2026-09-01 clarification that a person's own insurer, TPA, lender or service company is person-linked."
+   "note": "FIX ADOPTED (inconsistency, HIGH): sem:provider_name had to serve two rows with opposite actions, and base.py's resolve() maps one key to exactly one row. The distinction is made at the MECHANISM, not in the pack: person-linking label patterns ('name of the hospital', 'facility', 'treating', 'employer', 'school attended') emit sem:org_person_linked and land here; letterhead, masthead, footer and boilerplate emit sem:org_issuer and land at G30 KEEP. Legacy sem:provider_name maps HERE, because the lexicon entry that emits it today is a person-scoped field label. Carries audio's ORGANIZATION_PERSON_LINKED including its 2026-09-01 clarification that a person's own insurer, TPA, lender or service company is person-linked.",
+   "propagate": true
   },
   {
    "id": "G30",
@@ -543,5 +561,6 @@
    "sem:policy_id",
    false
   ]
- ]
+ ],
+ "propagate_note": "A value that identifies a person on one page identifies them on every page. Without these flags propagate.propagatable() returns an empty set and the bundle-wide consistency guarantee is inert -- measured on a 62-page claim: insurance propagated 35 values, generic propagated 0."
 }

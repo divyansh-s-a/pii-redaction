@@ -288,8 +288,11 @@ def main():
     print(f"  scores: {decision['scores']}")
     if decision["ambiguous"]:
         print("  -> fell back to the conservative pack; pass --taxonomy to override")
-    toks = tokenstore.TokenStore(src.stem, secret=args.token_secret,
-                                 path=Path(args.out).with_suffix(".tokens.json"))
+    # No token store: PSEUDONYMIZE destroys exactly as REDACT does and writes
+    # nothing back, so minting one only produced a re-identification key that
+    # nothing consumed. Kept as an in-memory object so the call signatures
+    # below are unchanged; it is never saved.
+    toks = tokenstore.TokenStore(src.stem, secret=args.token_secret, path=None)
 
     if str(args.second_detector).lower() in ("none", "off", ""):
         args.second_detector = None
@@ -458,9 +461,7 @@ def main():
     print(f"  by action: {st['by_action']}")
     if st["degraded"]:
         print(f"  DEGRADED (action could not be applied as asked): {st['degraded']}")
-    print(f"  tokens minted: {len(toks)} -> "
-          f"{Path(args.out).with_suffix('.tokens.json').name} "
-          f"(RE-IDENTIFICATION KEY: do not ship with the PDF)")
+
     rc = 0
     if args.verify or args.remediate:
         rc = _verify_and_maybe_fix(src, args, per_page, pack, toks, audit)
