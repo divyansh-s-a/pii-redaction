@@ -4,6 +4,7 @@
 Stdlib only (urllib) — no pip dependencies. The API key is read from .env at
 the project root and is never printed or logged.
 """
+import base64
 import json
 import time
 import urllib.request
@@ -229,6 +230,27 @@ def _generate_ai_studio(model, parts, response_schema, temperature,
                                Path(p["audio_path"]).name)
             resolved.append({"file_data": {"file_uri": info["uri"],
                                            "mime_type": p["mime"]}})
+        elif "image_path" in p:
+            # Page images are small and per-page; inline base64 avoids a Files
+            # API round trip per page. Large files still go through upload.
+            raw = Path(p["image_path"]).read_bytes()
+            mime = p.get("mime", "image/png")
+            if len(raw) > 6_000_000:
+                info = upload_file(Path(p["image_path"]), mime,
+                                   Path(p["image_path"]).name)
+                resolved.append({"file_data": {"file_uri": info["uri"],
+                                               "mime_type": mime}})
+            else:
+                resolved.append({"inline_data": {
+                    "mime_type": mime,
+                    "data": base64.b64encode(raw).decode()}})
+        elif "doc_path" in p:
+            info = upload_file(Path(p["doc_path"]),
+                               p.get("mime", "application/pdf"),
+                               Path(p["doc_path"]).name)
+            resolved.append({"file_data": {
+                "file_uri": info["uri"],
+                "mime_type": p.get("mime", "application/pdf")}})
         else:
             resolved.append(p)
     gen_cfg = {"temperature": temperature, "maxOutputTokens": max_output_tokens}
@@ -319,10 +341,25 @@ def _generate_openrouter(model, parts, response_schema, temperature,
                                 "format": fmt}})
         elif "text" in p:
             content.append({"type": "text", "text": p["text"]})
+        elif "image_path" in p:
+            raw = Path(p["image_path"]).read_bytes()
+            mime = p.get("mime", "image/png")
+            content.append({"type": "image_url", "image_url": {
+                "url": f"data:{mime};base64,"
+                       + base64.b64encode(raw).decode()}})
         elif "file_data" in p:
             raise RuntimeError(
                 "OpenRouter Gemini fallback needs raw audio; got a Gemini "
                 "Files API URI. Pass audio as an {'audio_path','mime'} part.")
+        else:
+            # NEVER fall through silently. Before this guard an unrecognised
+            # part (e.g. an image) was dropped and the call still returned a
+            # confident answer about content the model never saw - worse than
+            # an error, because nothing downstream could detect it.
+            raise RuntimeError(
+                "OpenRouter backend received an unsupported part type "
+                f"{sorted(p)!r}; refusing to send a request that silently "
+                "omits it.")
     payload = {"model": or_model, "temperature": temperature,
                "max_tokens": min(int(max_output_tokens), 32000),
                "messages": [{"role": "user", "content": content}],

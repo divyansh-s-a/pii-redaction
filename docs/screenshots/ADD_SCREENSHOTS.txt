@@ -1,3 +1,0 @@
-Drop the two web-app captures here as upload_redact.png and
-review_quarantine.png (referenced from the README), or place
-them in docs/screenshots/ of the project and rebuild.

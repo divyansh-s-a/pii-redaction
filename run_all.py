@@ -64,9 +64,30 @@ def main():
     ap.add_argument("--no-domain", action="store_true")
     ap.add_argument("--mono", action="store_true",
                     help="pass --mono to the redactor (crosstalk stereo)")
+    # The watermark is a DELIBERATE SECOND STEP, not part of a run: not every
+    # delivery is shared externally, and main's README documents it as
+    # "watermark evaluation samples before sharing with a buyer". Left opt-in
+    # here purely as a convenience for that case.
     ap.add_argument("--watermark", action="store_true",
-                    help="apply the audible evaluation watermark to each "
-                         "processed bundle (tools/watermark.py)")
+                    help="also run tools/watermark.py on each delivered "
+                         "bundle (normally done as a separate step)")
+    # SWEEP AND ASSURANCE ARE THE MVP, so they are ON. This driver used to
+    # pass NEITHER, so a dataset run silently used weaker detection than the
+    # single-file command the docs recommend -- the two paths share
+    # tools/redact.py, so they could only ever differ by which flags arrived.
+    ap.add_argument("--no-sweep", dest="sweep", action="store_false",
+                    default=True,
+                    help="EVALUATION ONLY: one free-form detection pass "
+                         "instead of four narrow ones")
+    ap.add_argument("--no-assurance", dest="assurance", action="store_false",
+                    default=True,
+                    help="EVALUATION ONLY: skip the second independent "
+                         "listener")
+    # ...and ANY other redact.py flag, verbatim, after `--`. A hand-maintained
+    # forward list is what drifted in the first place; this cannot.
+    ap.add_argument("redact_args", nargs="*", default=[],
+                    help="everything after `--` is passed to tools/redact.py "
+                         "unchanged (e.g. -- --langpack ms --edge-verify)")
     ap.add_argument("--group", default=None,
                     help="optional subfolder under result/deliveries "
                          "(e.g. a language label: deliveries/<group>/<fid>)")
@@ -111,7 +132,10 @@ def main():
               f"{src.name} ##########", flush=True)
         rc = run([PY, "tools/redact.py", str(src), "--outdir",
                   str(deliver_root), "--profile", args.profile]
-                 + (["--mono"] if args.mono else []))
+                 + (["--mono"] if args.mono else [])
+                 + (["--sweep"] if args.sweep else [])
+                 + (["--assurance"] if args.assurance else [])
+                 + list(args.redact_args))
         delivered = None
         quarantined = False
         if (deliver_root / fid / "manifest.json").exists():

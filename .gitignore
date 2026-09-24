@@ -6,3 +6,65 @@ output/
 deliveries/
 quarantine/
 media/
+
+# document arm
+#
+# NOTE: git treats '#' as a comment ONLY at the start of a line. A trailing
+# comment becomes part of the pattern, so `*.tokens.json  # keys` matched
+# nothing and a re-identification sidecar was committable. Keep comments on
+# their own lines.
+#
+# REAL QR and portrait rasters; the QR decodes to a real identity.
+# Harvest your own locally, never commit these.
+multimodal/synth/assets/
+multimodal/out/
+out/
+# re-identification keys: map pseudonyms back to real values
+*.tokens.json
+*.audit.jsonl
+
+# Generated reports, deliverable documents and sample media.
+# The repository carries what is needed to RUN the pipeline; evaluation
+# numbers, design documents and sample outputs are produced locally and are
+# not collaborator-facing.
+results/
+outputs/
+sample/
+docs/screenshots/
+
+# ---------------------------------------------------------------------------
+# UNREDACTED SOURCE MATERIAL MUST NEVER BE COMMITTED.
+#
+# Directory rules alone were not enough: `output/`, `deliveries/`, `quarantine/`
+# and `media/` were covered, but `result/` was not -- and run_all.py writes
+# result/dedupe/unique/, which holds the ORIGINAL audio, plus fingerprints
+# derived from it. Nor did anything stop a corpus being copied into the tree
+# under any other name.
+#
+# So media is ignored BY EXTENSION, everywhere. A folder of calls dropped
+# anywhere in this repo is ignored whatever it is called.
+*.mp3
+*.wav
+*.flac
+*.m4a
+*.ogg
+*.opus
+*.aac
+*.wma
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.webm
+
+# ...except the watermark clips, which are part of the tool, not data.
+!prompts/watermark/*.wav
+
+# run_all.py's dataset output: summary, dedupe fingerprints, unique reps.
+result/
+
+# Working artifacts that hold UNREDACTED text wherever they appear.
+transcript.json
+intervals.json
+rendered_intervals.json
+prepare.json
