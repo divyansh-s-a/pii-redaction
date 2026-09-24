@@ -2,6 +2,12 @@
 # discarded the qc_file result). They are the evidence that found
 # the bug and cannot be corrected without re-running the pipeline.
 # A mismatch in a bundle NOT listed here is a NEW regression.
+#
+# Owner decision 2026-09-24: these are NOT being re-run. Eight of them sit in
+# deliveries/ and shipped with a digit word at a beep edge, because the same
+# stale verdict that caused the mismatch also gated the auto-extend that
+# would have covered it. Accepted as-is; the fix applies to everything
+# produced from here on.
 202510251900_ODI_025_beep: manifest=PASS report=FLAGGED
 202510271543_ODI_021_beep: manifest=FLAGGED report=PASS
 202510281201_ODI_022_beep: manifest=PASS report=FLAGGED
