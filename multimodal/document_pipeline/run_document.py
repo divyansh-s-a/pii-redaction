@@ -37,6 +37,10 @@ import detect as detector
 import objective
 import readers
 import formfields
+import unread
+import carriers
+import marks as markpass   # not `marks`: handle() has a local of that name
+import inkmarks
 import handwriting
 import propagate
 import tokens as tokenstore
@@ -64,6 +68,7 @@ def _load(name):
 redactor = _load("redact")
 
 VISUAL_DPI = 300          # measured floor for dense QR decoding
+DETECT_RETRIES = 2      # a timed-out page is retried, not discarded
 
 
 def visual_findings(doc, pno, workdir):
@@ -216,20 +221,45 @@ def main():
     ap.add_argument("--out", required=True)
     ap.add_argument("--findings-out", default=None)
     ap.add_argument("--detector", default="gpt")
-    # OPT-IN, like the audio arm's --assurance. It measurably reduces both
-    # the leak rate and the run-to-run variance on scanned pages (see
-    # results/document_redaction_report.md), but it doubles detection spend
-    # and requires credentials for a second model family, so the operator
-    # chooses it rather than inheriting it.
-    ap.add_argument("--second-detector", default=None,
-                    help="union a second detector family's findings with the "
-                         "primary's (e.g. gemini). Cuts leak rate and "
-                         "run-to-run variance on scans; ~2x detection cost")
+    # ON BY DEFAULT (owner, 2026-09-24). A single detector over a scanned
+    # page can return NOTHING -- no error, no log line, a clean verify -- and
+    # the page ships unredacted. Measured on a real 29-page claim: 2 of 29
+    # pages got zero model findings with one detector and 0 of 29 with the
+    # union, and 5 of 10 PII probes readable became 1. Two model families do
+    # not fail on the same page. `--second-detector none` disables it; it
+    # roughly doubles detection cost.
+    ap.add_argument("--second-detector", default="gemini",
+                    help="union a second model family's findings with the "
+                         "primary's (default: gemini). `none` disables. "
+                         "Covers pages a single detector silently misses")
     ap.add_argument("--no-visual", action="store_true")
     ap.add_argument("--no-labels", action="store_true",
                     help="skip label-anchored form-field regions")
     ap.add_argument("--no-propagate", action="store_true",
                     help="skip bundle-wide value propagation")
+    ap.add_argument("--no-inkmarks", action="store_true",
+                    help="skip classifying residual ink on SCANNED pages. It "
+                         "is the only pass that sees a black-ink signature "
+                         "baked into a scan; it costs one model request per "
+                         "scanned page that carries unexplained ink.")
+    ap.add_argument("--no-marks", action="store_true",
+                    help="skip the embedded-mark pass: small images on a "
+                         "born-digital page that carry no text -- signatures "
+                         "and logos. Without it a signature placed as its own "
+                         "image, or an insurer/TPA logo, is readable in the "
+                         "output because no text mechanism can see it.")
+    ap.add_argument("--no-carriers", action="store_true",
+                    help="skip the stamp/signature carrier pass. That pass "
+                         "destroys a whole rubber-stamp or signature "
+                         "impression EXCEPT a date found inside it; without "
+                         "it a box lands on the stamp's centre and leaves "
+                         "the provider name readable around the ring.")
+    ap.add_argument("--no-unread", action="store_true",
+                    help="skip the unread-text-region pass. That pass is the "
+                         "ONLY thing that sees Indic script on a SCANNED "
+                         "page: Apple Vision supports no Indian script, so "
+                         "the state-language half of a bilingual ID is "
+                         "otherwise never tokenised at all.")
     ap.add_argument("--no-handwriting", action="store_true",
                     help="skip chromatic-ink (pen) handwriting regions")
     ap.add_argument("--profile", default="strict")
@@ -298,6 +328,7 @@ def main():
         args.second_detector = None
     model = common.resolve_model()
     per_page, stats = {}, Counter()
+    markers = {}          # pno -> [marker findings]
     t0 = time.time()
 
     # One page at a time is dominated by the detector's round trip, and pages
@@ -315,6 +346,15 @@ def main():
         d = local.doc
         try:
             rd = readers.read_page(d, pno, workdir=args.workdir)
+            if rd["reader"] == "ocr_empty":
+                # Not a page with nothing on it: the OCR subprocess failed
+                # after its own retries. detect_page would return before
+                # calling a model and before its regex pass, so this page
+                # would be redacted on faces and QR alone. Say so.
+                with lock:
+                    print(f"  p{pno:<4} OCR RETURNED NO WORDS -- "
+                          f"{rd.get('ocr_error') or 'unknown'}; this page has "
+                          f"NO text coverage", flush=True)
             finds, _ = detector.detect_page(
                 d[pno - 1], model, detector=args.detector,
                 second=args.second_detector, words=rd["words"], pack=pack)
@@ -323,10 +363,62 @@ def main():
                 d[pno - 1], rd["words"], finds, pack)
             reader_used = rd["reader"]
         except Exception as exc:
+            # A transient failure here costs the WHOLE page: finds=[] and
+            # reader_used="error" also disable the label and ink passes, so
+            # the page ships with visual findings only. That is too much to
+            # lose to one timed-out request, and timeouts are exactly what
+            # happens when the API is busy, so retry before giving up.
             with lock:
-                print(f"  p{pno:<4} DETECTION FAILED: {str(exc)[:70]}",
-                      flush=True)
-            finds, reader_used = [], "error"
+                print(f"  p{pno:<4} detection error ({str(exc)[:60]}) "
+                      f"-- retrying", flush=True)
+            finds, reader_used = None, "error"
+            for attempt in range(DETECT_RETRIES):
+                time.sleep(4 * (attempt + 1))
+                try:
+                    finds, _ = detector.detect_page(
+                        d[pno - 1], model, detector=args.detector,
+                        second=args.second_detector, words=rd["words"],
+                        pack=pack)
+                    finds = detector.locate_unboxed(d[pno - 1], finds,
+                                                    rd["words"])
+                    finds = formfields.spare_numeric_columns(
+                        d[pno - 1], rd["words"], finds, pack)
+                    reader_used = rd["reader"]
+                    break
+                except Exception as exc2:
+                    exc = exc2
+            if finds is None:
+                # THE MODEL FAILED; THE PAGE WAS STILL READ. Losing the model's
+                # spans is unavoidable, but nothing else here needs a model:
+                # the ID patterns, the script scan, the field-label pass, the
+                # handwriting, unread-text and ink-mark passes. Marking the
+                # whole page "error" switched every one of them off -- a
+                # claim form shipped with its handwritten PAN and account
+                # number readable after the detector's API account ran out of
+                # credit, though the label pass would have cut both. Only a
+                # page that could not be READ now loses everything.
+                if "rd" in locals() and rd.get("words"):
+                    try:
+                        finds = detector.deterministic_findings(
+                            d[pno - 1], rd["words"], pack)
+                        finds = detector.locate_unboxed(d[pno - 1], finds,
+                                                        rd["words"])
+                        finds = formfields.spare_numeric_columns(
+                            d[pno - 1], rd["words"], finds, pack)
+                    except Exception:
+                        finds = []
+                    reader_used = rd["reader"]
+                    with lock:
+                        print(f"  p{pno:<4} MODEL DETECTION FAILED after "
+                              f"{DETECT_RETRIES} retries: {str(exc)[:60]} -- "
+                              f"NO MODEL COVERAGE; fixed-rule checks still ran",
+                              flush=True)
+                else:
+                    with lock:
+                        print(f"  p{pno:<4} DETECTION FAILED after "
+                              f"{DETECT_RETRIES} retries: {str(exc)[:60]} -- "
+                              f"this page has NO text coverage", flush=True)
+                    finds, reader_used = [], "error"
         vis = [] if args.no_visual else visual_findings(d, pno, args.workdir)
         for v in vis:
             v["action"] = pack.action_for(v["categories"])
@@ -351,6 +443,11 @@ def main():
                 blocks = formfields.unlabelled_identity_blocks(
                     d[pno - 1], rd["words"], labels=labs, pack=pack)
                 labs.extend(blocks)
+                # Staff sign-off columns of a ruled table (medication charts,
+                # nursing logs): the header says every cell below is a name,
+                # a signature or a staff code, which no per-cell reading can.
+                labs.extend(formfields.identity_columns(
+                    d[pno - 1], rd["words"], pack=pack))
                 for L in labs:
                     L["action"] = pack.action_for(L["categories"])
             except Exception as exc:
@@ -362,10 +459,16 @@ def main():
                           f"{str(exc)[:90]}", flush=True)
                 labs = []
         hw, hwst, shrunk = [], {"blue_share": 0.0}, 0
+        # The labelled fields as the label pass zoned them, before handwriting
+        # resolution rewrites `labs`. unread.py defers to these: text inside a
+        # field the pack KEEPS (a bank name, an IFSC) must not be cut by a
+        # classifier that saw one cell with no label beside it.
+        zones = [dict(L) for L in labs]
         if not args.no_handwriting:
             try:
                 hw, hwst = handwriting.regions(d[pno - 1], labels=labs,
-                                               boxes=raw_ink, stats=raw_stats)
+                                               boxes=raw_ink, stats=raw_stats,
+                                               words=rd["words"], pack=pack)
                 for H in hw:
                     H["action"] = pack.action_for(H["categories"])
                 # ink first: it inherited its categories from `labs` above,
@@ -375,10 +478,84 @@ def main():
             except Exception:
                 hw = []
         hw_by_page[pno] = hw          # added after the repeat filter
-        boxed = [f for f in finds if f.get("bbox")] + vis + labs
+        # Text NO reader transcribed -- on this corpus, the state-language
+        # half of a bilingual ID page, which Apple Vision cannot read in any
+        # Indian script. Geometry from Vision's region detector, the keep/cut
+        # decision from the model; it costs one request only on pages that
+        # actually carry unread text.
+        # Rubber stamps and ink signatures, destroyed whole except a date
+        # inside them. Pigment-based, so it needs no text and no model.
+        car = []
+        if not args.no_carriers:
+            try:
+                car = carriers.findings(d[pno - 1], pack=pack,
+                                        workdir=args.workdir)
+            except Exception as exc:
+                with lock:
+                    print(f"  p{pno} CARRIER PASS FAILED: "
+                          f"{type(exc).__name__}: {str(exc)[:80]}", flush=True)
+                car = []
+        # Signatures and logos placed as their own small images. Bank marks
+        # come back as sem:bank_common and the pack keeps them, as it keeps
+        # an IFSC; everything else is identity and goes.
+        mk = []
+        if not args.no_marks:
+            try:
+                mk = markpass.findings(d[pno - 1], pack=pack,
+                                    workdir=args.workdir)
+            except Exception as exc:
+                with lock:
+                    print(f"  p{pno} MARK PASS FAILED: "
+                          f"{type(exc).__name__}: {str(exc)[:80]}", flush=True)
+                mk = []
+        unr = []
+        if not args.no_unread and reader_used != "error":
+            try:
+                unr = unread.findings(d[pno - 1], rd["words"], pack=pack,
+                                      workdir=args.workdir, zones=zones,
+                                      ocr=reader_used != "text_layer")
+            except Exception as exc:
+                with lock:
+                    print(f"  p{pno} UNREAD-REGION PASS FAILED: "
+                          f"{type(exc).__name__}: {str(exc)[:80]}", flush=True)
+                unr = []
+        # Last, so it can skip whatever the passes above already cut: black
+        # ink on a scan that no reader explained, kept or cut by the model.
+        ink, ink_marker = [], None
+        if not args.no_inkmarks and reader_used != "error":
+            already = [f["bbox"] for f in vis + car + mk + unr if f.get("bbox")]
+            try:
+                ink, ink_marker = inkmarks.findings(
+                    d[pno - 1], rd["words"], reader_used, pack=pack,
+                    covered=already, workdir=args.workdir)
+            except Exception as exc:
+                with lock:
+                    print(f"  p{pno} INK-MARK PASS FAILED: "
+                          f"{type(exc).__name__}: {str(exc)[:80]}", flush=True)
+                ink = []
+            if ink_marker is not None:
+                with lock:
+                    print(f"  p{pno} INK MARKS DEGRADED: "
+                          f"{ink_marker['reason'][:90]}", flush=True)
+        boxed = ([f for f in finds if f.get("bbox")] + vis + labs + unr + car
+                 + mk + ink)
+        # Page markers have no bbox by design -- they describe the page, not a
+        # region -- so the line above drops them. Keep them separately or the
+        # run has no record that a page went unexamined.
+        marks = [f for f in finds
+                 if f.get("locator") == "page_marker"]
+        if ink_marker is not None:
+            marks.append(ink_marker)
+        if reader_used == "ocr_empty":
+            marks.append({
+                "categories": [], "text": "", "bbox": None, "action": "KEEP",
+                "source": "ocr_empty", "locator": "page_marker",
+                "reason": str(rd.get("ocr_error") or "")[:300]})
         words_by_page[pno] = rd["words"] if reader_used != "error" else []
         readers_by_page[pno] = reader_used
         with lock:
+            if marks:
+                markers[pno] = marks
             stats["pages"] += 1
             stats["findings"] += len(finds)
             stats["boxed"] += len(boxed)
@@ -386,11 +563,19 @@ def main():
             stats["faces"] += sum(1 for v in vis if v["source"] in
                                   ("objective_face", "objective_idphoto"))
             stats["labels"] += len(labs)
+            stats["unread"] += len(unr)
+            stats["carriers"] += len(car)
+            stats["marks"] += sum(1 for m in mk if m.get("action") != "KEEP")
+            stats["inkmarks"] += len(ink)
             flags = "QR" if any(v["source"] == "objective_qr" for v in vis) else ""
             flags += ("+PHOTO" if any(v["source"] in ("objective_face",
                                                       "objective_idphoto")
                                       for v in vis) else "")
             flags += (f"+{len(labs)}L" if labs else "")
+            flags += (f"+{len(unr)}U" if unr else "")
+            flags += (f"+{len(car)}C" if car else "")
+            flags += (f"+{len(mk)}M" if mk else "")
+            flags += (f"+{len(ink)}I" if ink else "")
             flags += (f"+{len(hw)}HW" if hw else "")
             flags += (f"(ink>{shrunk}L)" if shrunk else "")
             print(f"  p{pno:<4}{reader_used:<11}{len(boxed):>3} boxes {flags}"
@@ -444,7 +629,7 @@ def main():
         with Path(args.findings_out).open("w") as fh:
             for pno, finds in per_page.items():
                 fh.write(json.dumps({"file": src.name, "page": pno,
-                                     "findings": finds},
+                                     "findings": finds + markers.get(pno, [])},
                                     ensure_ascii=False) + "\n")
     audit = []
     st = redactor.redact_document(src, per_page, args.out, cosmetic=False,
@@ -456,9 +641,32 @@ def main():
           f"{stats['boxed']} boxes drawn | {stats['qr']} QR | "
           f"{stats['faces']} faces | {stats['labels']} label-regions | "
           f"{stats.get('propagated', 0)} propagated | "
-          f"{stats.get('handwriting', 0)} pen-ink | {dt/60:.1f} min")
+          f"{stats.get('handwriting', 0)} pen-ink | "
+          f"{stats.get('unread', 0)} unread-text | "
+          f"{stats.get('carriers', 0)} carriers | "
+          f"{stats.get('marks', 0)} marks | "
+          f"{stats.get('inkmarks', 0)} ink-marks | {dt/60:.1f} min")
     print(f"  redaction: pages={st['pages_touched']} boxes={st['boxes']}")
     print(f"  by action: {st['by_action']}")
+    # A page examined only by the visual pass is the leak mode the owner
+    # found on the ID pages, and it is invisible in every other number here:
+    # the page contributes boxes (faces, QR) and looks like it was processed.
+    blind = sorted(pno for pno, fs in markers.items()
+                   if any(f.get("source") == "no_model_coverage" for f in fs))
+    if blind:
+        print(f"  NO MODEL COVERAGE on {len(blind)} page(s): {blind} "
+              f"-- text on these pages was never examined by a detector")
+    solo = sorted(pno for pno, fs in markers.items()
+                  if any(f.get("source") == "second_detector_degraded"
+                         for f in fs))
+    if solo:
+        print(f"  SINGLE-DETECTOR on {len(solo)} page(s): {solo} "
+              f"-- union coverage was not applied there")
+    noocr = sorted(pno for pno, fs in markers.items()
+                   if any(f.get("source") == "ocr_empty" for f in fs))
+    if noocr:
+        print(f"  OCR FAILED on {len(noocr)} page(s): {noocr} "
+              f"-- redacted on visual findings only")
     if st["degraded"]:
         print(f"  DEGRADED (action could not be applied as asked): {st['degraded']}")
 

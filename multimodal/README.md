@@ -90,6 +90,35 @@ Outputs beside `OUT.pdf`:
 8. **Redact** — pixels destroyed and glyphs deleted in one pass (`redact.py`).
    Verification is a separate, opt-in step (below), not part of a default run.
 
+Scanned pages also get passes that find candidates from **pixels** and let a
+model **classify** them — the model still never emits a coordinate:
+
+- **Stamps, seals and signatures** (`carriers.py`): coloured-ink candidates,
+  classified before anything is cut, so blue-pen clinical notes survive. A
+  date inside a stamp is carved back out.
+- **Residual marks** (`inkmarks.py`): dark marks no reader explained (black
+  signatures, greyscale logos), shown to the classifier with a red outline,
+  their size and position, in context.
+- **Charting grids** (`inkmarks.py`): medication and nursing charts are found
+  from their ruled lattice; each cell's pen entry (a name over a staff number)
+  is judged whole, twice, by a chart-specific prompt.
+- **Sign-off columns** (`formfields.identity_columns`): table columns headed
+  "Signature", "Administered by", "Verified by" … on leaning, faint or wrapped
+  headers; a column of printed sentences is never one.
+- **Text no reader read** (`unread.py`): Vision text regions plus lines found
+  in the pixels (Indic scripts Vision cannot read), classified as personal or
+  not; a region inside a field the pack keeps (bank name, IFSC) defers to it.
+- **Small embedded marks** (`marks.py`): logos placed as their own images on
+  born-digital pages; bank marks are kept.
+
+The letterhead band stops at a table's first ruled border — unless an identity
+label ("Name of the Patient", "Age") sits in the freed area.
+
+If the GPT detector's provider refuses the account (no credit), detection
+switches to OpenAI directly (`openai_direct.py`, needs `OPENAI_API_KEY`); if
+GPT is down altogether the second detector carries the page, marked
+single-detector. If both fail, the fixed rules (ID patterns, labels) still run.
+
 ## Writing a custom taxonomy
 
 A pack is a **directory, not code**. Adding one is a data change.
@@ -249,24 +278,36 @@ does not cleanly truncate. Vocabulary is harvested from the patterns'
 *literal* words, never from fragments a character class splices (`licen[cs]e`
 contains no word `licen`).
 
-## `--second-detector`
+## `--second-detector` — on by default
 
-Opt-in, and worth it on scanned input — the document arm's counterpart to the
-audio arm's `--assurance` second listener.
+    # the default: two model families, findings unioned
+    python3 document_pipeline/run_document.py IN.pdf --out OUT.pdf
 
+    # one detector only (evaluation, or no credentials for a second family)
     python3 document_pipeline/run_document.py IN.pdf --out OUT.pdf \
-            --second-detector gemini
+            --second-detector none
 
-A single model detector over a low-resolution scan is not repeatable: the same
-page can yield different findings on consecutive runs. The second detector
-unions in anything the other model family found, so it can only *add* findings
-— it cannot remove one the primary made, and it does not increase
-over-redaction.
+**A single detector over a scanned page can return nothing at all** — no
+exception, no log line, and `--verify` still passes, because verification
+checks that *detected* values were removed and cannot know about values never
+detected. The page ships unredacted and nothing says so.
 
-It costs roughly twice the detection spend and needs credentials for a second
-model family, which is why it is opt-in. If that detector is unavailable the
-page falls back to the primary alone, says so, and records
-`second_detector_degraded` in the audit; it can never take the primary's
+Measured on one real 29-page claim bundle:
+
+| | one detector | union |
+|---|---|---|
+| pages with **zero** model findings | 2 of 29 | **0** |
+| identity values still readable in the output | 5 of 10 | **1 of 10** |
+
+Every one of those five leaks sat on a single page that happened to get no
+detection that run. Two model families do not fail on the same page, which is
+why the union closes it and a re-run does not.
+
+It only ever ADDS findings, so it cannot remove a box the primary detector
+drew and does not increase over-redaction. It roughly doubles detection spend
+and needs credentials for a second family. If that detector is unavailable the
+page falls back to the primary alone, says so loudly, and records
+`second_detector_degraded` in the audit — it can never take the primary's
 findings down with it.
 
 ## Verification, and the correction loop
@@ -394,3 +435,15 @@ are only found on cards whose QR decodes as an identity document.
 **Handwriting on greyscale or black-pen pages** has no chromatic signal and
 falls back to labelled fields only. Detection on low-resolution scans varies
 between runs; `--second-detector` reduces that.
+
+From a blind visual audit of 96 pages (Sep 2026), still open:
+- a logo **emblem** beside a wordmark that was cut;
+- some doctors' handwritten **sign-offs** on notes pages;
+- **mirror-image text** showing through from the back of a scanned sheet;
+- blurry **1D barcodes** on patient stickers (Vision cannot decode them; the
+  shape detector finds QR codes only);
+- text burned into **ultrasound images**; a stamp only partly covered;
+- **over-redaction** of dates, clinical values and amounts on bank statements
+  and handwritten charts.
+
+Cost, measured: about $0.19 per page per pack (Gemini ~80%, GPT ~20%).

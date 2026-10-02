@@ -35,6 +35,7 @@ import fitz
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import actions as A
+import readers
 
 # Findings produced before the taxonomy packs existed carry the audio
 # pipeline's two-valued action. Map them rather than crashing on old artifacts.
@@ -191,8 +192,18 @@ def redact_document(src, page_findings, dest, cosmetic=False, pad=1.0,
         # images converted). Put them back to JPEG. This runs on the ALREADY
         # blackened pixels, so it cannot resurrect anything; the cost is a
         # second-generation JPEG on pages that were touched.
+        #
+        # COLOUR ONLY. The gray=True path of rewrite_images writes an RGB
+        # (3-component) JPEG while keeping the 1-component Gray /ColorSpace
+        # that apply_redactions gave the image. Viewers then read RGB bytes as
+        # gray: MuPDF shows the top third of the scan magnified ~3x with
+        # banding, and macOS Preview draws the page BLANK. The black boxes stay
+        # at the right coordinates, so on screen they no longer sit on the
+        # content. It hit every greyscale scan -- 35 images in each output of
+        # a fully greyscale bundle. Gray images are left losslessly encoded:
+        # larger, and correct.
         doc.rewrite_images(lossy=True, lossless=True, quality=jpeg_quality,
-                           color=True, gray=True)
+                           color=True, gray=False)
 
     if not cosmetic:
         # Delete form widgets outright rather than relying on scrub's

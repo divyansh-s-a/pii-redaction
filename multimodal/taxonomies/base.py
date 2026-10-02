@@ -239,7 +239,12 @@ def load(path):
 def self_test():
     p = load(HERE / "insurance_medical")
     print(f"loaded {p!r}")
-    assert len(p.rows()) == 40, f"expected 40 categories, got {len(p.rows())}"
+    # A count, so that adding or losing a row is a deliberate edit here and
+    # never a silent drift. 41 since 2026-09-24, when T41
+    # NON_LATIN_IDENTITY_TEXT was added for the state-language half of a
+    # bilingual ID page.
+    assert len(p.rows()) == 41, f"expected 41 categories, got {len(p.rows())}"
+    assert p.action_for(["T41"]) == "REDACT", "non-Latin identity text goes"
 
     # owner rule 4: clinical content is kept
     assert p.action_for(["T37"]) == "KEEP", "clinical content must be KEEP"
@@ -247,7 +252,11 @@ def self_test():
     assert p.action_for(["T01"]) == "PSEUDONYMIZE"
     assert p.action_for(["T08"]) == "REDACT"
     # owner override 2026-09-23: dates kept exact
-    assert p.action_for(["T17"]) == "KEEP", "DOB override not applied"
+    # Owner decision 2026-09-24: DOB is personal and goes; the episode and
+    # service dates the adjudicator works from stay. The two must not drift
+    # back together -- that distinction is the whole point of T17 vs T21.
+    assert p.action_for(["T17"]) == "REDACT", "DOB must be redacted"
+    assert p.action_for(["T21"]) == "KEEP", "episode dates must be kept"
     assert p.action_for(["T21"]) == "KEEP", "event-date override not applied"
     # most protective wins: a patient name inside kept clinical prose
     assert p.action_for(["T37", "T01"]) == "PSEUDONYMIZE", "precedence wrong"
@@ -279,8 +288,14 @@ def self_test():
     assert g.action_for(["sem:bank_common"]) == "KEEP"
     assert p.action_for(["sem:bank_common"]) == "KEEP", \
         "IFSC destroyed under insurance -- scan_text emitting legacy names?"
-    assert g.action_for(["sem:org_contact"]) == "KEEP", "letterhead destroyed"
-    assert p.action_for(["sem:org_contact"]) == "REDACT", "provider carrier kept"
+    # Owner decision 2026-09-24: the issuing organisation is HIDDEN in both
+    # packs. It used to be kept on the argument that a reader needs to know
+    # where a document came from; reviewing real output, the owner ruled that
+    # the insurer/TPA identity goes. Asserted for both so neither drifts back.
+    assert g.action_for(["sem:org_contact"]) == "REDACT", "issuer kept"
+    assert p.action_for(["sem:org_contact"]) == "REDACT", "issuer kept"
+    assert g.action_for(["sem:org_name"]) == "REDACT"
+    assert p.action_for(["sem:org_name"]) == "REDACT"
     assert g.action_for(["sem:event_date"]) == "KEEP"
     assert g.action_for(["sem:person_name"]) == "PSEUDONYMIZE"
     assert not p.unknown_categories(["sem:clinical"])

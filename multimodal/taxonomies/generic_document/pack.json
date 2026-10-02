@@ -66,7 +66,10 @@
   "ink_unzoned": "G39",
   "id_document_page": "G40",
   "unresolved": "G41",
-  "org_contact": "G30"
+  "org_contact": "G30",
+  "non_latin_script": "G42",
+  "visual_mark": "G25",
+  "ink_identity": "G27"
  },
  "audio_parity": "ONE LANGUAGE, TWO ARMS. Audio's label is reused wherever a document row means the same thing, so a cross-arm report reads as one taxonomy and needs no translation table.\n\nALL 31 AUDIO CATEGORIES ACCOUNTED FOR.\nSame name, same intent (15): FULL_NAME -> G01; ADDRESS -> G06; DATE_OF_BIRTH -> G08; AGE -> G09 (AGE_AND_SEX); SENSITIVE_DEMOGRAPHIC -> G10; CHILD_INFO -> G11; GOVERNMENT_ID -> G13; ASSIGNED_ID -> G14; PAYMENT_CARD_NUMBER -> G16; BANK_ACCOUNT_NUMBER -> G17 (BANK_ACCOUNT_PERSONAL); FINANCIAL_INFO -> G18 (PERSONAL_FINANCIAL_FACT); PASSWORD_CREDENTIAL -> G19; HEALTH_MEDICAL_INFO -> G21; ORGANIZATION_PERSON_LINKED -> G29; OTHER -> G41. G02, G03 and G04 are FULL_NAME under different MECHANISMS, not different concepts, and their definitions say so.\nMerged into a neutral row because the label lexicon emits one key and the geometric target is one region (9): PHONE, EMAIL, USERNAME_HANDLE -> G05 CONTACT_CHANNEL; PASSPORT_NUMBER, DRIVERS_LICENSE, TAX_ID -> G13 GOVERNMENT_ID (jurisdiction-neutral: Aadhaar, SSN, NINO, NRIC, PAN are EXAMPLES routed in, never categories); IP_ADDRESS, DEVICE_IDENTIFIER, VEHICLE_REGISTRATION -> G20.\nAbsorbed as the same kind of claim (2): NATIONALITY and IMMIGRATION_STATUS -> G10 SENSITIVE_DEMOGRAPHIC.\nRouted in as examples (3): INSURANCE_ID and STUDENT_ID -> G14; FINANCIAL_ACCOUNT_INFO -> G17.\nRenamed for the visual arm (1): BIOMETRIC_ID -> G22 SIGNATURE_AND_BIOMETRIC_MARK, which also carries the signature, a thing audio has no word for.\nDECLARED DIVERGENCE FROM AUDIO (1): LEGAL_CASE_ID is KEPT at G34. A docket number indexes a case, not a person; it is published in the court's own cause list and is the only handle by which a filing can be cited. Written into the row rather than left for a reader to discover.\n\nDOCUMENT-ONLY ADDITIONS. Audio scopes visual PII out entirely (\"Out of scope: visual PII\"), so the document arm must add what audio never needed: G04 unlabelled identity block, G07 GEO_COARSE (audio excludes the coarse components outright rather than generalising them), G12 OCCUPATION_AND_EMPLOYER (in speech a job is context, on a form it is a labelled field), G23 face, G24 machine-readable code, G25 sticker / burned-in / watermark identity, G26 container metadata, the G27+G39 zoned ink pair, G28 in-cell values, and the eleven KEEP rows G30-G38 and G40, which keep a document readable and have no audio analogue because speech has no page furniture.\n\nDIVERGENCES FROM THE INSURANCE PACK, ALL DELIBERATE AND ALL WRITTEN INTO THE ROW: (1) G21 clinical content is REDACTED here, not KEPT -- the pack's one deliberate divergence, mirroring audio's strict profile, where insurance keeps it as the adjudicator's working data; (2) G08 DOB is GENERALIZED to the year, where insurance keeps it exact under the owner override of 2026-09-23; (3) G30 issuer identity is KEPT, where insurance de-identifies providers under a specific owner rule; (4) G31 organisation registration codes are KEPT rather than masked, because MASK_PARTIAL currently renders as full destruction.\n\nBUILD NOTE, NOT OPTIONAL: taxonomies/base.py's self_test asserts g.action_for([\"sem:clinical\"]) == \"KEEP\" for this pack, with the comment \"clinical content INVERTS to REDACT under the fallback pack\". That assertion must be flipped to REDACT with a comment naming the divergence, and the anti-inversion guard rewritten as a per-pack expectation table (generic: sem:clinical -> REDACT; insurance: sem:clinical -> KEEP), so the guard still catches a real inversion instead of being deleted. The pack cannot land without this change.",
  "residual_limits": [
@@ -163,8 +166,8 @@
   {
    "id": "G08",
    "name": "DATE_OF_BIRTH",
-   "definition": "IN: a date printed against a birth-date label, coarsened to its year. OUT, explicitly: every other date on the page -- issue, expiry, admission, discharge, invoice, transaction, hearing, filing, joining, examination, sail, drawing-revision, print (G33 KEEP); an age (G09); a date inside a barcode or MRZ (G24); 'Place of Birth', which is geography.",
-   "action": "GENERALIZE",
+   "definition": "IN: the stated date of birth of any person, wherever it appears — removed entirely, not coarsened to a year. OUT: dates of an event, service or transaction (G33).",
+   "action": "REDACT",
    "enforcement": "label_anchored",
    "semantic_keys": "dob",
    "examples": "DOB; Date of Birth; D.O.B.; Birth Date; a boxed DD/MM/YYYY grid under a birth-date caption",
@@ -173,8 +176,8 @@
   {
    "id": "G09",
    "name": "AGE_AND_SEX",
-   "definition": "IN: a stated age and the sex/gender and relationship-to-subject markers that travel with it in one field group. Age is banded (under 2 exact in months or days, then 5-year bands to 89, 90+ collapsed); sex is kept verbatim ONLY when the value is in the closed binary set; relationship is generalised to a broad class. OUT: durations and intervals ('3-4 months', 'Aged 30-60 days' on a receivables report); grade levels; equipment age on an asset register; a bare unattached number.",
-   "action": "GENERALIZE",
+   "definition": "IN: age, sex/gender and relationship to another named person (self, father, mother, spouse), wherever they appear — removed entirely, not banded.",
+   "action": "REDACT",
    "enforcement": "label_anchored",
    "semantic_keys": "age_sex",
    "examples": "Age; Age/Sex; '34/M'; 'Age 34 Yrs, Male, S/o'",
@@ -396,12 +399,13 @@
   {
    "id": "G30",
    "name": "ISSUING_ORGANISATION",
-   "definition": "IN, untouched: the identity of the organisation issuing or receiving the document in its institutional capacity -- name, legal entity, logo, wordmark, seal, letterhead and footer bands, office or branch postal address, switchboard and helpline numbers, support email, website and bare domain, published social handles, and its printed boilerplate. OUT: an organisation named as the value of a person-scoped field (G29); a natural person's name printed inside the letterhead (G01).",
-   "action": "KEEP",
+   "definition": "IN: the identity of the organisation issuing or receiving the document in its institutional capacity -- name, legal entity, logo, wordmark, seal, letterhead and footer bands, office or branch postal address, switchboard and helpline numbers, support email, website and bare domain, published social handles, and its printed boilerplate. OUT: an organisation named as the value of a person-scoped field (G29); a natural person's name printed inside the letterhead (G01).",
+   "action": "REDACT",
    "enforcement": "label_anchored",
    "semantic_keys": "org_name, org_issuer",
    "examples": "a bank masthead on a statement; a hospital name on a bill letterhead; a support email in a footer; a court seal on a filing",
-   "note": "DECLARED DIVERGENCE FROM THE INSURANCE PACK, where provider identity is redacted across all carriers under a specific owner rule about de-identifying providers. A generic pack has no such rule, and removing the issuer removes the answer to 'who produced this?', which is the first question anyone asks of a delivered document. ENFORCED AS A VETO, not a preference: a proposed destructive box overlapping a resolved issuer band is rejected and logged. Letterhead bands are large display type and among the few things that read cleanly at 109 dpi -- the same readability that makes them easy to destroy by accident."
+   "note": "Owner decision 2026-09-24: changed from KEEP to REDACT. The insurer and TPA identity was previously kept on the grounds that it is institutional rather than personal, and that a reader needs to know where a document came from. Reviewing real output, the owner ruled that it is to be hidden. DECLARED DIVERGENCE FROM THE INSURANCE PACK, where provider identity is redacted across all carriers under a specific owner rule about de-identifying providers. A generic pack has no such rule, and removing the issuer removes the answer to 'who produced this?'",
+   "propagate": true
   },
   {
    "id": "G31",
@@ -512,6 +516,16 @@
    "semantic_keys": "unresolved",
    "examples": "a Devanagari ration card; a 92 dpi fax where only the letterhead reads; a validator hit with no row to route it to",
    "note": "Carries audio's OTHER, including audio's requirement of a note and its rule that a repeated pattern is promoted to a versioned category. FIX ADOPTED (destruction, HIGH): THE VALUE TIER IS DEFINED ON POSITIVE EVIDENCE ONLY. The previous trigger -- 'OCR below the token or confidence floor in an identity-labelled region' -- is self-referential on the worst 42% of the corpus: if OCR is below the floor, the label that would mark the region as identity-labelled did not read either. FIX ADOPTED (destruction, MEDIUM): THE PAGE TIER IS IMPLEMENTED AND METERED, and it does NOT black a page body. No code path today emits a page finding from token count, confidence, dpi or script; this pack requires one, computing all four per page and, when the gate trips, QUARANTINING the page -- withheld from the delivered bundle with a named reason and a review flag -- rather than delivering it black. A deployment may configure deliver-fully-redacted instead; the default is quarantine, because a black page and a withheld page protect equally and only one of them is honest about why. THE SIZE OF THIS ROW PER RUN IS THE PACK'S REAL COVERAGE STATEMENT."
+  },
+  {
+   "id": "G42",
+   "name": "NON_LATIN_IDENTITY_TEXT",
+   "definition": "IN: a run of text in a script other than Latin, carried in the page's own text layer, on a page that also carries identity content. An Indian ID document prints the holder's name, parentage and address twice -- once in English and once in the state language -- and the second copy is the same personal data in different glyphs. OUT: nothing here is script-specific; a non-Latin run on a page with no identity content is still covered, because the cost of redacting a printed field label or a boilerplate line is an order of magnitude below the cost of leaving a name standing.",
+   "action": "REDACT",
+   "enforcement": "objective_script",
+   "semantic_keys": "non_latin_script",
+   "examples": "ಮೀನಾ ರಾವ್ beside 'Meena Rao'; प्रिया वर्मा beside 'Priya Verma'; கவிதா beside 'Kavitha'; a Kannada address block beside its English twin",
+   "note": "Owner decision 2026-09-24. Measured on the 24-bundle corpus: 201 word tokens over 11 pages in 7 bundles, carrying patient names, parents' and spouses' names, full street addresses, gender and DOB. Deliberately NOT model-judged: the tokens were already in the prompt on every one of those pages and both detectors ignored them, so a prompt line would not be a mechanism. This row covers the BORN-DIGITAL half only. A scanned page in the same script never reaches the text layer at all, because Apple Vision supports no Indic script -- that is a separate gap."
   }
  ],
  "lexicon_note": "Label vocabulary OWNED BY THIS PACK -- credentials, device and vehicle identifiers, sensitive demographics, minors, personal financial facts, document serials and non-Indian national IDs. Compiled only when this pack is selected; it never reaches insurance_medical.",

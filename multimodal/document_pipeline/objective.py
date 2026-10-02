@@ -18,9 +18,12 @@ import gzip
 import json
 import re
 import subprocess
+import time
 import sys
 import zlib
 from pathlib import Path
+
+import vision_exec
 
 HELPER = Path(__file__).resolve().parent / "vision_helper.swift"
 QR_MIN_DPI = 300        # measured floor for dense Aadhaar QR from a render
@@ -177,6 +180,62 @@ PATTERNS = {
 SHAPE = {"CARD": card_shape_ok}
 
 
+# Unicode blocks for the Indic scripts this corpus actually carries, plus the
+# ranges an Indian bilingual document can reach. A born-digital page puts this
+# text in the PDF's own text layer, so PyMuPDF extracts it with exact boxes and
+# no OCR is involved -- Apple Vision's inability to read these scripts never
+# enters into it. Measured on the 24-bundle corpus: 201 such word tokens over
+# 11 pages in 7 bundles, carrying patient names (printed twice, as Aadhaar
+# does), parents' and spouses' names, full street addresses, gender and DOB
+# labels. Nothing looked at them.
+SCRIPT_BLOCKS = (
+    (0x0900, 0x097F),   # Devanagari  (Hindi, Marathi, Nepali)
+    (0x0980, 0x09FF),   # Bengali / Assamese
+    (0x0A00, 0x0A7F),   # Gurmukhi    (Punjabi)
+    (0x0A80, 0x0AFF),   # Gujarati
+    (0x0B00, 0x0B7F),   # Odia
+    (0x0B80, 0x0BFF),   # Tamil
+    (0x0C00, 0x0C7F),   # Telugu
+    (0x0C80, 0x0CFF),   # Kannada
+    (0x0D00, 0x0D7F),   # Malayalam
+    (0x0D80, 0x0DFF),   # Sinhala
+    (0x0600, 0x06FF),   # Arabic      (Urdu)
+)
+
+
+def is_non_latin(text):
+    """True if the token carries at least one codepoint in a tracked script."""
+    return any(any(lo <= ord(ch) <= hi for lo, hi in SCRIPT_BLOCKS)
+               for ch in str(text))
+
+
+def scan_script(words):
+    """Maximal runs of adjacent non-Latin tokens -> word-INDEX ranges.
+
+    Returns index ranges only, never coordinates: the caller resolves them
+    through geometry.run_boxes exactly as it resolves a detector's span, so
+    this adds no new way for a box to come into being.
+
+    Runs are built over ADJACENCY IN THE STREAM, which on a bilingual ID page
+    groups a name with the script's own label beside it. That is intended:
+    the English twin of the same field is already being redacted, so leaving
+    the other half of a two-column bilingual line standing is the exact
+    inconsistency this pass exists to remove.
+    """
+    out, run = [], []
+    for idx, text, _rect in words:
+        if is_non_latin(text):
+            run.append(idx)
+        elif run:
+            out.append({"start_word": run[0], "end_word": run[-1],
+                        "category": "sem:non_latin_script"})
+            run = []
+    if run:
+        out.append({"start_word": run[0], "end_word": run[-1],
+                    "category": "sem:non_latin_script"})
+    return out
+
+
 def scan_text(text):
     """-> list of {kind, value, category, checksum_ok, span}. `checksum_ok`
     distinguishes proof from mere shape: a format match whose checksum fails is
@@ -198,15 +257,56 @@ def scan_text(text):
 
 # ------------------------------------------------------------ apple vision
 
+def _swift_json(argv, timeout, tries=3):
+    """Run the Vision helper and parse its JSON, retrying a failed spawn.
+
+    `swift` compiles the helper on every invocation, so a spawn under load
+    can fail or be killed and write nothing. Treating that as "this image
+    contains no faces and no barcodes" is how the same page came back with
+    3 QR codes on one run and 1 on the next. Contention is transient, so
+    retry it; only a repeated failure is a real answer.
+    """
+    last = "no attempt"
+    for attempt in range(tries):
+        try:
+            r = subprocess.run(argv, capture_output=True, text=True,
+                               timeout=timeout)
+            if r.returncode != 0:
+                last = f"swift exit {r.returncode}: {(r.stderr or '')[-160:]}"
+            elif not r.stdout.strip():
+                last = "swift wrote nothing to stdout"
+            else:
+                return json.loads(r.stdout), None
+        except Exception as exc:
+            last = f"{type(exc).__name__}: {str(exc)[:160]}"
+        if attempt < tries - 1:
+            time.sleep(1.5 * (attempt + 1))
+    return None, last
+
+
 def vision(image_path, mode="all"):
     """Barcodes / faces / Latin text with normalised top-left boxes."""
-    try:
-        r = subprocess.run(["swift", str(HELPER), str(image_path), mode],
-                           capture_output=True, text=True, timeout=300)
-        return json.loads(r.stdout) if r.stdout.strip() else {
-            "error": r.stderr[-200:]}
-    except Exception as exc:
-        return {"error": str(exc)[:200]}
+    got, err = _swift_json(
+        vision_exec.argv([str(image_path), mode]), 300)
+    return got if got is not None else {"error": err}
+
+
+def vision_batch(image_paths, mode="all"):
+    """One `swift` spawn for many images -> [result, ...] in input order.
+
+    The spawn dominates: ~0.37s of compile-and-launch against milliseconds of
+    detection. Tiling a page for faces means 16 images, so batching turns one
+    page from 6s into well under one.
+    """
+    paths = [str(p) for p in image_paths]
+    if not paths:
+        return []
+    raw, err = _swift_json(
+        vision_exec.argv(["--batch", mode, *paths]), 600)
+    if raw is None:
+        return [{"error": err} for _ in paths]
+    by = {g.get("path"): g for g in raw.get("batch", [])}
+    return [by.get(p, {"error": "missing from batch"}) for p in paths]
 
 
 def decode_aadhaar_qr(payload):
@@ -241,6 +341,88 @@ def decode_aadhaar_qr(payload):
     }
 
 
+# Vision's face detector has a MINIMUM FACE SIZE RELATIVE TO THE IMAGE, and a
+# passport photo on an A4 scan is far below it: measured on a PAN card page,
+# VNDetectFaceRectanglesRequest returns 0 faces on the full page at 150, 300
+# and 600 dpi, and 1 face on a crop of the same photo. So face detection had
+# never fired on ANY page of ANY document -- 0 faces across a 29-page bundle
+# whose ID pages plainly carry photographs.
+#
+# Tiling fixes it: the face is a large fraction of a tile even though it is a
+# speck on the page. Tiles overlap so a photo straddling a boundary is still
+# whole in at least one of them.
+FACE_TILES = 4               # per axis; 3x3 misses the small Aadhaar card
+                             # portrait, 4x4 catches every ID photo in the
+                             # corpus and costs ~1.4s/page batched
+FACE_TILE_OVERLAP = 0.25     # fraction of a tile
+FACE_MIN_CONF = 0.25
+# FACES AND QR WANT DIFFERENT RESOLUTIONS. The page render is 300 dpi because
+# that is the measured floor for decoding a dense QR, but face detection is
+# WORSE there: measured on this corpus, 150 and 200 dpi find the portrait on
+# all three ID pages and 300 dpi misses the small Aadhaar card one. Tiling is
+# rendered separately at its own dpi rather than reusing the QR render.
+FACE_DPI = 200
+
+
+def faces_tiled(page, dpi=200, workdir=None, tiles=FACE_TILES):
+    """Face boxes in PAGE POINTS, found by scanning overlapping tiles.
+
+    -> [{"box": {x0,y0,x1,y1 as PAGE fractions}, "confidence": float}]
+    """
+    import fitz                      # module-level import is inside callers
+    workdir = Path(workdir or ".")
+    workdir.mkdir(parents=True, exist_ok=True)
+    W, H = page.rect.width, page.rect.height
+    step_x, step_y = W / tiles, H / tiles
+    ov_x, ov_y = step_x * FACE_TILE_OVERLAP, step_y * FACE_TILE_OVERLAP
+    out = []
+    rendered = []                       # (path, clip)
+    for ix in range(tiles):
+        for iy in range(tiles):
+            clip = fitz.Rect(max(0, ix * step_x - ov_x),
+                             max(0, iy * step_y - ov_y),
+                             min(W, (ix + 1) * step_x + ov_x),
+                             min(H, (iy + 1) * step_y + ov_y))
+            # page-scoped: pages are tiled CONCURRENTLY, and a bare
+            # _face_{ix}{iy}.png has one page overwrite another's tiles
+            f = workdir / f"_face_p{page.number}_{ix}{iy}.png"
+            try:
+                page.get_pixmap(dpi=dpi, clip=clip).save(str(f))
+            except Exception:
+                continue
+            rendered.append((f, clip))
+    results = vision_batch([f for f, _ in rendered], "faces")
+    for (f, clip), res in zip(rendered, results):
+        f.unlink(missing_ok=True)
+        if True:
+            for fc in (res.get("faces") or []):
+                b = fc.get("box")
+                if not isinstance(b, dict) or \
+                        float(fc.get("confidence", 0)) < FACE_MIN_CONF:
+                    continue
+                # Vision gives TILE-normalised fractions; the consumer wants
+                # PAGE-normalised ones, because it multiplies by page width
+                # and height. Getting this wrong is silent: the box lands
+                # somewhere plausible and redacts the wrong part of the page.
+                out.append({"box": {
+                    "x0": (clip.x0 + b["x0"] * clip.width) / W,
+                    "y0": (clip.y0 + b["y0"] * clip.height) / H,
+                    "x1": (clip.x0 + b["x1"] * clip.width) / W,
+                    "y1": (clip.y0 + b["y1"] * clip.height) / H},
+                    "confidence": float(fc.get("confidence", 0))})
+    # one face shows up in several overlapping tiles; keep the best per cluster
+    kept = []
+    for f in sorted(out, key=lambda z: -z["confidence"]):
+        b = f["box"]
+        r = fitz.Rect(b["x0"] * W, b["y0"] * H, b["x1"] * W, b["y1"] * H)
+        if any(not (r & fitz.Rect(k["box"]["x0"] * W, k["box"]["y0"] * H,
+                                  k["box"]["x1"] * W, k["box"]["y1"] * H)
+                    ).is_empty for k in kept):
+            continue
+        kept.append(f)
+    return kept
+
+
 def page_qr_and_faces(doc, page_no, dpi=QR_MIN_DPI, workdir=None):
     """Objective visual signals for one page.
 
@@ -273,6 +455,53 @@ def page_qr_and_faces(doc, page_no, dpi=QR_MIN_DPI, workdir=None):
     if found["qr"]:
         found["source"] = "native_xobject"
 
+    # NATIVE-RESOLUTION BARCODES in any large embedded scan, not just square
+    # QR XObjects. A patient barcode sticker on a 72 dpi page scan decodes at
+    # the scan's own resolution (Code128, conf 0.81-0.86) and NOT at the 300
+    # dpi render below: upsampling 4x blurs the bars past decoding. It
+    # carried the patient's MPI -- the same number the text pass redacts
+    # beside it. One batched Vision call covers every such image on the page.
+    cand = []
+    for im in page.get_images(full=True):
+        xref, w, h = im[0], im[2], im[3]
+        if w == h or min(w, h) < 300:
+            continue                               # square QRs handled above
+        try:
+            rects = page.get_image_rects(xref)
+        except Exception:
+            rects = []
+        if not rects:
+            continue
+        pth = workdir / f"_bc_{page_no}_{xref}.png"
+        try:
+            fitz.Pixmap(doc, xref).save(str(pth))
+        except Exception:
+            continue
+        cand.append((xref, rects, pth))
+    if cand:
+        W, H = page.rect.width, page.rect.height
+        try:
+            results = vision_batch([str(c[2]) for c in cand], "barcodes")
+        except Exception:
+            results = [{} for _ in cand]
+        for (xref, rects, pth), res in zip(cand, results):
+            for b in (res or {}).get("barcodes", []):
+                bx = b.get("box") or {}
+                if not all(k in bx for k in ("x0", "y0", "x1", "y1")):
+                    continue
+                for R in rects:
+                    box = {"x0": (R.x0 + bx["x0"] * R.width) / W,
+                           "y0": (R.y0 + bx["y0"] * R.height) / H,
+                           "x1": (R.x0 + bx["x1"] * R.width) / W,
+                           "y1": (R.y0 + bx["y1"] * R.height) / H}
+                    rec = dict(b, box=box)
+                    rec.pop("native_xref", None)
+                    rec["aadhaar"] = decode_aadhaar_qr(b.get("payload", ""))
+                    found["qr"].append(rec)
+            pth.unlink(missing_ok=True)
+        if found["qr"] and not found["source"]:
+            found["source"] = "native_raster"
+
     render = workdir / f"_pg_{page_no}.png"
     page.get_pixmap(dpi=dpi).save(str(render))
     res = vision(render, "all")
@@ -282,7 +511,20 @@ def page_qr_and_faces(doc, page_no, dpi=QR_MIN_DPI, workdir=None):
             found["qr"].append(b)
         if found["qr"]:
             found["source"] = f"page_render_{dpi}dpi"
+    # whole-page detection is kept (it costs nothing extra, the render exists)
+    # but TILED detection is what actually finds ID photographs
     found["faces"] = res.get("faces", [])
+    try:
+        tiled = faces_tiled(page, dpi=FACE_DPI, workdir=workdir)
+    except Exception as exc:
+        # loud: a silent [] here is indistinguishable from "no faces", which
+        # is exactly how a KeyError on the box format hid this for a whole run
+        print(f"  FACE TILING FAILED on page {page_no + 1}: "
+              f"{type(exc).__name__}: {str(exc)[:80]}", flush=True)
+        tiled = []
+    if tiled:
+        found["faces"] = tiled
+        found["face_source"] = "tiled"
     found["latin_text_regions"] = len(res.get("text", []))
     render.unlink(missing_ok=True)
     return found
@@ -401,7 +643,8 @@ def locate_qr_by_pattern(page, dpi=200, min_hits=4, min_pt=28.0):
         if 0 <= yi < H and 0 <= xi < W:
             pts[ax][yi, xi] = True
     both = pts[0] | pts[1]
-    grp = ndimage.binary_dilation(both, iterations=max(4, int(dpi / 25)))
+    it = max(4, int(dpi / 25))
+    grp = ndimage.binary_dilation(both, iterations=it)
     lab, n = ndimage.label(grp)
     out, s = [], 72.0 / dpi
     for sl in ndimage.find_objects(lab):
@@ -426,7 +669,15 @@ def locate_qr_by_pattern(page, dpi=200, min_hits=4, min_pt=28.0):
         # with std 88-89, foetal ultrasound speckle 0.00-0.12 with std 22-40.
         # The gap is wide, so the thresholds sit in the middle of it rather
         # than snug against the QR side.
-        patch = a[ys, xs]
+        # Measure bitonality on the SYMBOL, not on the dilated cluster box:
+        # the box carries a halo of `it` px of whatever surrounds the code.
+        # On a PAN card that halo is light-blue card background, and it pulled
+        # a dense version-22 QR's score to 0.33 against a 0.35 gate, so the
+        # card's QR -- which decodes to the holder's identity -- was left
+        # uncovered in both packs. The output box is still the full slice.
+        core = (slice(min(ys.start + it, ys.stop - 1), max(ys.stop - it, ys.start + 1)),
+                slice(min(xs.start + it, xs.stop - 1), max(xs.stop - it, xs.start + 1)))
+        patch = a[core]
         extreme = float(((patch < 60) | (patch > 200)).mean())
         if extreme < 0.35 or float(patch.std()) < 60:
             continue

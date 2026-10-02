@@ -1,0 +1,40 @@
+DOCUMENT-PAGE SUPPLEMENT — this input is ONE PAGE OF A DOCUMENT, not a spoken
+transcript. The taxonomy, the category codes and GLOBAL RULES 1-11 above apply
+unchanged. The following replaces the audio-specific framing.
+
+INPUT FORM. You receive the page's words as numbered lines:
+    word_index <TAB> word
+Word order follows the page's reading order as extracted from the PDF. There
+are no speakers. Return spans as inclusive word-index ranges; geometry is
+resolved from the index, so never invent coordinates.
+
+WHAT CHANGES FOR DOCUMENTS
+- LABEL vs VALUE. Forms are label/value pairs ("Name: Priya Sharma",
+  "IFSC Code  HDFC0000523"). Mark the VALUE ONLY. A bare label with no value
+  beside it is not a finding (global rule 1).
+- REPETITION IS THE NORM, AND EACH ONE COUNTS. A claimant's name may appear in
+  the header of every page, a patient ID in a footer, an account number on
+  every statement line. Global rule 4 applies with full force: every
+  occurrence is its own span. A value redacted on page 1 and missed on page 40
+  is still a leak.
+- TABLES. A column of values under a personal-data header (account numbers,
+  dates of birth, member IDs) is a sequence of separate findings, one per cell
+  that carries a value.
+- FRAGMENTED VALUES. Extraction can split a value across word indices
+  ("HDFC", "0000523") or join unrelated ones. Span the full range that
+  reconstructs the value, and no more.
+- BOXED CHARACTER FIELDS. Indian claim forms are often filled one character
+  per printed box, so a value may arrive as many single-character words. Span
+  the whole run.
+- ORGANISATIONS. A hospital, insurer, TPA, bank or employer named in
+  connection with this person's own case is ORGANIZATION_PERSON_LINKED
+  (global rule for person-linked orgs). A pre-printed letterhead or a generic
+  regulator mention with no person link is NOT.
+- WHAT IS NOT IN THIS TEXT. Signatures, photographs, stamps, QR codes and
+  handwriting are handled by separate detectors. Do not guess at them, and do
+  not report a finding you cannot point at in the numbered words.
+
+CONFIDENCE. Scanned pages in this corpus can be low resolution, so extracted
+text may be garbled. If you can see that a value is present but cannot read it
+cleanly, still mark the span and set confidence "low" (global rule 10) —
+a redaction does not need the value to be transcribed correctly, only located.

@@ -22,12 +22,26 @@ THE FIVE STANDING RULES
    without the clinical record, whereas a generic document gives no such
    justification for keeping it.
 
-3. An ORGANISATION is not a person. The issuing body's name, letterhead,
-   registered address, front-desk phone, role mailbox (info@, support@,
-   billing@), registration numbers and logo all STAY — a reader must be able to
-   tell where a document came from. An organisation becomes personal only when
-   it is a one-person entity, or when naming it identifies an individual (a
-   sole trader, a named practice, "X's employer" beside X's name).
+2b. DATE OF BIRTH, AGE AND SEX ARE REMOVED. Flag every date of birth
+   (labelled "DOB", "Date of Birth", "D.O.B.", "Birth Date", or a date printed
+   against a birth field), every stated age, and every sex/gender value ("M",
+   "F", "Male", "Female"), on EVERY page they appear on — including inside an
+   ID card, beside a name, or printed with no label at all. A date of an
+   event, service or transaction is NOT a date of birth and stays.
+
+3. THE ISSUING ORGANISATION IS FLAGGED. The body that issued or processed
+   this document — insurer, third-party administrator, bank, hospital, lab,
+   employer, government department — is identifying, because naming it plus a
+   date narrows the person far more than either alone. Flag its name wherever
+   it appears: letterhead, footer, stamp, logo caption, covering letter,
+   registered address, role mailbox (info@, support@, billing@), web domain
+   and registration numbers (GSTIN, CIN, licence no.). Flag the name even when
+   it is only part of a longer legal string such as
+   "<NAME> INSURANCE TPA PRIVATE LIMITED".
+
+   This is not the same as every company mentioned in passing. A firm named
+   only as the subject of the content — a manufacturer in a product list, a
+   employer in an unrelated news clipping — is not the issuer and stays.
 
 4. Banking and financial values follow the per-value test: does this string
    index a PERSON, or an INSTITUTION? Account number, card number, customer ID,
@@ -78,6 +92,12 @@ a person named in running prose with no label in front of it, and sensitive
 personal content phrased in a way no pattern matches. Prefer precision on that
 remainder over restating what a label has already caught.
 
-If the page is a photo-ID or KYC artefact (passport, driving licence, ID card),
-say so rather than flagging its fields one by one — the whole artefact is
-handled as a unit.
+ID AND KYC PAGES ARE THE MOST IMPORTANT PAGES IN THE DOCUMENT, NOT AN
+EXCEPTION. A passport page, Aadhaar letter, driving licence or voter card
+carries a person's number, name, parent's name, address, date of birth and
+photograph together on one page — flag EVERY one of them individually, by its
+own category, exactly as you would anywhere else.
+
+Do not assume something else handles the page as a unit. Nothing does: the
+ID_DOCUMENT_PAGE row exists only to stop a whole page being blacked out
+wholesale, and it protects none of the fields printed on it.

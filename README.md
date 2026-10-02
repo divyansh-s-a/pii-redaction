@@ -69,9 +69,10 @@ finder-pattern shape.
 
 Three opt-in flags, each the document counterpart of an audio one:
 
-    --second-detector gemini   union a second model family's findings with the
-                               primary's; fewer misses and less run-to-run
-                               variation on scans, at ~2x detection cost
+    --second-detector none     turn OFF the second model family (it is ON by
+                               default: one detector can silently return
+                               nothing on a scanned page, shipping it
+                               unredacted with a clean verify)
     --verify                   re-read the finished PDF and report anything
                                that survived; exits non-zero if it did
     --remediate                as --verify, then re-redact the survivors and

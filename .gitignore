@@ -68,3 +68,7 @@ transcript.json
 intervals.json
 rendered_intervals.json
 prepare.json
+
+# compiled Apple Vision helper; built from vision_helper.swift on first use
+multimodal/document_pipeline/vision_helper.bin
+multimodal/document_pipeline/vision_helper.bin.*

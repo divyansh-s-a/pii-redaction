@@ -21,13 +21,50 @@ func flip(_ r: CGRect) -> Box {           // Vision y-up -> image y-down
         x1: Double(r.maxX), y1: Double(1.0 - r.minY))
 }
 
+// BATCH MODE. `swift vision_helper.swift` pays a compile-and-spawn on every
+// invocation -- ~0.37s -- which dwarfs the detection itself. Face detection
+// has to TILE a page (Vision will not find a passport photo inside a full A4
+// scan), so a page costs 16 invocations and the 2043-page corpus cost 3.4
+// hours, nearly all of it process startup. Passing every tile in one call
+// makes it one spawn per page instead of sixteen.
+//
+//   swift vision_helper.swift <image> <mode>                  -> {...}
+//   swift vision_helper.swift --batch <mode> <img1> <img2>... -> {"batch":[...]}
+//
 let args = CommandLine.arguments
+
+func analyse(_ path: String, _ mode: String) -> [String: Any] {
+    guard let img = CIImage(contentsOf: URL(fileURLWithPath: path)) else {
+        return ["error": "cannot read image"]
+    }
+    let handler = VNImageRequestHandler(ciImage: img, options: [:])
+    return run(handler, mode)
+}
+
+if args.count >= 3, args[1] == "--batch" {
+    let mode = args[2]
+    var results: [[String: Any]] = []
+    for p in args.dropFirst(3) {
+        var r = analyse(p, mode)
+        r["path"] = p
+        results.append(r)
+    }
+    let data = try! JSONSerialization.data(withJSONObject: ["batch": results])
+    print(String(data: data, encoding: .utf8)!)
+    exit(0)
+}
+
 guard args.count >= 2, let img = CIImage(contentsOf: URL(fileURLWithPath: args[1])) else {
     print("{\"error\":\"cannot read image\"}"); exit(1)
 }
 let mode = args.count >= 3 ? args[2] : "all"
 let handler = VNImageRequestHandler(ciImage: img, options: [:])
+let single = run(handler, mode)
+let sdata = try! JSONSerialization.data(withJSONObject: single)
+print(String(data: sdata, encoding: .utf8)!)
+exit(0)
 
+func run(_ handler: VNImageRequestHandler, _ mode: String) -> [String: Any] {
 var out: [String: Any] = [:]
 let enc = JSONEncoder()
 func encodeBox(_ b: Box) -> [String: Double] {
@@ -64,10 +101,18 @@ if mode == "faces" || mode == "all" {
     }
 }
 
-if mode == "text" || mode == "all" {
+if mode == "text" || mode == "all" || mode == "text_upright" {
     let req = VNRecognizeTextRequest()
     req.recognitionLevel = .accurate
     req.usesLanguageCorrection = true
+    // "text_upright" pins revision 2, which never re-orients the image.
+    // Revision 3 decided that dark ultrasound printouts were rotated 180
+    // degrees and transcribed every glyph flipped (a 9-digit ID came back as
+    // letter look-alikes) while keeping the boxes in place. readers.py asks for this
+    // mode only when the tokens it got run right-to-left on the page.
+    if mode == "text_upright" {
+        req.revision = VNRecognizeTextRequestRevision2
+    }
     try? handler.perform([req])
     var words: [[String: Any]] = []
     for obs in (req.results ?? []) {
@@ -102,9 +147,24 @@ if mode == "text" || mode == "all" {
     out["text"] = words
 }
 
-if let data = try? JSONSerialization.data(withJSONObject: out),
-   let s = String(data: data, encoding: .utf8) {
-    print(s)
-} else {
-    print("{\"error\":\"serialisation failed\"}")
+// LANGUAGE-AGNOSTIC TEXT REGIONS. VNDetectTextRectangles finds WHERE text is
+// without trying to read it, so it reports Kannada, Devanagari and Tamil that
+// VNRecognizeText cannot transcribe at all -- Vision supports no Indic script.
+// Subtracting the regions the recogniser did account for leaves exactly the
+// text no reader in this pipeline has ever seen.
+if mode == "textregions" || mode == "all" {
+    let req = VNDetectTextRectanglesRequest()
+    req.reportCharacterBoxes = false
+    try? handler.perform([req])
+    var regions: [[String: Any]] = []
+    for obs in (req.results as? [VNTextObservation]) ?? [] {
+        let b = obs.boundingBox
+        regions.append(["x0": b.minX, "x1": b.maxX,
+                        "y0": 1 - b.maxY, "y1": 1 - b.minY,
+                        "confidence": Double(obs.confidence)])
+    }
+    out["textregions"] = regions
+}
+
+return out
 }

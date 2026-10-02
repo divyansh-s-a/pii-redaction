@@ -26,6 +26,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import common
 import judge_client
+import openai_direct
 import policy
 import objective
 import geometry
@@ -47,6 +48,17 @@ SUPPLEMENT = (Path(__file__).resolve().parent.parent / "prompts"
               / "pdf_detection_supplement_v1.txt")
 CHUNK = 1200          # words per request; a dense page is ~700
 
+# A chunk carrying real text whose detectors return NOTHING is far more often
+# a dropped response than a genuinely clean page. Page 2 of the reference
+# bundle (an Aadhaar letter, 77 OCR words) returns 12 findings every time it
+# is run alone, and returned 12, 1, 0 and 0 across four full-document runs -
+# with no exception raised, no error logged and no way to tell the empty
+# result from a successful one at the call site. Under load the call simply
+# comes back empty. The only defence is to ask again, and to say so loudly
+# when the answer does not change.
+EMPTY_RETRY_MIN_WORDS = 25
+EMPTY_RETRIES = 2
+
 
 def page_words(page):
     """-> [(index, text, fitz.Rect)] in extraction (reading) order."""
@@ -65,9 +77,9 @@ def _ask(detector, prompt, images=None):
     """One detection request, routed to the chosen family. Returns spans."""
     spec = DETECTORS[detector]
     if spec["family"] == "openai":
-        got = judge_client.judge_call(
-            prompt, _GPT_SPAN_SCHEMA, model=spec["model"],
-            log_engine="detector_gpt", images=images)
+        got = openai_direct.judge_or_direct(
+            judge_client.judge_call, prompt, _GPT_SPAN_SCHEMA,
+            spec["model"], images=images, log_engine="detector_gpt")
         return got.get("spans", [])
     parts = [{"text": prompt}]
     for im in (images or []):
@@ -97,6 +109,118 @@ _GPT_SPAN_SCHEMA = {
 
 
 
+def deterministic_findings(page, words, pack=None):
+    """The model-free part of detection: script runs and ID patterns.
+
+    Split out so it still runs when the MODEL fails. A page whose detection
+    call failed (a timeout, an exhausted API account) used to lose these as
+    well, because they sat after the model call inside detect_page: a claim
+    form then shipped with its PAN and account number readable, though a
+    regex that needs no model would have caught both.
+    """
+    findings = []
+    # NON-LATIN SCRIPT. An Indian ID page prints the holder's name and address
+    # twice, once in English and once in the state language. On a born-digital
+    # page both halves are in the text layer with exact boxes, and the English
+    # half is redacted while the other half stands -- not because a rule said
+    # to keep it, but because no mechanism ever looked for those codepoints and
+    # the detectors treat them as noise. Word indices in, run_boxes out: the
+    # same contract as a model span, so no new source of geometry.
+    for hit in objective.scan_script(words):
+        sel = [w for w in words
+               if hit["start_word"] <= w[0] <= hit["end_word"]]
+        if not sel:
+            continue
+        keep = [r for r in geometry.run_boxes(sel)
+                if not geometry.too_large([r.x0, r.y0, r.x1, r.y1], page.rect)]
+        if not keep:
+            continue
+        findings.append({
+            "start_word": hit["start_word"], "end_word": hit["end_word"],
+            "categories": [hit["category"]],
+            "text": " ".join(str(t) for _, t, _ in sel)[:120],
+            "bbox": [round(v, 2) for v in (keep[0].x0, keep[0].y0,
+                                           keep[0].x1, keep[0].y1)],
+            "all_boxes": [[round(v, 2) for v in (r.x0, r.y0, r.x1, r.y1)]
+                          for r in keep],
+            "n_boxes": len(keep), "n_words": len(sel),
+            "source": "objective_script", "locator": "word_index",
+            "action": (pack.action_for([hit["category"]]) if pack is not None
+                       else "REDACT"),
+            "reason": "non-Latin script run in the text layer",
+        })
+
+    # deterministic objective pass over the same text: catches what the model
+    # skipped and marks which values are checksum-PROVEN (evidence tier T0)
+    full = " ".join(t for _, t, _ in words)
+    for hit in objective.scan_text(full):
+        findings.append({
+            "categories": [hit["category"]], "text": hit["value"],
+            "bbox": None, "locator": "search_needed",
+            "checksum_ok": hit["checksum_ok"], "kind": hit["kind"],
+            "source": "objective_regex",
+            "action": (pack.action_for([hit["category"]]) if pack is not None
+                       else policy.action_for(
+                           [hit["category"]], False,
+                           common.CONFIG.get("profile", "strict"))),
+        })
+    return findings
+
+
+def _ask_union(detector, second, prompt, degraded):
+    """Primary spans, plus any second-family span the primary did not cover.
+
+    Union only: the second opinion can ADD but never remove, the same safe
+    direction the audio second listener used. Each returned item is
+    (span, source).
+    """
+    # ...AND THE FIRST MUST NOT BE ABLE TO SILENCE THE SECOND. With the
+    # primary's account out of credit, every page raised here, and the
+    # caller's failure path redacted it on fixed rules alone while the second
+    # detector -- working the whole time -- was never asked. A failing
+    # primary now leaves the page to the second family, recorded as single-
+    # detector coverage; only when both fail does the page lose its model.
+    try:
+        primary = _ask(detector, prompt)
+    except Exception as exc:
+        if not second:
+            raise
+        primary = None
+        degraded.append(f"PRIMARY {detector}: {type(exc).__name__}: "
+                        f"{str(exc)[:90]}")
+    spans = [(sp, detector) for sp in (primary or [])]
+    if not second:
+        return spans
+    covered = {(int(x["start_word"]), int(x["end_word"]))
+               for x, _ in spans
+               if str(x.get("start_word", "")).lstrip("-").isdigit()}
+    # THE SECOND OPINION MUST NOT BE ABLE TO DESTROY THE FIRST. Unwrapped, a
+    # failure here -- no key for the second family, an auth error, a rate
+    # limit, a malformed response -- propagates out of detect_page, and
+    # run_document's page-level handler turns that into `finds = []` for the
+    # WHOLE page. A page would then be redacted using no model findings at
+    # all, silently, because an OPTIONAL extra detector was unavailable.
+    # Since this detector is on by default, that would be the common failure,
+    # not a corner.
+    try:
+        extra = _ask(second, prompt)
+    except Exception as exc:
+        if primary is None:
+            raise                        # both families down: caller's fallback
+        extra = []
+        degraded.append(f"{second}: {type(exc).__name__}: {str(exc)[:90]}")
+    if primary is None:
+        return [(sp, f"{second}_primary_down") for sp in extra]
+    for sp in extra:
+        try:
+            key = (int(sp["start_word"]), int(sp["end_word"]))
+        except (KeyError, TypeError, ValueError):
+            continue
+        if not any(a <= key[1] and key[0] <= b for a, b in covered):
+            spans.append((sp, f"{second}_union_only"))
+    return spans
+
+
 def detect_page(page, model, detector="gpt", second=None, words=None,
                 pack=None):
     """-> list of findings with exact boxes. Empty list is a valid result.
@@ -122,36 +246,24 @@ def detect_page(page, model, detector="gpt", second=None, words=None,
     else:
         head = policy.DETECTION_POLICY + "\n\n" + SUPPLEMENT.read_text()
     degraded = []
+    empty = []
     for base in range(0, len(words), CHUNK):
         chunk = words[base:base + CHUNK]
         prompt = head + "\n\nPAGE WORDS:\n" + words_as_prompt(chunk)
-        spans = [(sp, detector) for sp in _ask(detector, prompt)]
-        if second:
-            covered = {(int(x["start_word"]), int(x["end_word"]))
-                       for x, _ in spans
-                       if str(x.get("start_word", "")).lstrip("-").isdigit()}
-            # THE SECOND OPINION MUST NOT BE ABLE TO DESTROY THE FIRST.
-            # Unwrapped, a failure here -- no key for the second family, an
-            # auth error, a rate limit, a malformed response -- propagates out
-            # of detect_page, and run_document's page-level handler turns that
-            # into `finds = []` for the WHOLE page. A page would then be
-            # redacted using no model findings at all, silently, because an
-            # OPTIONAL extra detector was unavailable. Since this detector is
-            # on by default, that would be the common failure, not a corner.
-            try:
-                extra = _ask(second, prompt)
-            except Exception as exc:
-                extra = []
-                degraded.append(f"{second}: {type(exc).__name__}: "
-                                f"{str(exc)[:90]}")
-            for sp in extra:
-                try:
-                    key = (int(sp["start_word"]), int(sp["end_word"]))
-                except (KeyError, TypeError, ValueError):
-                    continue
-                # union-only: keep it if no primary span already overlaps it
-                if not any(a <= key[1] and key[0] <= b for a, b in covered):
-                    spans.append((sp, f"{second}_union_only"))
+        spans = _ask_union(detector, second, prompt, degraded)
+        # Retry a suspicious empty. Cheap: on this corpus a page that really
+        # has nothing to find is rare, so this costs one extra call on the
+        # handful of genuinely clean chunks and rescues the ones that were
+        # silently dropped.
+        tries = 0
+        while (not spans and len(chunk) >= EMPTY_RETRY_MIN_WORDS
+               and tries < EMPTY_RETRIES):
+            tries += 1
+            print(f"    no spans over {len(chunk)} words -- re-asking "
+                  f"({tries}/{EMPTY_RETRIES})", flush=True)
+            spans = _ask_union(detector, second, prompt, degraded)
+        if not spans and len(chunk) >= EMPTY_RETRY_MIN_WORDS:
+            empty.append(len(chunk))
         for s, src in spans:
             try:
                 a, b = int(s["start_word"]), int(s["end_word"])
@@ -212,27 +324,32 @@ def detect_page(page, model, detector="gpt", second=None, words=None,
                 "locator": "word_index",
                 "reason": str(s.get("reason", ""))[:160],
             })
-    # deterministic objective pass over the same text: catches what the model
-    # skipped and marks which values are checksum-PROVEN (evidence tier T0)
-    full = " ".join(t for _, t, _ in words)
-    for hit in objective.scan_text(full):
+    findings.extend(deterministic_findings(page, words, pack))
+
+    if empty:
+        # The page had readable text and BOTH detectors returned nothing,
+        # three times running. That is the failure mode that produced the
+        # exposed ID pages: the page proceeds with visual findings only
+        # (faces, QR) and no model coverage at all, and without this marker
+        # the output looks identical to a page that was genuinely clean.
+        print(f"  NO MODEL COVERAGE on this page after {EMPTY_RETRIES} "
+              f"retries -- {sum(empty)} words went unexamined by any "
+              f"detector; visual findings only.", flush=True)
         findings.append({
-            "categories": [hit["category"]], "text": hit["value"],
-            "bbox": None, "locator": "search_needed",
-            "checksum_ok": hit["checksum_ok"], "kind": hit["kind"],
-            "source": "objective_regex",
-            "action": (pack.action_for([hit["category"]]) if pack is not None
-                       else policy.action_for(
-                           [hit["category"]], False,
-                           common.CONFIG.get("profile", "strict"))),
+            "categories": [], "text": "", "bbox": None, "action": "KEEP",
+            "source": "no_model_coverage", "locator": "page_marker",
+            "reason": f"chunks returning zero spans after retry: {empty}",
         })
     if degraded:
         # Loud on purpose. The justification for running two detectors is that
         # one alone is not repeatable on a degraded scan; if the second never
         # ran, the page carries single-detector exposure and nothing in the
         # output would otherwise say so.
-        print(f"  SECOND DETECTOR UNAVAILABLE on this page -- falling back to "
-              f"{detector} alone; union coverage NOT applied. "
+        down = (second if not degraded[0].startswith("PRIMARY")
+                else detector)
+        alone = detector if down == second else second
+        print(f"  {down.upper()} DETECTOR UNAVAILABLE on this page -- "
+              f"{alone} alone; union coverage NOT applied. "
               f"{degraded[0]}", flush=True)
         findings.append({
             "categories": [], "text": "", "bbox": None, "action": "KEEP",

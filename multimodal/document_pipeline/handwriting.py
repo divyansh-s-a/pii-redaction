@@ -25,8 +25,11 @@ import numpy as np
 import fitz
 from scipy import ndimage
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "pipeline"))
+# LAST insert wins position 0. This directory must beat the audio arm's
+# pipeline/, which has its own redact.py: in the wrong order a later plain
+# `import redact` resolved to the AUDIO redactor and crashed the suite.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 import geometry
 
 DPI = 110            # strokes are ~2px wide here; enough to connect, cheap to render
@@ -113,8 +116,68 @@ def ink_boxes(page, dpi=DPI, gap_mult=GAP_MULT):
     return out, stats
 
 
+def _first_table_rule(page, dpi=60, min_frac=0.60, thr=160):
+    """The top border of the first table in the upper half of the page, as a
+    line y = m*x + c in PDF points, or None.
+
+    A scanned sheet is rarely square to the scanner: the progress-notes table
+    on a 2338pt scan tilts ~2 degrees and has rounded corners, so no single
+    pixel row holds 60% of its border and a straight-row test finds nothing.
+    Short horizontal runs survive the tilt; joining them across a few rows
+    rebuilds the border as one component.
+
+    A long dark line alone is not a table: the shadow of the paper's top edge
+    is one too, and taking it as the band ceiling would un-band the whole
+    letterhead. A table's top border has column rules hanging from it, so a
+    candidate counts only when at least one vertical rule starts on it away
+    from its ends. The fitted line lets the caller compare each ink box with
+    the border's height at that box's x, not with its highest point.
+    -> (m, c) or None"""
+    import numpy as _np
+    from scipy import ndimage as _ndi
+    pm = page.get_pixmap(dpi=dpi, colorspace=fitz.csGRAY)
+    g = _np.frombuffer(pm.samples, _np.uint8).reshape(pm.h, pm.w)
+    dark = g < thr
+    seg = max(12, pm.w // 36)
+    horiz = _ndi.binary_opening(dark[: pm.h // 2], _np.ones((1, seg)))
+    joined = _ndi.binary_closing(horiz, _np.ones((5, seg)))
+    lab, _n = _ndi.label(joined)
+    cands = []
+    for i, sl in enumerate(_ndi.find_objects(lab)):
+        if sl is None:
+            continue
+        ys, xs = sl
+        span = xs.stop - xs.start
+        # long, and thin for its length (a line tilted <= ~4 degrees, not a
+        # block of text or a filled header bar)
+        if span >= min_frac * pm.w and ys.stop - ys.start <= max(8, 0.07 * span):
+            cands.append((ys.start, ys.stop, xs.start, xs.stop, i + 1))
+    if not cands:
+        return None
+    vseg = max(10, pm.h // 60)
+    vert = _ndi.binary_opening(dark, _np.ones((vseg, 1)))
+    vert = _ndi.binary_closing(vert, _np.ones((vseg, 3)))
+    vl, _vn = _ndi.label(vert)
+    vobjs = [o for o in _ndi.find_objects(vl) if o is not None]
+    sc = 72.0 / dpi
+    for y0, y1, x0, x1, idx in sorted(cands):
+        span = x1 - x0
+        hangs = any(y0 - 4 <= o[0].start <= y1 + 6
+                    and o[0].stop - o[0].start >= 0.04 * pm.h
+                    and x0 + 0.05 * span <= (o[1].start + o[1].stop) / 2
+                    <= x1 - 0.05 * span
+                    for o in vobjs)
+        if not hangs:
+            continue
+        yy, xx = _np.nonzero(lab[y0:y1, x0:x1] == idx)
+        m, c = _np.polyfit((xx + x0 + 0.5) * sc, (yy + y0) * sc, 1)
+        return float(m), float(c) + page.rect.y0
+    return None
+
+
 def regions(page, labels=None, dpi=DPI, gap_mult=GAP_MULT,
-            clinical_page=None, boxes=None, stats=None):
+            clinical_page=None, boxes=None, stats=None, words=None,
+            pack=None):
     """-> (findings, stats). Each finding is a region in PDF points.
 
     ZONING, not reading. The taxonomy scopes handwritten-ink redaction to ink
@@ -147,6 +210,55 @@ def regions(page, labels=None, dpi=DPI, gap_mult=GAP_MULT,
         clinical_page = n_clin > n_id
     H = page.rect.height
     top_band, bot_band = page.rect.y0 + BAND_TOP * H, page.rect.y0 + BAND_BOTTOM * H
+    # THE LETTERHEAD BAND ENDS WHERE A TABLE BEGINS. The band is a fraction
+    # of page height, sized for an A4 sheet where 18% (~150pt) holds the
+    # letterhead and patient sticker. On a 2338pt-tall scan of progress notes
+    # it reached 421pt while the notes table began at 180pt, and it cut the
+    # first three rows of clinical notes -- a service date, "POD-2", "pt
+    # fine", the first medication lines -- as identity ink. A table's top
+    # border spans most of the page width; a sticker is a small box. So ink
+    # above the first full-width rule is still letterhead, and ink inside the
+    # table is table content, which the label and row rules already handle.
+    rule = None
+    if words is not None:
+        try:
+            rule = _first_table_rule(page)
+        except Exception:
+            rule = None
+    # ...but only where the band being given up holds no identity field. A
+    # patient-data form is ALSO a table that starts near the top, and its
+    # first cells are "Name of the Patient", "Age", "Sex" with the answers
+    # handwritten on the line BELOW each label, where no label region
+    # reaches; the band was the only thing cutting them. So any printed
+    # identity label between the border and the band's old edge keeps the
+    # band whole. Without the page's words that cannot be checked, and the
+    # band stays whole too. Only PRINTED words are asked: a label is printed,
+    # and the pen's own "Baby by mother side" in a notes column is not a
+    # "Mother" field.
+    if rule is not None:
+        import formfields
+        zone = []
+        for w in words:
+            r = fitz.Rect(w[2])
+            mid = (r.y0 + r.y1) / 2
+            if not (rule[0] * (r.x0 + r.x1) / 2 + rule[1] - 4 <= mid <= top_band):
+                continue
+            area = max(r.width * r.height, 1e-6)
+            if max(((r & b).width * (r & b).height for b in boxes
+                    if r.intersects(b)), default=0.0) >= 0.6 * area:
+                continue
+            zone.append(w)
+        ident = [L for L in formfields.find_labels(zone, pack, prose_veto=False)
+                 if pack is None or pack.action_for([L["category"]]) != "KEEP"]
+        if ident:
+            stats["band_ceiling_blocked_by"] = sorted({L["label"] for L in ident})
+            rule = None
+    stats["band_ceiling"] = None if rule is None else round(rule[1], 1)
+
+    def band_top_at(x):
+        if rule is None:
+            return top_band
+        return min(top_band, rule[0] * x + rule[1])
     out = []
     for b in boxes:
         cats, label, zone = None, None, None
@@ -176,7 +288,7 @@ def regions(page, labels=None, dpi=DPI, gap_mult=GAP_MULT,
                 cats, label, zone = best["categories"], best.get("label"), "row"
         if cats is None:
             mid = (b.y0 + b.y1) / 2
-            if mid <= top_band or mid >= bot_band:
+            if mid <= band_top_at((b.x0 + b.x1) / 2) or mid >= bot_band:
                 cats, zone = [IDENTITY_INK], "band"
             else:
                 # OWNER 2026-09-23: pen ink that no identity label claims is

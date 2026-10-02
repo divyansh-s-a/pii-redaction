@@ -43,7 +43,12 @@ def artifact_text(pdf):
         t = d[i].get_text().strip()
         if len(t) < 40:
             try:
-                r = readers.read_page(d, i, reader="vision_ocr")
+                # read_page is 1-BASED (it does doc[page_no - 1]); passing
+                # the 0-based loop index read the WRONG page -- and for i=0,
+                # doc[-1], the last page. Single-page corpora hid it because
+                # doc[-1] is doc[0] there; on a real multi-page bundle every
+                # probe was off by one.
+                r = readers.read_page(d, i + 1, reader="vision_ocr")
                 t = " ".join(str(w[1]) for w in r.get("words", []))
             except Exception:
                 t = ""

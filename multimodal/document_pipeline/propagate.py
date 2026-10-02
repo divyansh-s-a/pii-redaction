@@ -18,8 +18,11 @@ import re
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "pipeline"))
+# LAST insert wins position 0. This directory must beat the audio arm's
+# pipeline/, which has its own redact.py: in the wrong order a later plain
+# `import redact` resolved to the AUDIO redactor and crashed the suite.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import detect
 import geometry
@@ -42,6 +45,40 @@ INFORMATIVE = re.compile(r"\d|[A-Z].*[A-Z]|[@/#-]")
 COMMON = {"male", "female", "regular", "normal", "patient", "hospital",
           "india", "private", "limited", "general", "insurance", "claim",
           "total", "amount", "date", "name", "address", "report", "test"}
+
+
+def name_categories(pack):
+    """Categories a pack marks propagatable AND whose row is about a NAME."""
+    if pack is None:
+        return {"FULL_NAME"}
+    out = {"FULL_NAME"}
+    for c in pack.rows():
+        if c.get("propagate") and "NAME" in str(c.get("name", "")).upper():
+            out.add(c["id"])
+            out.add(c["name"])
+    return out
+
+
+def _name_like(text):
+    """A capitalised run of tokens, none of which is a dictionary word.
+
+    This is the test that lets a single-word personal name past the
+    INFORMATIVE gate without letting a common word through with it. The
+    system dictionary is the discriminator formfields already uses for OCR
+    repair: 'Zarinabanu', 'Gulnaaz', 'Meharunisa' and 'Khajapeer' are absent from
+    it, while 'Female', 'Regular', 'Hospital' and 'Surgeon' -- precisely the
+    words the gate exists to block -- are all present.
+    """
+    import formfields
+    toks = [t for t in re.split(r"[\s.,]+", str(text).strip()) if t]
+    if not toks:
+        return False
+    for t in toks:
+        if not t[:1].isupper():
+            return False
+        if t.lower() in formfields.SYSTEM_WORDS:
+            return False
+    return True
 
 
 def propagatable(pack):
@@ -73,6 +110,7 @@ def harvest(page_findings, min_len=MIN_LEN, readers_by_page=None, pack=None):
     """
     readers_by_page = readers_by_page or {}
     allowed = propagatable(pack)
+    name_cats = name_categories(pack)
     vals = {}
     for pno, finds in page_findings.items():
         reader = readers_by_page.get(pno, "text_layer")
@@ -87,8 +125,19 @@ def harvest(page_findings, min_len=MIN_LEN, readers_by_page=None, pack=None):
                 continue
             key = matching.normalize(
                 txt, "id" if matching.is_identifier(txt) else "name")
-            if key in COMMON or not INFORMATIVE.search(txt):
+            if key in COMMON:
                 continue
+            if not INFORMATIVE.search(txt):
+                # INFORMATIVE demands a digit, two capitals or a separator,
+                # which no single-word personal name has: 'Zarinabanu' carries
+                # one capital and nothing else, so it was never learned, while
+                # 'K R Hari Prasad,' cleared the gate on its capitals alone.
+                # The bundle-wide guarantee therefore did not cover the very
+                # values it exists for, and that name kept reappearing on any
+                # page the detector happened to miss. A name-shaped token in a
+                # NAME category is evidence enough on its own.
+                if not (set(cats) & name_cats and _name_like(txt)):
+                    continue
             # a checksum-verified id is worth propagating on its own; anything
             # else needs the detector not to have hedged
             if f.get("checksum_ok") is False and f.get("confidence") == "low":

@@ -243,24 +243,24 @@
   {
    "id": "T17",
    "name": "DATE_OF_BIRTH",
-   "definition": "IN: the stated date of birth of the patient, insured or nominee — coarsened to year only. EXCEPTION: for a patient under two years, DOB takes the bundle date offset instead of coarsening, so age-in-days arithmetic survives for neonatal and paediatric files. OUT: every other date (T21).",
+   "definition": "IN: the stated date of birth of the patient, insured or nominee, wherever it appears — removed entirely, not coarsened. OUT: every other date (T21), which is kept.",
    "corpus_examples": "dob; d) date of birth; neonate DOB on maternity bundles",
-   "action": "KEEP",
+   "action": "REDACT",
    "enforcement": "label_anchored",
    "owner_scope": "EXPLICIT",
    "confidence": "SETTLED",
-   "note": "Owner override 2026-09-23: dates kept exact. The facility+date join this would have blocked is broken on the provider side instead. (was GENERALIZE in the synthesis.)"
+   "note": "Owner override 2026-09-24: DOB is personal information and is redacted. This supersedes the 2026-09-23 keep-dates-exact decision FOR DOB ONLY; T21 service and episode dates remain KEEP."
   },
   {
    "id": "T18",
    "name": "AGE_SEX_RELATIONSHIP",
-   "definition": "IN: age (banded to 5 years for adults; exact in months/days under 2; 90+ collapsed to a single band), sex/gender (KEPT verbatim), relationship to the primary insured and policy-holder role marker (KEPT verbatim). OUT: DOB (T17); gestational age, age-at-onset and paediatric dosing weights, which are clinical (T37).",
+   "definition": "IN: age, sex/gender and relationship to the primary insured, wherever they appear — removed entirely, not banded. OUT: gestational age, age-at-onset and paediatric dosing weights, which are clinical (T37).",
    "corpus_examples": "age; age/sex; age/gender; gender; b) gender: male/female; c) age: years/months; relation; e) relationship to primary insured",
-   "action": "GENERALIZE",
+   "action": "REDACT",
    "enforcement": "label_anchored",
    "owner_scope": "EXTENSION",
    "confidence": "CONTESTED",
-   "note": "Sex and relationship are named as explicit KEEPs so no later reader sweeps them in as quasi-identifiers — they are low-entropy and structurally required to read a family-floater claim; age banding is arithmetic, not judgement."
+   "note": "Owner override 2026-09-24: age and sex are redacted, not generalised, and the rule is the same in the generic pack (G09). Supersedes the earlier keep-sex-verbatim reading."
   },
   {
    "id": "T19",
@@ -392,11 +392,11 @@
    "name": "INSURER_TPA_IDENTITY",
    "definition": "IN: the insurer's and third-party administrator's name, logo, registered and corporate addresses, helpline, licence number and their published standard form designations. OUT: the person-bound policy and member IDs printed on their forms (T06); the treating provider (T24-T28).",
    "corpus_examples": "medi assist insurance tpa private limited; tpa registered address; tpa corporate address; insurance_id_card issuer marks",
-   "action": "KEEP",
+   "action": "REDACT",
    "enforcement": "label_anchored",
    "owner_scope": "EXTENSION",
    "confidence": "SETTLED",
-   "note": "An explicit KEEP, checked BEFORE the provider band rule fires so a TPA letterhead is never mistaken for a treating-provider letterhead; the TPA is the claim's recipient, not a treating party, appears across most bundles and carries near-zero discriminating power — and it is most of the surviving genre signal."
+   "note": "Owner decision 2026-09-24: changed from KEEP to REDACT. The insurer and TPA identity was previously kept on the grounds that it is institutional rather than personal, and that a reader needs to know where a document came from. Reviewing real output, the owner ruled that it is to be hidden. An explicit KEEP, checked BEFORE the provider band rule fires so a TPA letterhead is never mistaken for a treating-provider letterhead; the TPA is the claim's recipient, not a treating party, appears across most bundles and carries near-zero discriminating pow"
   },
   {
    "id": "T31",
@@ -512,6 +512,16 @@
    "owner_scope": "EXTENSION",
    "confidence": "CONTESTED",
    "note": "Detector silence is treated as detector failure, never as page-is-clean — but the clinical-genre carve-out is mandatory, because a blanket whole-page fallback blacks out imaging films and CTG strips (which legitimately carry almost no text) and that is a direct violation of rule (4); the gate is deterministic page statistics with no model, and pages-fully-redacted must be reported per run so over-redaction stays visible."
+  },
+  {
+   "id": "T41",
+   "name": "NON_LATIN_IDENTITY_TEXT",
+   "definition": "IN: a run of text in a script other than Latin, carried in the page's own text layer. On this corpus that is the state-language half of a bilingual ID document -- the holder's name, parentage and address -- whose English twin is already redacted. OUT: nothing; clinical content in this corpus is printed in Latin script, so this row does not reach T37.",
+   "action": "REDACT",
+   "enforcement": "objective_script",
+   "semantic_keys": "non_latin_script",
+   "examples": "ನೂರ್ ಜಹಾನ್; सोनाली भंडारी; ஷபானா; a Kannada or Tamil address block on an Aadhaar page",
+   "note": "Owner decision 2026-09-24, and the same rule as the generic pack's G42 -- the two packs must not disagree about what counts as a person's identity. Kept REDACT rather than PSEUDONYMIZE because nothing is written back, so the two are identical in the output and REDACT states the intent honestly."
   }
  ],
  "signals": {
@@ -634,7 +644,10 @@
   "empty_field": "T38",
   "guidance_text": "T38",
   "handwriting_identity": "T22",
-  "unlabelled_identity_block": "T15"
+  "unlabelled_identity_block": "T15",
+  "non_latin_script": "T41",
+  "visual_mark": "T25",
+  "ink_identity": "T22"
  },
  "lexicon_note": "Label vocabulary OWNED BY THIS PACK. It is compiled only when this pack is selected, so adding a claim-form label here cannot change what any other pack sees. That isolation is the point: a label added for the generic pack once matched the tail of a charge-line description ('Amount Received From Patient  0.00') and took the figure beside it.",
  "lexicon": [
@@ -644,7 +657,7 @@
    false
   ],
   [
-   "^(uhid|mrn|ip|op|hospital|patient|reg|registration|admission)\\s*(no|number|id)$",
+   "^(uhid|mrn|ip|op|hospital|patient|reg|registration|admission)\\s*(no|number|id|#)$",
    "sem:patient_id",
    false
   ],
