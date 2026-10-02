@@ -1,8 +1,8 @@
 # AudioPII-QC — Audio PII Redaction Workflow (Deccan.ai pilot)
 
-> **Private repository.** Sample outputs are redacted recordings of real
-> calls; voices remain recognizable even with PII beeped. Do not mirror or
-> re-share outside the team.
+> **Private repository.** Code only: no data of any kind (audio, transcripts
+> or documents, redacted or not) is kept here. Do not mirror or re-share
+> outside the team.
 
 Removes spoken personal information (PII) from audio: every detected PII value
 is replaced by a 1 kHz beep in the audio and a `<CATEGORY REDACTED>` marker in
@@ -211,7 +211,6 @@ Edit, bump the version, re-run with `--force detect`.
     docs/       screenshots used by this README
     outputs/    deliverable documents (taxonomy, schema, reports, figures)
     results/    fresh-run evaluation reports (markdown + json)
-    sample/     one REDACTED example output (no original audio by policy)
 
 ## Privacy & security notes
 
