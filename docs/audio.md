@@ -4,9 +4,9 @@ Part of the PII redaction toolkit; see the [root README](../README.md) for how
 this relates to the [multimodal document arm](../multimodal/README.md). Paths in
 this document are relative to the repository root.
 
-> **Private repository.** Sample outputs are redacted recordings of real
-> calls; voices remain recognizable even with PII beeped. Do not mirror or
-> re-share outside the team.
+> **Private repository.** Code only: no data of any kind (audio, transcripts
+> or documents, redacted or not) is kept here. Do not mirror or re-share
+> outside the team.
 
 Removes spoken personal information (PII) from audio: every detected PII value
 is replaced by a 1 kHz beep in the audio and a `<CATEGORY REDACTED>` marker in

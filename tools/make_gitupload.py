@@ -3,8 +3,8 @@
 
 Rules (user decisions 2026-09-02):
   - latest versions only (no v0.1 docs, no old zips)
-  - sample = REDACTED deliverables only (no original audio, no raw transcript
-    — nothing PII-bearing enters the repo)
+  - no data of any kind, redacted or not (owner decision 2026-10-02): no
+    sample outputs, no audio, no transcripts
   - no keys: .env is never copied; a .env.example with placeholder names is
     generated; users bring their own keys
 Idempotent: wipes and rebuilds gitUpload/ on every run.
@@ -19,9 +19,9 @@ G = ROOT / "gitUpload"
 
 README = """# AudioPII-QC — Audio PII Redaction Workflow (Deccan.ai pilot)
 
-> **Private repository.** Sample outputs are redacted recordings of real
-> calls; voices remain recognizable even with PII beeped. Do not mirror or
-> re-share outside the team.
+> **Private repository.** Code only: no data of any kind (audio, transcripts
+> or documents, redacted or not) is kept here. Do not mirror or re-share
+> outside the team.
 
 Removes spoken personal information (PII) from audio: every detected PII value
 is replaced by a 1 kHz beep in the audio and a `<CATEGORY REDACTED>` marker in
@@ -147,7 +147,6 @@ Edit, bump the version, re-run with `--force detect`.
     docs/       screenshots used by this README
     outputs/    deliverable documents (taxonomy, schema, reports, figures)
     results/    fresh-run evaluation reports (markdown + json)
-    sample/     one REDACTED example output (no original audio by policy)
 
 ## Privacy & security notes
 
@@ -243,58 +242,10 @@ def main():
         if p.exists():
             cp(p, G / "results" / p.name)
 
-    # sample: REDACTED deliverables ONLY (user decision — no original audio,
-    # no raw transcript, nothing PII-bearing beyond the redacted outputs)
-    fid = "025354f09d2dcc71517beb7553441a85"
-    src = ROOT / "deliveries" / fid
-    if src.exists():
-        for f in sorted(src.iterdir()):
-            cp(f, G / "sample" / f.name)
-        m = json.loads((src / "manifest.json").read_text())
-        ivs = json.loads((ROOT / "output" / (fid + "__elevenlabs")
-                          / "intervals.json").read_text())["intervals"]
-        def ts(ms):
-            return "%d:%05.2f" % (ms // 60000, (ms % 60000) / 1000)
-        lines = [
-            "# Sample: redacted output of the production workflow",
-            "",
-            "Source: a 2m29s English-language insurance/hospital telephone",
-            "call (8 kHz, mono, two speakers). This folder contains ONLY the",
-            "redacted deliverables - by policy the original audio and raw",
-            "transcript never enter version control.",
-            "",
-            "## What the workflow did to this file",
-            "",
-            "1. Transcribed with ElevenLabs scribe_v2 (+ keyterms vocabulary),",
-            "   word-level timestamps, diarization.",
-            "2. Gemini applied the versioned detection policy (Taxonomy v0.2)",
-            "   to the",
-            "   canonicalized word stream and found %d PII intervals:" % len(ivs),
-        ]
-        for iv in ivs:
-            lines.append("   - %s at %s-%s" % ("/".join(iv["categories"]),
-                                               ts(iv["start_ms"]),
-                                               ts(iv["end_ms"])))
-        lines += [
-            "3. Rendered word-aware 1 kHz beeps: each beep edge sits at the",
-            "   quietest moment between the value and the nearest kept word",
-            "   (person names get a 300 ms onset guard), so neighbouring words",
-            "   like 'from' between the name and the organization stay",
-            "   audible while the values are fully covered. The transcript",
-            "   gets <CATEGORY REDACTED> markers from the SAME intervals.",
-            "4. Gates (all default): signal QC %s; beep-edge listen check"
-            % m.get("qc_status"),
-            "   clean (%d rounds, no unresolved or unchecked edges); judge"
-            % (m.get("edge_verification") or {}).get("rounds", 0),
-            "   audit %s leak candidates. Full provenance in manifest.json"
-            % (m.get("judge_audit") or {}).get("leak_candidates"),
-            "   (models, prompt hashes, source sha, gate outcomes).",
-            "",
-            "Listen for: the name at ~0:12 (two separate beeps with 'from'",
-            "audible between name and organization) and the amounts at",
-            "~1:36-1:45 (neighbouring words 'Okay/right/Yeah/sir' intact).",
-        ]
-        (G / "sample" / "SAMPLE_README.md").write_text("\n".join(lines) + "\n")
+    # NO sample of any kind (owner decision 2026-10-02): no data goes to
+    # GitHub, redacted or not. A redacted call is still a real person's
+    # recording, with the voice recognisable. The sample/ folder that used
+    # to be built here was removed from the repository.
 
     # screenshots slot (user drops their two captures here before pushing)
     shots = G / "docs" / "screenshots"

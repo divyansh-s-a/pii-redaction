@@ -1,8 +1,10 @@
 # PII redaction toolkit
 
-> **Private repository.** This code processes recordings and documents that
-> contain personal information. Handle inputs, outputs and any sidecar files
-> under the same rules as the source data.
+> **Private repository.** Code only: no data of any kind (audio, transcripts
+> or documents, redacted or not) is kept here. Do not mirror or re-share
+> outside the team. This code processes recordings and documents that contain
+> personal information: handle inputs, outputs and any sidecar files under the
+> same rules as the source data.
 
 Two arms over shared transport and model plumbing. They handle different media
 and answer to different rules about what counts as PII.

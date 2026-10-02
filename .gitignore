@@ -29,6 +29,7 @@ out/
 # not collaborator-facing.
 results/
 outputs/
+# no data of any kind in the repository, redacted or not (owner decision 2026-10-02)
 sample/
 docs/screenshots/
 
