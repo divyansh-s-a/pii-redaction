@@ -17,18 +17,93 @@ from adapters import env_key
 
 DEFAULT_JUDGE = "openai/gpt-5.6-sol"
 DEFAULT_VERIFIER = "openai/gpt-5.6-luna"
+
+# Document pipeline (owner decision 2026-09-17): GPT DETECTS, GEMINI JUDGES -
+# the reverse of the audio pipeline. The pairing matters more than either
+# choice: detector and judge must stay in different model families or the
+# evaluation grades its own work. Swapping which family detects therefore
+# requires swapping which family judges, together, never independently.
+DOC_DETECTOR = "openai/gpt-5.6-sol"
+DOC_JUDGE = "gemini-3.1-pro-preview"
+DOC_VERIFIER = "gemini-3.1-pro-preview"
+
+
+def _to_gemini_schema(schema):
+    """OpenAI strict JSON-Schema -> Gemini responseSchema.
+
+    Gemini wants UPPERCASE type names and rejects the strict-mode keywords, so
+    a schema written for one backend cannot be handed to the other unchanged.
+    """
+    if not isinstance(schema, dict):
+        return schema
+    out = {}
+    for k, v in schema.items():
+        if k in ("additionalProperties", "strict"):
+            continue
+        if k == "type" and isinstance(v, str):
+            out[k] = v.upper()
+        elif k == "properties" and isinstance(v, dict):
+            out[k] = {pk: _to_gemini_schema(pv) for pk, pv in v.items()}
+        elif k == "items":
+            out[k] = _to_gemini_schema(v)
+        else:
+            out[k] = v
+    return out
+
+
+def _is_gemini(model):
+    return str(model).lower().startswith("gemini") or "/gemini" in str(model)
 ENDPOINT = "https://openrouter.ai/api/v1/chat/completions"
 
 
 def judge_call(prompt: str, schema: dict, model: str = DEFAULT_JUDGE,
-               max_tokens: int = 16000, log_engine: str = "judge") -> dict:
+               max_tokens: int = 16000, log_engine: str = "judge",
+               images=None, native_gemini: bool = False) -> dict:
     """One structured-output judge call; returns the parsed JSON object.
     log_engine labels the usage-log row (the GPT stage-C detector reuses this
-    transport and must be cost-attributable separately from the judge)."""
+    transport and must be cost-attributable separately from the judge).
+
+    images: optional list of local image paths. Needed because document work
+    is multimodal on both sides - GPT reads page images to DETECT, and the
+    judge must see the same page to audit what a text-only reader could never
+    have found. Sent as data URIs so no file ever leaves via a third party.
+    """
+    # Gemini-family judge: route through common.generate() so it gets the
+    # AI-Studio->OpenRouter fallback and the same usage logging.
+    #
+    # Gated on an EXPLICIT flag, never on the model name. Sniffing the name
+    # silently changed transport for any existing caller that passed a
+    # gemini-flavoured slug -- `judge_precision_recall.py --judge-model
+    # google/gemini-2.5-pro` went to OpenRouter before this module was touched
+    # and must keep going there. Only the document arm opts in.
+    if native_gemini and _is_gemini(model):
+        parts = [{"text": prompt}]
+        for path in (images or []):
+            import mimetypes
+            parts.append({"image_path": str(path),
+                          "mime": mimetypes.guess_type(str(path))[0]
+                                  or "image/png"})
+        raw = common.generate(model, parts, _to_gemini_schema(schema),
+                              max_output_tokens=max_tokens)
+        return json.loads(common._strip_fences(raw)
+                          if hasattr(common, "_strip_fences") else raw)
+
     key = env_key("OPENROUTER_API_KEY")
+    if images:
+        import base64
+        import mimetypes
+        content = [{"type": "text", "text": prompt}]
+        for path in images:
+            raw = Path(path).read_bytes()
+            mime = mimetypes.guess_type(str(path))[0] or "image/png"
+            content.append({"type": "image_url", "image_url": {
+                "url": f"data:{mime};base64,"
+                       + base64.b64encode(raw).decode()}})
+    else:
+        content = prompt
     payload = {
         "model": model,
-        "messages": [{"role": "user", "content": prompt}],
+        "messages": [{"role": "user", "content": content}],
         "temperature": 0,
         "max_tokens": max_tokens,
         "response_format": {

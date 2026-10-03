@@ -1,0 +1,580 @@
+{
+ "id": "generic_document",
+ "version": "1.0.0",
+ "title": "Generic document (default pack)",
+ "extends": null,
+ "conservative": true,
+ "description": "PII taxonomy for documents of unknown kind -- HR files, bank statements, legal filings, school records, invoices, government forms, engineering drawings. Mirrors the audio Taxonomy v0.2 labels so both arms speak one language, and adds the visual categories audio explicitly scopes out (faces, signatures, machine-readable codes, burned-in identifiers, handwriting, container metadata).",
+ "owner_rules": [
+  "Anything that identifies a person is redacted, in any role",
+  "HEALTH CONDITIONS ARE REDACTED -- the deliberate divergence from insurance_medical, which keeps clinical content because an adjudicator needs it. A generic document carries no such justification. Mirrors audio, where HEALTH_MEDICAL_INFO is beeped under the strict profile.",
+  "No blanket handwriting rule: ink is ZONED exactly as insurance_medical zones it. Identity ink goes, content ink stays.",
+  "Document utility is protected by explicit KEEP rows, not by hoping: empty fields, guidance text, numeric columns, page furniture and issuer identity all have their own rows.",
+  "Chosen when no pack's signals fire, or when selection is ambiguous."
+ ],
+ "actions": [
+  "REDACT",
+  "PSEUDONYMIZE",
+  "GENERALIZE",
+  "MASK_PARTIAL",
+  "KEEP"
+ ],
+ "signals": {},
+ "semantics": {
+  "person_name": "G01",
+  "related_party": "G01",
+  "third_party": "G01",
+  "clinician": "G01",
+  "unlabelled_identity_block": "G04",
+  "contact": "G05",
+  "address": "G06",
+  "geo": "G07",
+  "dob": "G08",
+  "age_sex": "G09",
+  "sensitive_attr": "G10",
+  "minor_flag": "G11",
+  "occupation": "G12",
+  "gov_id": "G13",
+  "policy_id": "G14",
+  "patient_id": "G15",
+  "card": "G16",
+  "bank_personal": "G17",
+  "person_money": "G18",
+  "credential": "G19",
+  "device_id": "G20",
+  "clinical": "G21",
+  "signature": "G22",
+  "face": "G23",
+  "machine_code": "G24",
+  "watermark": "G25",
+  "handwriting_ink": "G27",
+  "handwriting_identity": "G27",
+  "in_cell_value": "G28",
+  "provider_name": "G29",
+  "org_person_linked": "G29",
+  "org_name": "G30",
+  "org_issuer": "G30",
+  "org_reg_code": "G31",
+  "bank_common": "G32",
+  "event_date": "G33",
+  "paper_serial": "G34",
+  "numeric_column": "G35",
+  "empty_field": "G36",
+  "guidance_text": "G37",
+  "furniture": "G38",
+  "form_code": "G38",
+  "ink_unzoned": "G39",
+  "id_document_page": "G40",
+  "unresolved": "G41",
+  "org_contact": "G30",
+  "non_latin_script": "G42",
+  "visual_mark": "G25",
+  "ink_identity": "G27"
+ },
+ "audio_parity": "ONE LANGUAGE, TWO ARMS. Audio's label is reused wherever a document row means the same thing, so a cross-arm report reads as one taxonomy and needs no translation table.\n\nALL 31 AUDIO CATEGORIES ACCOUNTED FOR.\nSame name, same intent (15): FULL_NAME -> G01; ADDRESS -> G06; DATE_OF_BIRTH -> G08; AGE -> G09 (AGE_AND_SEX); SENSITIVE_DEMOGRAPHIC -> G10; CHILD_INFO -> G11; GOVERNMENT_ID -> G13; ASSIGNED_ID -> G14; PAYMENT_CARD_NUMBER -> G16; BANK_ACCOUNT_NUMBER -> G17 (BANK_ACCOUNT_PERSONAL); FINANCIAL_INFO -> G18 (PERSONAL_FINANCIAL_FACT); PASSWORD_CREDENTIAL -> G19; HEALTH_MEDICAL_INFO -> G21; ORGANIZATION_PERSON_LINKED -> G29; OTHER -> G41. G02, G03 and G04 are FULL_NAME under different MECHANISMS, not different concepts, and their definitions say so.\nMerged into a neutral row because the label lexicon emits one key and the geometric target is one region (9): PHONE, EMAIL, USERNAME_HANDLE -> G05 CONTACT_CHANNEL; PASSPORT_NUMBER, DRIVERS_LICENSE, TAX_ID -> G13 GOVERNMENT_ID (jurisdiction-neutral: Aadhaar, SSN, NINO, NRIC, PAN are EXAMPLES routed in, never categories); IP_ADDRESS, DEVICE_IDENTIFIER, VEHICLE_REGISTRATION -> G20.\nAbsorbed as the same kind of claim (2): NATIONALITY and IMMIGRATION_STATUS -> G10 SENSITIVE_DEMOGRAPHIC.\nRouted in as examples (3): INSURANCE_ID and STUDENT_ID -> G14; FINANCIAL_ACCOUNT_INFO -> G17.\nRenamed for the visual arm (1): BIOMETRIC_ID -> G22 SIGNATURE_AND_BIOMETRIC_MARK, which also carries the signature, a thing audio has no word for.\nDECLARED DIVERGENCE FROM AUDIO (1): LEGAL_CASE_ID is KEPT at G34. A docket number indexes a case, not a person; it is published in the court's own cause list and is the only handle by which a filing can be cited. Written into the row rather than left for a reader to discover.\n\nDOCUMENT-ONLY ADDITIONS. Audio scopes visual PII out entirely (\"Out of scope: visual PII\"), so the document arm must add what audio never needed: G04 unlabelled identity block, G07 GEO_COARSE (audio excludes the coarse components outright rather than generalising them), G12 OCCUPATION_AND_EMPLOYER (in speech a job is context, on a form it is a labelled field), G23 face, G24 machine-readable code, G25 sticker / burned-in / watermark identity, G26 container metadata, the G27+G39 zoned ink pair, G28 in-cell values, and the eleven KEEP rows G30-G38 and G40, which keep a document readable and have no audio analogue because speech has no page furniture.\n\nDIVERGENCES FROM THE INSURANCE PACK, ALL DELIBERATE AND ALL WRITTEN INTO THE ROW: (1) G21 clinical content is REDACTED here, not KEPT -- the pack's one deliberate divergence, mirroring audio's strict profile, where insurance keeps it as the adjudicator's working data; (2) G08 DOB is GENERALIZED to the year, where insurance keeps it exact under the owner override of 2026-09-23; (3) G30 issuer identity is KEPT, where insurance de-identifies providers under a specific owner rule; (4) G31 organisation registration codes are KEPT rather than masked, because MASK_PARTIAL currently renders as full destruction.\n\nBUILD NOTE, NOT OPTIONAL: taxonomies/base.py's self_test asserts g.action_for([\"sem:clinical\"]) == \"KEEP\" for this pack, with the comment \"clinical content INVERTS to REDACT under the fallback pack\". That assertion must be flipped to REDACT with a comment naming the divergence, and the anti-inversion guard rewritten as a per-pack expectation table (generic: sem:clinical -> REDACT; insurance: sem:clinical -> KEEP), so the guard still catches a real inversion instead of being deleted. The pack cannot land without this change.",
+ "residual_limits": [
+  "NON-LATIN SCRIPTS. Apple Vision has no Devanagari, and none for Tamil, Bengali, Telugu or Gujarati either. On such a page more than twenty label_anchored rows, both checksum rows and both value_propagated rows go blind at once. The page reaches G41's page tier and is quarantined with a named reason. This pack does not redact Devanagari forms; it declines to deliver them as clean.",
+  "BLACK PEN ON GREYSCALE OR BITONAL PAGES. The ink mechanism is blue-channel chromatic segmentation and is NOT-APPLICABLE where there is no colour channel to segment. G27 cannot fire and G39's protection is moot; the bounded label fallback carries the page, which means a handwritten name in an unlabelled box on a black-and-white scan is caught by nothing.",
+  "PERSONALISED WATERMARKS. G25's watermark branch is UNIMPLEMENTED in code today -- nothing walks the content streams for low-alpha or rotated page-spanning text. Even once implemented it reaches only the ~21% of pages carrying a text layer: a watermark on an image-only scan is invisible to OCR entirely and to every other mechanism.",
+  "UNLABELLED PROSE ON IMAGE-ONLY PAGES. G03 is the only catcher for a name, condition or attribute with no label and no second instance, and it is fenced to pages with a real text layer and at least ~40 confident tokens. On 79% of the corpus it never runs. G04 recovers positionally formatted identity blocks; free prose on a scan is not covered.",
+  "VALUE PROPAGATION IS STRUCTURALLY WEAK ON SCANS. propagate.harvest() learns from a text layer. On a bundle with no text-layer page, G02, G15 and G28 learn nothing, and the carrier-ledger QA rule reports the gap rather than closing it. The mitigation shipped here -- emitting an untrusted candidate value from an answer area that did yield OCR tokens -- narrows this but does not remove it.",
+  "NO WRITE-BACK: GENERALIZE AND MASK_PARTIAL CURRENTLY RENDER AS FULL REDACTION. The pipeline writes nothing into the page, so G07 city/state, G08 year-of-birth, G09 age band, G12 occupation class, G18 salary band and G29 organisation class all deliver an opaque box. The correct action is recorded in the audit and drives reporting, but the coarsened value does not reach the reader, and every such row must be reported as what it actually was rather than what it intended.",
+  "GENERALIZE DEGRADES TO REDACTION ON HANDWRITING. A row that must read its value in order to coarsen it cannot do so when the value is pen ink, boxed characters or sub-100-dpi print. The audit must say 'GENERALIZE attempted, value unreadable, delivered as REDACT' rather than claiming a coarsening that did not happen. actions.generalize() also dispatches on hard-coded insurance category ids today and produces nothing under this pack; it must key off the semantic role or a per-row generalizer field, and gain a year-only coarsener for DOB.",
+  "LOW RESOLUTION. 42% of pages are below 100 dpi (median 109). Label repair, multi-line address bounding, checksum validation on 15-17 character alphanumerics, barcode decode and face detection on twice-photocopied halftones all degrade together on exactly those pages, and the degradations are correlated rather than independent.",
+  "ROUTER DEPENDENCE IS A REAL POLICY DIFFERENCE, NOT A DETAIL. Because clinical content is REDACTED here and KEPT under the insurance pack, and DOB is generalised here and exact there, a bundle near the router's decision boundary produces materially different output run to run. The selected pack, its clinical policy and its DOB policy are printed in the run summary and written to the sidecar. A standalone pathology report or prescription with no insurer signal routes here and legitimately goes nearly fully black; the over-redaction metric excludes G21 area so that does not read as a defect.",
+  "THE KEEP ROWS ARE VETOES ONLY IF THE VETO PASS EXISTS. G30, G32, G33, G35, G36, G37, G38 and G39 are stated as rejection rules -- a proposed destructive box overlapping them is rejected and logged. There is no such post-pass in run_document.py today. Until it lands as a real collect-KEEP-regions-then-reject-and-log stage, the four measured over-redaction failures can recur and the pack's central defence is a description rather than a behaviour.",
+  "PRECEDENCE HAS ONE RULE AND IT MUST BE WRITTEN ONCE. 'Most protective action wins' and 'KEEP rows are vetoes' are incompatible as stated, and the seven-plus KEEP rows guarantee nothing until it is settled. The rule for this pack: KEEP rows are SUPPRESSION ZONES evaluated after detection, and a destructive box overlapping one is rejected and logged -- EXCEPT for checksum-confirmed identifiers (G13, G16, G17), objective_visual detections (G23, G24, G25, G26) and G28 in-cell values, whose evidence is structural rather than inferred and which survive inside a suppression zone. Separately, once a value is destroyed anywhere in the bundle it is destroyed everywhere, so a figure cannot be masked on one page and kept on another.",
+  "SECOND-ORDER EXPOSURE FROM KEPT ORGANISATION CODES. A sole proprietor's GSTIN kept under G31 embeds their PAN in positions 3-12. This is a knowing, logged trade against destroying the tax field on every small-vendor invoice, and it reverses the moment write-back exists to mask the embedded run without erasing the code.",
+  "MECHANISM CHANGES THAT MUST SHIP WITH THIS PACK, OR NAMED ROWS ARE DEAD ON ARRIVAL. New semantic keys and their lexicon entries: sensitive_attr (G10), minor_flag (G11), card (G16), person_money (G18), credential (G19), device_id (G20), paper_serial (G34), in_cell_value (G28), org_issuer and org_person_linked (G30/G29), handwriting_identity and ink_unzoned (G27/G39), unlabelled_identity_block (G04), and numeric_column, empty_field, guidance_text, id_document_page and watermark (G35/G36/G37/G40/G25). Without them five to eight rows can never fire, and G39 actively INVERTS, because handwriting.py's unzoned branch emits sem:clinical today. objective.scan_text() must also emit sem: keys instead of legacy regex names, or every letterhead email is destroyed on every page."
+ ],
+ "categories": [
+  {
+   "id": "G01",
+   "name": "FULL_NAME",
+   "definition": "IN: a natural person's name appearing as the VALUE of a printed identity label, in any role -- the document's subject, a related party (spouse, parent, guardian, nominee, proposer, next of kin, account holder), a third party (witness, counterparty, consignee, referee) and a named professional acting on the document (doctor, teacher, advocate, notary, examiner, inspector, draughtsman, authorised signatory). One row for every role because a generic pack has no genre model to tell a witness from a patient, and audio -- which also has no roles -- proves one row is sufficient. Caption names count: 'Signature of Ramesh Kumar' is split, the role caption stays with G38 and the name goes here. OUT: an organisation name (G29/G30); a name inside a KEPT table cell (G28); a name with no label anywhere in the bundle (G03).",
+   "action": "PSEUDONYMIZE",
+   "enforcement": "label_anchored",
+   "semantic_keys": "person_name, related_party, third_party, clinician",
+   "examples": "Name of Applicant; Patient Name; Father's/Husband's Name; Nominee; Witness 1; Attending Doctor; Drawn By; Sd/- <name>",
+   "note": "FIX ADOPTED (leak): the signature-caption regex must bound its 'of ...' suffix to a CLOSED role vocabulary (applicant|insured|patient|claimant|proposer|witness|guardian|nominee|authorised signatory|doctor|parent|student|deponent). Today '^(signature|sign|thumb impression)(\\s*of\\s*.*)?$' swallows the name into a furniture match and KEEPS it. FIX ADOPTED (destruction): whole-token boundary matching only -- 'Name' must not match inside 'Name of Goods' or 'Name of Bank'; a label of 5 characters or fewer may not use the _fix_token() edit-distance snapper and must carry a trailing colon or value-bearing geometry before it claims anything.",
+   "propagate": true
+  },
+  {
+   "id": "G02",
+   "name": "NAME_IN_FREE_TEXT",
+   "definition": "IN: any occurrence anywhere in the bundle of a name value already learned from a labelled field by G01 -- in running prose, a salutation, a footer repeated on every page, a filename stamp, a narration string. Same concept as G01 under a different mechanism, stated as its own row because the mechanism's failure mode is different. OUT: a learned value inside a G38 furniture region, a G30 issuer region or a G31/G32 validated organisation code -- propagation may not enter those; a string shorter than 5 characters; a value on the common-word stop-list.",
+   "action": "PSEUDONYMIZE",
+   "enforcement": "value_propagated",
+   "semantic_keys": "NONE (consumes values learned by G01)",
+   "examples": "'the said RAMESH KUMAR' in a deed clause; 'Dear Mr Kumar'; a name in a page footer repeated on all 40 pages of a bundle",
+   "note": "FIX ADOPTED (inconsistency): the SHIPPED guards are written into the row rather than a looser description -- minimum length 5, an informativeness requirement, and a common-word stop-list, so 'Bill' cannot eat 'Bill of Lading', 'Bill No' and 'Billing Address'. FIX ADOPTED (leak): propagation is OCR-tolerant, not literal substring -- the literal matcher shipped today hits the cleanest instance and misses every degraded one. RESIDUAL: harvest() only learns from a text layer, so on the 79% image-only pages this row learns nothing unless the label pass also emits a candidate value string (marked untrusted) from the answer area.",
+   "propagate": true
+  },
+  {
+   "id": "G03",
+   "name": "UNSEEN_PERSON_OR_SENSITIVE_IN_PROSE",
+   "definition": "IN: a personal name, a health condition or a protected attribute stated in running prose that matches no value learned by G02 and sits under no printed label -- a third party named once in a note, a diagnosis written in a doctor's letter paragraph, a caste or immigration status asserted in a narrative. Runs LAST, only over regions no deterministic row claimed, only on pages carrying a real text layer with >=40 recognised tokens above the confidence floor, and it may never override a KEEP row. OUT: anything reachable by G01/G02; anything on an image-only page; anything inside a G35 numeric column, a G37 guidance block or a G38 furniture region.",
+   "action": "REDACT",
+   "enforcement": "model_judged",
+   "semantic_keys": "NONE",
+   "examples": "'...witnessed by one Suresh, a neighbour...'; 'the patient is a known diabetic with hypertension' in an unlabelled letter paragraph",
+   "note": "THE PACK'S ONLY model_judged ROW -- 1 of 41, matching the insurance pack's 1-of-40. Nothing deterministic fits because the target has no label to anchor to, no checksum to validate, no second instance to propagate from and no visual signature; every other mechanism in the system requires one of those four. It is therefore fenced three ways (text-layer only, runs last over unclaimed regions only, cannot beat a KEEP) and its per-page hit count is reported, because it is the acknowledged source of every 'why was this redacted here but not there' complaint. FIX ADOPTED (leak, HIGH): extended to cover health conditions and protected attributes in prose rather than adding a second model row -- G21 and G10 are label-anchored and blind outside labelled fields and results tables."
+  },
+  {
+   "id": "G04",
+   "name": "UNLABELLED_IDENTITY_BLOCK",
+   "definition": "IN: an identity block carrying no printed label, resolved positionally as ONE region -- 2 to 5 short lines terminating in a postcode pattern or a state/province name, located in the top 25% of the page, immediately above a salutation, or in a window-envelope address zone; also a name-over-address stack on page 2+ of a statement, a formal letter or a legal filing. OUT: the issuer's own letterhead block (G30); a block inside a table (G35); any block already resolved under G01/G06.",
+   "action": "REDACT",
+   "enforcement": "label_anchored",
+   "semantic_keys": "unlabelled_identity_block",
+   "examples": "recipient block at the head of a bank statement page 2; 'To,' followed by a name, a street line, a locality and a PIN",
+   "note": "FIX ADOPTED (leak, HIGH): without this row an unlabelled identity block is claimed by NOTHING -- G01 and G06 are label-anchored, G02 only propagates values already learned from a label, and G03 is text-layer-only and fenced. This is a deterministic positional pass, not a model decision. It requires the label pass to gain a positional / header-anchoring mode; that mechanism change ships with this pack.",
+   "propagate": true
+  },
+  {
+   "id": "G05",
+   "name": "CONTACT_CHANNEL",
+   "definition": "IN: a reachable personal channel printed as a field value -- telephone, mobile, landline, fax, email address, messaging or social handle, username, UPI/VPA-style payment handle used as a contact. OUT, explicitly: an organisation's published switchboard, helpline, support email, website or bare domain printed in a letterhead, footer or stamp -- that is G30 and is KEPT. Merges audio's PHONE, EMAIL and USERNAME_HANDLE because the printed label lexicon emits a single key and the geometric target is one region.",
+   "action": "REDACT",
+   "enforcement": "label_anchored",
+   "semantic_keys": "contact",
+   "examples": "Mobile No; Contact No; E-mail ID; Tel (Res); a personal gmail address beside 'Email'; a UPI handle beside 'UPI ID'",
+   "note": "FIX ADOPTED (destruction, HIGH): objective.scan_text()'s free-standing EMAIL/UPI regexes currently emit legacy regex names rather than sem: keys, so every letterhead email on every page is destroyed, contradicting G30. Either scan_text() emits sem: keys like every other mechanism, or each pack maps the legacy names -- this pack requires the former. A free-standing email or 10-digit mobile in body text is claimed ONLY when it does not sit in an issuer band. FIX ADOPTED: bare 'cell' and bare 'tel' require a suffix -- unsuffixed 'cell' matched 'Red Blood Cell' and cost a haematology report three results rows.",
+   "propagate": true
+  },
+  {
+   "id": "G06",
+   "name": "ADDRESS",
+   "definition": "IN: the street-level component of a natural person's residential, correspondence, permanent, billing or delivery address -- house/flat number, building, street, locality, landmark, PO box -- taken as the contiguous run of lines between the label and the first line matching a city/state/postcode pattern. OUT: city, district, state and postal code, which are CLIPPED OFF and handed to G07; an organisation's or branch's postal address (G30/G32); cargo, port, warehouse or site geography on a manifest or drawing.",
+   "action": "REDACT",
+   "enforcement": "label_anchored",
+   "semantic_keys": "address",
+   "examples": "Address; Residential Address; Correspondence Address; Permanent Address; a flat-building-street-locality run under such a label",
+   "note": "FIX ADOPTED (inconsistency): the clipping rule is stated here rather than left to collide with G07. G06 previously claimed 'a multi-line block as one region' while G07 promised city and state survive verbatim -- so the same value survived on a labelled form and died in a free-form block. The region now terminates at the first city/state/postcode line on BOTH layouts. FIX ADOPTED (destruction, HIGH): before G06 fires, a positive organisational test -- the block sits under an org-name label, contains a company/firm suffix, or shares a line with a registration code -- routes it to G30 KEEP instead.",
+   "propagate": true
+  },
+  {
+   "id": "G07",
+   "name": "GEO_COARSE",
+   "definition": "IN: a person's city, town, district, taluk, village, state and postal code, including the tail clipped off a G06 address block. Postal code is truncated to its regional prefix (first 3 digits of a 6-digit PIN, first outward group of an alphanumeric code); city, district and state survive verbatim. OUT: any geography that is not person-scoped -- port of loading or discharge, site location, a CAD grid reference, a branch address (G32), an issuer address (G30).",
+   "action": "GENERALIZE",
+   "enforcement": "label_anchored",
+   "semantic_keys": "geo",
+   "examples": "City; State; District; PIN Code; a 6-digit PIN truncated to its first three digits",
+   "note": "Document-only: audio has no GEO row because audio simply excludes the coarse components from ADDRESS. A page needs them -- cohort geography is a legitimate analytic use and destroying the city buys almost nothing. OCR: Indian PINs are printed with an internal space and glued to the preceding token ('PIN:400076'); split on the lexicon token before truncating. WARNING: with no write-back a GENERALIZE renders as an opaque box today, so the coarsened value does not reach the page."
+  },
+  {
+   "id": "G08",
+   "name": "DATE_OF_BIRTH",
+   "definition": "IN: the stated date of birth of any person, wherever it appears — removed entirely, not coarsened to a year. OUT: dates of an event, service or transaction (G33).",
+   "action": "REDACT",
+   "enforcement": "label_anchored",
+   "semantic_keys": "dob",
+   "examples": "DOB; Date of Birth; D.O.B.; Birth Date; a boxed DD/MM/YYYY grid under a birth-date caption",
+   "note": "DECLARED DIVERGENCE FROM THE INSURANCE PACK, which KEEPS the exact DOB under the owner override of 2026-09-23 because the adjudicator needs it. A generic bundle has no adjudicator, so the year is enough. CONSEQUENCE STATED, NOT DISCOVERED: the same PDF yields an exact DOB under one router decision and a year under another; the selected pack and its DOB policy are printed in the run summary and written to the sidecar. FIX ADOPTED: whole-token boundary matching -- 'DOB' must not match inside 'DOBSON', 'birth' must not match 'Place of Birth', and a bare 'Date' label may not route here, or every invoice and revision block loses its date."
+  },
+  {
+   "id": "G09",
+   "name": "AGE_AND_SEX",
+   "definition": "IN: age, sex/gender and relationship to another named person (self, father, mother, spouse), wherever they appear — removed entirely, not banded.",
+   "action": "REDACT",
+   "enforcement": "label_anchored",
+   "semantic_keys": "age_sex",
+   "examples": "Age; Age/Sex; '34/M'; 'Age 34 Yrs, Male, S/o'",
+   "note": "FIX ADOPTED (leak, MEDIUM): the gender field is settled against G10 rather than in favour of leakage. '^(sex|gender)$' maps to sem:age_sex and would keep the value verbatim -- a transgender or third-gender marker is a protected attribute and must not survive. Values OUTSIDE the closed binary set route to G10 REDACT. FIX ADOPTED: '32/M' is a single OCR token -- parse and re-render, never box the pair, or the sex marker is lost with the age. The parsed age FEEDS G11: an age under 18 raises the minor flag."
+  },
+  {
+   "id": "G10",
+   "name": "SENSITIVE_DEMOGRAPHIC",
+   "definition": "IN: an explicitly stated protected attribute of a person -- religion, caste or reservation category, community, tribe, ethnicity or race, mother tongue, nationality or citizenship, immigration/visa/residency status, marital status, sexual orientation, gender identity stated as such, disability status, political affiliation, trade-union membership. Absorbs audio's NATIONALITY and IMMIGRATION_STATUS: they are the same kind of claim. OUT: hazard class on a manifest, country of origin of goods, an equipment category, a postal 'Class', a document 'Status' field -- 'Category', 'Class', 'Origin' and 'Status' are among the commonest labels on non-personal documents and require a person-scoped anchor on the page.",
+   "action": "REDACT",
+   "enforcement": "label_anchored",
+   "semantic_keys": "sensitive_attr",
+   "examples": "Religion; Caste; Category (SC/ST/OBC/EWS/General); Community; Nationality; Citizenship; Visa Status; Marital Status",
+   "note": "FIX ADOPTED (leak, HIGH): this row has NO detector today -- the shipped LEXICON has no religion, caste, category or nationality entry, so the row could never fire. sem:sensitive_attr and its lexicon entries ship AS PART OF this pack's landing; a row with no reachable key is a declared leak, not a policy. The value is often a tick-box or a single-letter code rather than a word, so the row claims the whole value region, and on colour pages a tick is reached through G27 ink zoning.",
+   "propagate": true
+  },
+  {
+   "id": "G11",
+   "name": "CHILD_INFO",
+   "definition": "IN: a STACKING escalation flag, not a standalone class. When a person is established as a minor -- a parsed age under 18, a stated class or grade paired with a birth date, a guardian/parent signature requirement, or a child/minor/pupil/infant/ward label -- every other row's action on that PERSON is upgraded to its most protective form for the whole bundle, and G07's geo generalisation is upgraded to state level. OUT: 'child' as a structural term -- a BOM's parent/child part columns, a child-sheet reference in a CAD title block, a subsidiary in a corporate filing.",
+   "action": "REDACT",
+   "enforcement": "label_anchored",
+   "semantic_keys": "minor_flag",
+   "examples": "Age: 9; Class/Std: IV; Name of Ward; Guardian's Signature; Minor Account",
+   "note": "FIX ADOPTED (inconsistency, MEDIUM): the flag is DOCUMENT/BUNDLE-scoped and attaches to the person identity, not to the page. Page-scoping treated one child two ways in one file -- the page carrying the guardian signature was escalated and the page carrying the same child's marks was not. DELIBERATELY NOT model_judged: the trigger is arithmetic on the value G09 already parsed, or a literal label match. Requires sem:minor_flag in the lexicon, which ships with this pack. An age under 2 written in months or days often OCRs as a bare number with the unit lost; when the unit is unreadable the block is escalated rather than resolved.",
+   "propagate": true
+  },
+  {
+   "id": "G12",
+   "name": "OCCUPATION_AND_EMPLOYER",
+   "definition": "IN: a person's stated occupation, profession, designation, grade, department-of-employment and named employer or school where the field ties it to THIS person, generalised to a broad occupational class and an employer class. OUT, explicitly: role labels that describe an action on the document rather than a livelihood -- 'Drawn By', 'Checked By', 'Approved By', 'Shipper', 'Consignee', 'Authorised Signatory'; a grade that is a school class or an exam grade; a material or product grade on a drawing or BOM; an organisation named in a letterhead (G30).",
+   "action": "GENERALIZE",
+   "enforcement": "label_anchored",
+   "semantic_keys": "occupation",
+   "examples": "Occupation; Designation; Profession; Employer; Department; a job title generalised to '<PROFESSIONAL>'",
+   "note": "Document-only: audio has no OCCUPATION row because in speech a job is context, not a value; on a form it is a labelled field and 'Senior Actuary at <named insurer> in <named city>' is close to unique. FIX ADOPTED (destruction, MEDIUM): 'grade' and other short tokens may not use the edit-distance snapper and may not claim without a trailing colon or value-bearing geometry -- a CAD title block and a shipping manifest are grids of role labels, and a rule keyed on job-title vocabulary blanks them entirely.",
+   "propagate": true
+  },
+  {
+   "id": "G13",
+   "name": "GOVERNMENT_ID",
+   "definition": "IN: any government-issued personal identifier value, any jurisdiction -- national or citizen number, social-security number, voter/EPIC number, ration card, passport number, driving licence number, personal tax identifier. Country identifiers (Aadhaar, SSN, NINO, NRIC, PAN, TFN, ITIN, UTR) are EXAMPLES routed into this neutral row, never categories. Audio's PASSPORT_NUMBER, DRIVERS_LICENSE, GOVERNMENT_ID and TAX_ID all land here. OUT: an organisation's registration code (G31); an institution-assigned member number (G14); a paper serial (G34).",
+   "action": "REDACT",
+   "enforcement": "checksum",
+   "semantic_keys": "gov_id",
+   "examples": "Aadhaar No; PAN; Passport No; DL No; Voter ID; a glued label+value run such as 'PAN:ABCDE1234F'",
+   "note": "FIX ADOPTED (leak, CRITICAL): THE CHECKSUM IS A CONFIRMER, NOT A GATE. Most identifiers routed here have no checksum at all -- passport, driving licence, voter, ration card and nearly every non-Indian national ID. The row claims on (a printed identity label) OR (a page classified as an ID/KYC artefact under G40) OR (a jurisdictional format match), and RECORDS whether a validator confirmed it. FIX ADOPTED: OCR glues labels onto values and a boxed-character field renders one glyph per cell, so the candidate run is de-glued and de-spaced before validation. COUNTER-GUARD: roughly one in ten arbitrary 12-digit runs passes Verhoeff, so a bare validator pass with no label and no ID-page context is NOT sufficient inside a G35 numeric column.",
+   "propagate": true
+  },
+  {
+   "id": "G14",
+   "name": "ASSIGNED_ID",
+   "definition": "IN: a concrete identifier an organisation has assigned to THIS person and uses to index them -- insurance policy, certificate, membership, subscriber, employee code, customer or client ID, student/roll/enrolment number, pension or PF number, application number. Audio's INSURANCE_ID and STUDENT_ID route in as examples. OUT, explicitly: a paper serial that indexes a DOCUMENT rather than a person -- invoice, bill, PO, challan, AWB, letter/reference/file number, drawing number, and the court case/docket/FIR/suit number (all G34 KEEP); a provider-assigned record locator that recurs across the bundle (G15).",
+   "action": "PSEUDONYMIZE",
+   "enforcement": "label_anchored",
+   "semantic_keys": "policy_id",
+   "examples": "Policy No; Member ID; Employee Code; Customer ID; Roll No; Enrolment No; Application No",
+   "note": "FIX ADOPTED (destruction, HIGH): the shipped lexicon entry '^(employee|staff|member|customer|client|file|ref|reference) (no|number|id|code)$' routes 'Ref No' and 'File No' on every business letter, RTI reply and purchase order into a person row. Split it: (employee|staff|member|customer|client|policy|student|roll) -> sem:policy_id here; (ref|reference|file|letter|invoice|bill|po|challan|awb|doc|drawing) -> sem:paper_serial -> G34 KEEP. FIX ADOPTED (destruction, MEDIUM): a docket number indexes a CASE and is published in the court's own cause list -- it is KEPT at G34, a declared divergence from audio's LEGAL_CASE_ID.",
+   "propagate": true
+  },
+  {
+   "id": "G15",
+   "name": "RECORD_LOCATOR_ID",
+   "definition": "IN: an institution-assigned record number for a person that RECURS across the bundle in carriers no label touches -- UHID, MRN, patient or hospital registration number, IP/OP number, admission number, account-opening reference, case-file locator. Learned where it reads cleanly and struck on every page, matched OCR-tolerantly. Same concept as G14 under a different mechanism. OUT: everything G14's OUT clause excludes; a value that appears exactly once under a label, which is G14.",
+   "action": "PSEUDONYMIZE",
+   "enforcement": "value_propagated",
+   "semantic_keys": "patient_id",
+   "examples": "UHID; MRN; IP No; a registration number repeated in every page header; the same number inside a sticker, a barcode and a footer",
+   "note": "CARRIER LEDGER RULE: once a value is learned, the bundle does not pass QA until every carrier class is accounted for on every page -- printed text, pen ink, sticker, barcode, burned-in banner and container metadata. A text hit on page 1 and silence on page 2 is a reportable gap, not a clean page. RESIDUAL: propagation is structurally weak on the 79% image-only pages; see residual limits.",
+   "propagate": true
+  },
+  {
+   "id": "G16",
+   "name": "PAYMENT_CARD_NUMBER",
+   "definition": "IN: a full payment-card primary account number, and the expiry and CVV when they sit in the same printed disclosure block -- claimed as ONE region, never as three. Luhn-confirmed, or claimed without Luhn when a 13-19 digit run sits adjacent to a card label and fails only by a single substituted digit. OUT: an already-masked or last-four value; an expiry or CVV alone; a Luhn-passing run that is an IMEI, a policy number or an internal reference -- Luhn alone is not a card test.",
+   "action": "REDACT",
+   "enforcement": "checksum",
+   "semantic_keys": "card",
+   "examples": "Card No; Debit/Credit Card Number; a 16-digit run beside 'Valid Thru' and 'CVV'",
+   "note": "Audio's one-interval rule for a card+expiry+CVV disclosure maps directly onto a geometric block on a page and is kept for the same reason. FIX ADOPTED (leak, HIGH): sem:card must exist as a key -- today no lexicon entry routes a card label anywhere, so the row was reachable only by bare Luhn. A 16-digit run at 109 dpi frequently OCRs with one substituted digit and fails Luhn; the label carries it. Embossed digits on a photographed card are often unreadable entirely -- the card rectangle is then handled as an object by G23/G25 and the audit records that the number itself was never read.",
+   "propagate": true
+  },
+  {
+   "id": "G17",
+   "name": "BANK_ACCOUNT_PERSONAL",
+   "definition": "IN: a value drawn from a space indexed per CUSTOMER or per ACCOUNT -- account number, IBAN, customer ID at the bank, cheque and demand-draft instrument numbers, the payable-to string, the account holder's UPI/VPA, brokerage, loan and pension account references, the MICR strip on a cheque IMAGE, and a running-balance series that is a function of one account's whole history. Absorbs audio's FINANCIAL_ACCOUNT_INFO -- on a page they are the same field under different words. OUT: anything indexed per BRANCH or per INSTITUTION (G32 KEEP).",
+   "action": "REDACT",
+   "enforcement": "label_anchored",
+   "semantic_keys": "bank_personal",
+   "examples": "A/c No; Account Number; Customer ID; Cheque No; IBAN; Payable to; Bank A/c Details",
+   "note": "THE TEST, applied per value: a banking value dies if its index space is the customer or the account, and survives if its index space is the branch or the institution. FIX ADOPTED (destruction, HIGH): 'A/C' also means air-conditioning on an equipment list, a maintenance manifest and a BOM -- the match must be whole-token with value-bearing geometry, never a substring. Account numbers read poorly at 109 dpi but their LABEL reads well, which is why this row is label-anchored rather than structural. Cheque MICR is E13B and does not OCR as text at any of these resolutions; it is reached as a symbology region by G24.",
+   "propagate": true
+  },
+  {
+   "id": "G18",
+   "name": "PERSONAL_FINANCIAL_FACT",
+   "definition": "IN: a single labelled, person-scoped summary figure -- gross or net salary, take-home pay, CTC, declared income, closing or available balance, total outstanding, arrears, assessed tax liability, sanctioned loan amount, credit limit. OUT, explicitly: every line item, quantity, rate, tax, discount, subtotal and total the issuer produced about a transaction or artefact (G35 KEEP); an incidental price; and any figure recoverable from figures kept on the same page.",
+   "action": "MASK_PARTIAL",
+   "enforcement": "label_anchored",
+   "semantic_keys": "person_money",
+   "examples": "Net Pay; Gross Salary; Closing Balance; Total Outstanding; Sum Assured for this person",
+   "note": "FIX ADOPTED (destruction, HIGH): DERIVABILITY TEST. Masking a net pay to an order-of-magnitude band while G35 KEEPS the earnings-and-deductions column beside it destroys the figure and protects nothing -- it is a column sum. If the value is recoverable from figures kept on the same page (a column sum, the last row of a running balance), it is KEPT and the decision is recorded. FIX ADOPTED (leak, HIGH): sem:person_money must exist as a key; no lexicon entry routes a salary or balance label today. FIX ADOPTED: clip the box to the glyph run, never to the cell -- a right-aligned figure at 109 dpi merges with the column rule, and clipping to the cell erases the rule and the table's readability with it."
+  },
+  {
+   "id": "G19",
+   "name": "PASSWORD_CREDENTIAL",
+   "definition": "IN: a printed secret authentication value where a VALUE is actually present -- password, PIN, TPIN/MPIN, OTP, passcode, activation, enrolment or recovery code, licence key, security answer, private key material, an API or access token in a printed log, and a scratch-panel PIN mailer region. OUT: the credential's LABEL; instruction text about credentials ('Enter your PIN', 'Password must be 8 characters', 'Never share your OTP'), which is G37; a reset URL with no secret in it.",
+   "action": "REDACT",
+   "enforcement": "label_anchored",
+   "semantic_keys": "credential",
+   "examples": "PIN; Password; OTP; Activation Code; Security Answer; a PIN mailer scratch panel",
+   "note": "Rare on documents, catastrophic when present, and cheap -- it fires only on an unambiguous credential label WITH a present value, so it cannot contribute to over-redaction. FIX ADOPTED (destruction, HIGH): credential labels appear far more often as INSTRUCTIONS than as values; the value-presence test is dark-pixel density in the value region, not a string match, and G37 suppresses the instruction case outright. FIX ADOPTED (leak, HIGH): sem:credential does not exist in the lexicon today, so this row is currently unreachable; it ships with the pack. PIN mailers print into a tinted or scratch panel that scans as a dark block, so the region rather than the value is claimed.",
+   "propagate": true
+  },
+  {
+   "id": "G20",
+   "name": "DEVICE_VEHICLE_NETWORK_ID",
+   "definition": "IN: a serial that indexes a THING belonging or assigned to a person, tied to that person by a label on the same row -- vehicle registration or plate, VIN, chassis and engine number; device IMEI, MAC, UDID, hardware serial, SIM; an IP address tied to a person in a printed log; a personal asset tag. Merges audio's VEHICLE_REGISTRATION, DEVICE_IDENTIFIER and IP_ADDRESS, which on a page are one thing: a labelled serial for an object with an owner. OUT, explicitly: a container, seal or AWB number on a manifest; an equipment serial on an asset register with no person on it; a product model or OS version; an organisation's server IP.",
+   "action": "REDACT",
+   "enforcement": "label_anchored",
+   "semantic_keys": "device_id",
+   "examples": "Registration No; Vehicle No; Chassis No; Engine No; VIN; IMEI; MAC Address; IP Address",
+   "note": "LIVE MECHANISM DEFECT FIXED HERE: the current lexicon routes '(vehicle|registration) (no|number)' to sem:unresolved, so a plate number reaches the catch-all and is destroyed by accident rather than by policy, and 'Registration No' on a company letterhead is destroyed for the same accidental reason. sem:device_id ships with this pack and the lexicon entry is made person-scoped. Plates and VINs mix letters and digits and are a top source of OCR substitution at low dpi, so no pattern validator is trusted -- the label anchors and the region is struck whether or not the value reads.",
+   "propagate": true
+  },
+  {
+   "id": "G21",
+   "name": "HEALTH_MEDICAL_INFO",
+   "definition": "IN: a person's health information -- diagnosis, provisional or final impression, presenting complaint, nature of illness or injury, history, symptom, disability, medication with dose and route, treatment, procedure, clinical test name with its result value, units and reference range, vitals, blood group, allergy, genetic fact, mental-health and reproductive-health content. Claimed as a REGION resolved from table geometry -- the results block between the rules, the impression paragraph -- never cell by cell. OUT: the clinical lexicon's ordinary homographs on non-medical documents -- 'Port of Discharge' and 'Condition of Cargo' on a manifest, 'Treatment' on a metallurgy spec, 'Culture' on an HR form.",
+   "action": "REDACT",
+   "enforcement": "label_anchored",
+   "semantic_keys": "clinical",
+   "examples": "Diagnosis; Provisional Diagnosis; Complaints; Investigations; a haemoglobin result with units and reference range; Rx; Blood Group",
+   "note": "THE ONE DELIBERATE DIVERGENCE FROM THE INSURANCE PACK, and it is explicit. Insurance KEEPS clinical content because in a claim bundle it is the adjudicator's working data and the data owner ruled it in scope to keep. A generic bundle has no adjudicator, so health conditions are REDACTED here -- mirroring audio, where HEALTH_MEDICAL_INFO is beeped under `strict` and is annotate-only only under `medical_consult`. THREE CONSEQUENCES, STATED RATHER THAN DISCOVERED. (1) BUILD: base.py's self_test currently ASSERTS g.action_for(['sem:clinical']) == 'KEEP'; this pack cannot land until that assertion is flipped to REDACT with a comment naming the divergence, and the anti-inversion guard is rewritten as a per-pack expectation table (generic: clinical -> REDACT; insurance: clinical -> KEEP) so it still catches a genuine inversion. (2) FIX ADOPTED (inconsistency, HIGH): the clinical/results region is resolved ONCE per table identity per BUNDLE and applied whole-table on every page -- a per-page, OCR-quality-dependent predicate gave one pathology report two opposite policies on two pages. (3) FIX ADOPTED (destruction, HIGH): a standalone pathology report, prescription or specialist letter with no insurer signal routes HERE and legitimately goes nearly fully black, so the router prints which pack it chose, the over-redaction metric EXCLUDES G21 area, and a deployment wanting audio's medical_consult behaviour sets an annotate-only profile explicitly rather than getting it by accident. Region-level, not label-level, precisely because of the measured 'Red Blood Cell' failure.",
+   "propagate": true
+  },
+  {
+   "id": "G22",
+   "name": "SIGNATURE_AND_BIOMETRIC_MARK",
+   "definition": "IN: an executed handwritten signature, initials or monogram, an inked thumb or finger impression, a rubber-stamp facsimile of a signature, a fingerprint or iris capture box on a KYC or enrolment form, and a biometric template or enrolment reference number -- by anyone, WHERE INK OR IMAGE IS ACTUALLY PRESENT. Claimed as the region below or beside a signature label, or above a signature rule line. OUT, and this is the whole row: an EMPTY signature line, an unsigned box, a blank thumb-impression square -- these are G36 and are untouched.",
+   "action": "REDACT",
+   "enforcement": "label_anchored",
+   "semantic_keys": "signature",
+   "examples": "Signature of Applicant; Sign here; Thumb Impression; Left Thumb; an inked scrawl above a rule line",
+   "note": "Carries audio's BIOMETRIC_ID and adds the signature, which audio has no word for. label_anchored rather than objective_visual on purpose: a signature is stylistically arbitrary and no reliable shape detector exists, but 'Signature' is printed type that reads well at 109 dpi. FIX ADOPTED (destruction, HIGH): this row was the single biggest contributor to the measured BLANK-FORM failure that went 36% black with every field empty -- a form's signature furniture is dense and every empty box was claimed. The presence test is mandatory and is G36's predicate. A signature is a reproducible credential, forgeable from an image, which is why it is REDACT and not PSEUDONYMIZE."
+  },
+  {
+   "id": "G23",
+   "name": "FACE_PHOTOGRAPH",
+   "definition": "IN: a detected human face rectangle, dilated slightly -- a passport photo pasted or printed into a form, an ID-card portrait, a staff-directory photo, a person visible in a site or incident photograph, a face on a passport or visa page. Also a portrait-aspect image XObject (width/height between 0.6 and 0.9) on a page that carries an identity anchor, when no face rectangle returns. OUT: the rest of the photograph around the face; a clinical image such as an X-ray or wound photograph, whose burned-in banner is handled by G25; a face in a printed advertisement or a logo illustration.",
+   "action": "REDACT",
+   "enforcement": "objective_visual",
+   "semantic_keys": "face",
+   "examples": "'Affix recent passport size photograph'; an ID card portrait; a group photo on a school record; a face in a site inspection photo",
+   "note": "Document-only by construction -- audio scopes visual PII out entirely. The most dpi-independent row in the pack: Apple Vision's face rectangle does not care that the page is a 92 dpi image-only scan. FIX ADOPTED (destruction): the box is the FACE rectangle, not the image -- removing the whole image destroys the site photograph on an inspection report and the product shot on a catalogue page. FIX ADOPTED (leak, MEDIUM): the deterministic small-portrait fallback is gated on an Aadhaar QR being present today; generalise it to any page carrying an identity anchor -- a person-name label, a photo paste-box label, or a G40 ID-page classification. Face detection degrades on bitonal scans of already-halftoned photographs; that is a stated limit, not a silent one."
+  },
+  {
+   "id": "G24",
+   "name": "MACHINE_READABLE_CODE",
+   "definition": "IN: a QR code, a 1D barcode of any symbology, DataMatrix, PDF417, an MRZ strip on an identity page, and the E13B MICR line on a cheque -- claimed on DETECTION by finder-pattern shape scan as well as by decode, because at 109 dpi a symbol frequently will not decode and an undecodable symbol may carry anything. OUT, and this is the adopted fix: a symbol that DECODES to a demonstrably non-personal payload -- a GS1/EAN/UPC/ISBN product code, a URL with no personal parameter, a structured invoice or e-way-bill reference (IRN) -- is KEPT, because it is the document's operational key and carries no person. OUT also: a decorative pattern, a dense checkbox grid, a CAD hatch fill, a halftone region, a table rule.",
+   "action": "REDACT",
+   "enforcement": "objective_visual",
+   "semantic_keys": "machine_code",
+   "examples": "an Aadhaar secure QR carrying name, address, photo and ID at once; a hospital wristband barcode; a cheque MICR strip; an EAN-13 on a packing slip (KEPT)",
+   "note": "A machine-readable code is an unbounded PII channel, which is why detection rather than decode is the trigger. FIX ADOPTED (destruction, MEDIUM): redact-on-detection with NO person-scope test removed the operational key from tax invoices and packing slips, together with its quiet zone. The split is decode-based and conservative: decoded-and-non-personal is KEPT and logged; decoded-and-personal, or undecodable, is REDACTED. FIX ADOPTED: the finder-pattern scan must require quiet-zone geometry, not merely pattern density, or it fires on CAD hatch, checkbox grids and halftones."
+  },
+  {
+   "id": "G25",
+   "name": "BURNED_IN_IDENTITY_OBJECT",
+   "definition": "IN: an identity block that lives in the RASTER or in a page overlay rather than in a text field, claimed as ONE rectangle -- (a) a pre-printed adhesive person-label sticker carrying name, record number, age/sex, admission date and attending name, found as a high-contrast print block anchored by a barcode or by the text rows bounding an image sector; (b) an identifier burned into an image raster, such as a modality banner across a printed scan or an 'issued to' strip; (c) a personalised page-spanning watermark or diagonal stamp, detected as a discrete low-alpha or rotated text object in the page's content stream. OUT, critically: the FULL-PAGE raster itself -- on 79% of the corpus the page IS one image XObject, and a rule that claims it destroys the page.",
+   "action": "REDACT",
+   "enforcement": "objective_visual",
+   "semantic_keys": "watermark",
+   "examples": "a patient sticker block; a 'CONFIDENTIAL - ISSUED TO <name>' diagonal watermark; a modality banner burned into a printed scan",
+   "note": "The sticker is claimed as ONE rectangle rather than as fields because there is no text layer inside it to carve. THE WATERMARK BRANCH IS UNIMPLEMENTED TODAY and is declared as such in pack.json rather than quietly claimed: nothing in objective.py walks content streams for low-alpha text runs. The implementation is small -- walk text objects for fill alpha below a threshold or a rotated transform spanning the page -- but until it lands, personalised watermarks are a stated residual limit, and on image-only pages they are invisible to every mechanism regardless."
+  },
+  {
+   "id": "G26",
+   "name": "DOCUMENT_CONTAINER_METADATA",
+   "definition": "IN: everything outside the rendered page -- PDF Title, Author, Subject, Keywords, Producer and Creator strings, creation and modification timestamps, XMP packets, bookmarks and TOC entries carrying names, annotations and comments, embedded file attachments, AcroForm field values, and the original filename where the container carries it. OUT: nothing -- the container is stripped and rebuilt.",
+   "action": "REDACT",
+   "enforcement": "objective_visual",
+   "semantic_keys": "NONE (enumerated by the document-object pass, extended to the container dictionary)",
+   "examples": "Author set to a person's username; a Title carrying a person's name and 'claim_final'; an annotation carrying a phone number",
+   "note": "Mechanically compelled: the taxonomy is otherwise page-scoped and the container defeats it entirely with no detector ever firing. Completely dpi-independent and completely invisible to every page-level row -- no OCR pass, no face detector and no ink segmenter will ever see it -- which is exactly why it is the most reliable leak in the corpus and the easiest to forget. It also catches values on the 79% image-only pages where no text mechanism can reach."
+  },
+  {
+   "id": "G27",
+   "name": "HANDWRITTEN_IDENTITY_INK",
+   "definition": "IN, ZONED: pen ink whose connected components fall inside an IDENTITY ZONE -- a region whose RESOLVED printed label is an identity label (name, address, contact, DOB, ID, policy, relationship, signature, protected attribute), or a region overlapping a detected face, signature block or ID rectangle. Ink elsewhere inherits the semantics of the nearest resolved label on its row. OUT: everything else, which is G39 and is KEPT. Decides by WHERE the ink is, never by what it says, because at 109 dpi a handwritten name arrives from OCR as 'S OP N A I' and is unreadable as text.",
+   "action": "REDACT",
+   "enforcement": "handwriting_ink",
+   "semantic_keys": "handwriting_ink, handwriting_identity",
+   "examples": "a handwritten name in the 'Name of Applicant' box; a pen-written mobile number beside 'Contact No'; an inked DOB in a boxed date grid",
+   "note": "THIS ROW REPLACES THE REJECTED SLEDGEHAMMER ('all of it goes'). Zoning is the missing piece and it already exists in the insurance arm. FOUR FIXES ADOPTED. (1) DESTRUCTION, HIGH: BAND MEMBERSHIP ALONE IS DELETED AS A SUFFICIENT CONDITION -- on an engineering drawing the title block IS the bottom band and carries scale, material, tolerance and revision; on a letterhead the top band is the issuer. Ink is identity ink only when its region's label RESOLVES to an identity label, or it overlaps a face, signature or ID detection. (2) INCONSISTENCY, CRITICAL: ink_governs must be per-REGION, not per-page -- resolve_labels_vs_ink() currently drops ALL label regions on a page once blue share crosses a threshold, disabling the twenty-plus label_anchored rows on exactly the filled colour forms this pack exists for. (3) DESTRUCTION, HIGH: drop any ink component whose box overlaps an OCR-recognised printed token or a detected logo/image XObject -- blue_mask() is a pure chromatic test and cannot tell blue PRINT from blue PEN, so a colour-scanned blue letterhead or seal is currently destroyed as identity ink. (4) LEAK, MEDIUM: drop_repeated() must require VISUAL identity (a hashed crop, or ink-pixel counts within tolerance), not mere bbox co-location -- on a 3-page duplicate-copy bundle it currently deletes the real signature from all three copies."
+  },
+  {
+   "id": "G28",
+   "name": "IN_CELL_PERSONAL_VALUE",
+   "definition": "IN: a personal value INSIDE a table cell that G35 keeps -- a counterparty name, a UPI/VPA handle, a mobile number or an account fragment embedded in a bank statement's narration or particulars column, a name in a ledger description, a handle in a transaction reference. Only the MATCHED RUN is struck; the cell box, the figures, the column rules and the row alignment survive intact. OUT: the line-item description itself where it names goods, a service or a fee; any figure; the column header.",
+   "action": "REDACT",
+   "enforcement": "value_propagated",
+   "semantic_keys": "in_cell_value",
+   "examples": "a UPI narration carrying a mobile-derived VPA and a payee name; an NEFT narration carrying a person's name and an IFSC",
+   "note": "FIX ADOPTED (leak, CRITICAL): G35's KEEP explicitly covers line-item descriptions, so an Indian bank narration column -- which routinely carries a counterparty name, a mobile-number-derived VPA and an account fragment on every row -- was KEPT wholesale. This row is the ONLY thing permitted to enter a kept numeric column, it is value-level rather than region-level, and it may not claim a box larger than the matched run. It is deterministic -- propagated learned values plus VPA, phone and account-adjacent patterns -- not model-judged.",
+   "propagate": true
+  },
+  {
+   "id": "G29",
+   "name": "ORGANIZATION_PERSON_LINKED",
+   "definition": "IN: an organisation named as the VALUE of a PERSON-SCOPED field, so that the organisation becomes a fact about that person -- their employer, their school or college, the clinic or hospital treating them, their previous insurer or TPA, their landlord, their lender, the service company handling their case -- generalised to a class such as '<HOSPITAL>', '<PUBLIC SECTOR EMPLOYER>' or '<SCHOOL>'. OUT, explicitly: the organisation ISSUING or receiving the document in its institutional capacity, wherever it appears in a letterhead, masthead, footer, stamp or boilerplate (G30 KEEP).",
+   "action": "GENERALIZE",
+   "enforcement": "value_propagated",
+   "semantic_keys": "provider_name, org_person_linked",
+   "examples": "Name of Hospital; Employer; School Last Attended; Previous Insurer; Treating Facility",
+   "note": "FIX ADOPTED (inconsistency, HIGH): sem:provider_name had to serve two rows with opposite actions, and base.py's resolve() maps one key to exactly one row. The distinction is made at the MECHANISM, not in the pack: person-linking label patterns ('name of the hospital', 'facility', 'treating', 'employer', 'school attended') emit sem:org_person_linked and land here; letterhead, masthead, footer and boilerplate emit sem:org_issuer and land at G30 KEEP. Legacy sem:provider_name maps HERE, because the lexicon entry that emits it today is a person-scoped field label. Carries audio's ORGANIZATION_PERSON_LINKED including its 2026-09-01 clarification that a person's own insurer, TPA, lender or service company is person-linked.",
+   "propagate": true
+  },
+  {
+   "id": "G30",
+   "name": "ISSUING_ORGANISATION",
+   "definition": "IN: the identity of the organisation issuing or receiving the document in its institutional capacity -- name, legal entity, logo, wordmark, seal, letterhead and footer bands, office or branch postal address, switchboard and helpline numbers, support email, website and bare domain, published social handles, and its printed boilerplate. OUT: an organisation named as the value of a person-scoped field (G29); a natural person's name printed inside the letterhead (G01).",
+   "action": "REDACT",
+   "enforcement": "label_anchored",
+   "semantic_keys": "org_name, org_issuer",
+   "examples": "a bank masthead on a statement; a hospital name on a bill letterhead; a support email in a footer; a court seal on a filing",
+   "note": "Owner decision 2026-09-24: changed from KEEP to REDACT. The insurer and TPA identity was previously kept on the grounds that it is institutional rather than personal, and that a reader needs to know where a document came from. Reviewing real output, the owner ruled that it is to be hidden. DECLARED DIVERGENCE FROM THE INSURANCE PACK, where provider identity is redacted across all carriers under a specific owner rule about de-identifying providers. A generic pack has no such rule, and removing the issuer removes the answer to 'who produced this?'",
+   "propagate": true
+  },
+  {
+   "id": "G31",
+   "name": "ORG_REGISTRATION_CODE",
+   "definition": "IN, untouched: a code that registers an ORGANISATION -- GSTIN, CIN, EIN, TAN, corporate TIN, shop-and-establishment number, professional-council or practitioner registration number, licence number. Structurally confirmed by the GSTIN/CIN validators before the KEEP is granted. OUT: a personal tax identifier printed standalone as a person's own ID (G13 REDACT) -- a PAN under a 'PAN' label on a KYC form is a government ID, not a business registration.",
+   "action": "KEEP",
+   "enforcement": "checksum",
+   "semantic_keys": "org_reg_code",
+   "examples": "a GSTIN on a tax invoice; CIN; TAN; a medical council registration number on a prescription",
+   "note": "FIX ADOPTED (destruction, HIGH) -- THIS ROW CHANGED FROM MASK_PARTIAL TO KEEP, and the reason is mechanical rather than philosophical: actions.apply_action() renders MASK_PARTIAL as an opaque box identical to REDACT, so a 'surgical mask of the embedded PAN' is in fact the destruction of the whole GSTIN. Removing the GSTIN from a tax invoice removes the field that makes it a tax document and breaks input-credit reconciliation, and a sole proprietorship's GSTIN embeds the proprietor's PAN in positions 3-12, so the mask fired on the commonest small-vendor invoice. A registration printed as the ISSUER's own -- on its letterhead, invoice or stamp -- is KEPT whatever the entity-type position says. THE RESIDUAL IS STATED: an individual proprietor's PAN remains recoverable from a kept GSTIN. That is a declared, logged second-order exposure, revisited the moment write-back exists to mask the embedded run without erasing the code."
+  },
+  {
+   "id": "G32",
+   "name": "COMMON_BANK_INFRASTRUCTURE",
+   "definition": "IN, untouched: a value drawn from a space indexed per BRANCH or per INSTITUTION -- IFSC, sort code, routing number, SWIFT/BIC, bank and branch name, branch address, the branch MICR transit portion as printed on stationery, account type, account status, statement period labels and table geometry. OUT: anything indexed per customer or per account (G17 REDACT), including the MICR strip on a cheque IMAGE, which carries the account number.",
+   "action": "KEEP",
+   "enforcement": "checksum",
+   "semantic_keys": "bank_common",
+   "examples": "an IFSC code; a SWIFT/BIC; a named branch; 'Savings Account'; a statement period header",
+   "note": "An IFSC addresses a branch shared by hundreds of thousands of customers and carries zero person-specific entropy; audio reaches the same conclusion as a general exclusion, and this pack states it as a row so the KEEP is reportable and the per-customer / per-institution test is written down. THE ONE TRAP, and it is a leak in the wrong hands: the IFSC and SWIFT validators are used here in REVERSE, as a protective veto. That veto MUST additionally require the printed LABEL -- a protective rule that fires on shape alone grants protection to a customer-space value that merely matches the shape."
+  },
+  {
+   "id": "G33",
+   "name": "EVENT_DATE",
+   "definition": "IN, untouched and exact: every calendar date that is not a birth date -- admission, discharge, visit, invoice, statement, due, transaction, hearing, filing, joining, relieving, examination, collection, report, issue, expiry, approval, inspection, sail, delivery, drawing and revision dates -- propagated across the bundle so the same date is treated the same way on every page. OUT: a date printed against a birth-date label (G08); a date inside a barcode, MRZ or sticker block, which dies with its container.",
+   "action": "KEEP",
+   "enforcement": "value_propagated",
+   "semantic_keys": "event_date",
+   "examples": "Date of Admission; Invoice Date; Next Hearing; Rev. Date; Date of Joining",
+   "note": "Sequence is the primary analytic value of a document bundle -- what happened, in what order -- and an undated invoice, manifest, revision block or transcript is unusable. Audio excludes ordinary event dates too. ENFORCED AS A VETO: a proposed identity box overlapping a value already classified as an event date is rejected and logged, because dates are dense, highly patterned and the single easiest thing for a label-anchored identity row to swallow by accident. FIX ADOPTED (inconsistency): a value ever classified as an event date is excluded from G02 and G15 propagation. Where a deployment enables date shifting, ONE offset per bundle is applied to every parsed date in every genre."
+  },
+  {
+   "id": "G34",
+   "name": "DOCUMENT_SERIAL_AND_CASE_ID",
+   "definition": "IN, untouched: an identifier that indexes a DOCUMENT, a TRANSACTION or a CASE rather than a person -- invoice, bill, receipt, PO, challan, AWB, docket, drawing, letter, reference and file numbers, form designations and version codes, 'Page m of n', and the court case, FIR, suit or cause-list number. OUT: an identifier assigned to a person (G14, G15); the name portion of a case number that embeds a party name, which goes to G01 while the numeric portion stays.",
+   "action": "KEEP",
+   "enforcement": "label_anchored",
+   "semantic_keys": "paper_serial",
+   "examples": "Invoice No; Ref No; File No; AWB No; Drawing No; a court case number; a numbered government form version",
+   "note": "FIX ADOPTED (destruction, MEDIUM) and a DECLARED DIVERGENCE FROM AUDIO, which has LEGAL_CASE_ID as a destructive category. By this pack's own person-space / document-space test a docket number indexes a CASE, is published in the court's own cause list, and is the only handle by which a filing can be found or cited -- pseudonymising it destroys the bundle's usability while protecting a value that is already public. FIX ADOPTED: the lexicon entry that today routes 'Ref No' and 'File No' into a person row is split, with these tokens emitting sem:paper_serial and landing here."
+  },
+  {
+   "id": "G35",
+   "name": "TABULAR_NUMERIC_CONTENT",
+   "definition": "IN, untouched: a transaction-, quantity- or results-space table and its structure -- line-item descriptions, quantity, rate, tax, discount and amount columns, subtotals and totals, ledger and statement rows, marks and grades, dimensions and tolerances, and any figure in a qualified column of three or more stacked values at one x-range. OUT: a personal value embedded inside a kept cell, which G28 strikes at value level; the clinical results region, which G21 claims as a whole under this pack's divergence.",
+   "action": "KEEP",
+   "enforcement": "label_anchored",
+   "semantic_keys": "numeric_column",
+   "examples": "a hospital bill's Surgeon / GST / Other / Package discount rows with their amounts; a marks sheet; a Basic/HRA/DA/PF/TDS payslip column",
+   "note": "FIX ADOPTED (leak, CRITICAL) -- THE VETO NOW REQUIRES POSITIVE TRANSACTION EVIDENCE, NOT GEOMETRY ALONE. Pure geometry ('three or more figures stacked at one x-range') protects a KYC, admission or employment form's stacked identifier fields -- Aadhaar, PAN, mobile, account and PIN all sit in one right-hand x-range -- turning the veto into a guaranteed leak on exactly the forms this pack sees most. A column qualifies only when a resolved header from a transaction/quantity lexicon (qty, rate, amount, tax, total, balance, result, marks, dimension) sits above it, or the stacked values are currency- or decimal-formatted. FIX ADOPTED: a proposed box overlapping a qualified column is REJECTED AND LOGGED, not deprioritised. Column detection keys on x-alignment of numeric runs across rows, because rule lines break at 92 dpi. This row carries two of the four measured failures."
+  },
+  {
+   "id": "G36",
+   "name": "EMPTY_FIELD",
+   "definition": "IN, untouched: any field region that is genuinely empty -- an unfilled box, an unsigned signature line, an empty table row, an unticked checkbox, a blank photo paste-box, an unfilled boxed-character grid. The predicate is operational and deterministic: ink fraction inside the cell INTERIOR after subtracting the printed form mask, requiring connected components above a minimum area that are not long straight runs (cell walls and rules), AND no OCR token in the region, AND no ink above a lower floor measured at higher dpi with per-page contrast normalisation. OUT: a region with a pencil entry, a light-ink entry or a faint photocopy entry -- two independent negatives are required before ABSENT is asserted.",
+   "action": "KEEP",
+   "enforcement": "label_anchored",
+   "semantic_keys": "empty_field",
+   "examples": "a blank KYC form's every field; an unsigned witness line; an empty boxed DD/MM/YYYY grid",
+   "note": "THE DIRECT FIX FOR A MEASURED FAILURE: a BLANK form was delivered 36% black with every field empty and nothing whatsoever removed. FIX ADOPTED (destruction, HIGH): the predicate is GRID-AWARE. _has_marks()'s flat '(a < 140).mean() > 0.01' at 150 dpi counts the printed cell walls of a boxed-character field as ink, which is precisely the construct the blank-form failure involved. FIX ADOPTED (leak, MEDIUM): a single dark-pixel fraction is not enough to assert ABSENT about a pencil-filled or faintly photocopied field, hence the two-negative requirement. Evaluated BEFORE any label_anchored row may claim a region."
+  },
+  {
+   "id": "G37",
+   "name": "INSTRUCTIONAL_BOILERPLATE",
+   "definition": "IN, untouched: instruction and guidance text, notes to the filer, terms and conditions, declarations and undertakings in their printed unfilled form, legal boilerplate, privacy notices, checklists of documents to attach, and the specimen values inside them. OUT: a declaration that has been FILLED IN -- a signed declaration carries a signature (G22) and often a handwritten name (G27), both of which still fire inside the block.",
+   "action": "KEEP",
+   "enforcement": "label_anchored",
+   "semantic_keys": "guidance_text",
+   "examples": "a 'GUIDANCE FOR FILLING CLAIM FORM' sheet; a 'Documents to be submitted' checklist; an unfilled declaration paragraph",
+   "note": "THE DIRECT FIX FOR THE OTHER MEASURED FAILURE: an instruction sheet with zero personal data went 22.6% black. FIX ADOPTED (leak, CRITICAL): THE SUPPRESSION IS BLOCK-SCOPED, NOT PAGE-SCOPED. value_regions() today does 'if GUIDANCE_PAGE matches anywhere in the first 400 tokens: return []', so one match kills label anchoring for the whole page -- a contract, affidavit, indemnity bond or policy schedule whose first paragraph reads like instructions loses every destructive row on every filled field below it. Suppression now applies only BELOW the matched heading's y-coordinate, only to the block, and requires two positive tests: the block contains no value region and no ink, and it contains no token a detector flagged as person-identifying. Instruction text is the smallest type on the page and OCRs worst, so the classifier also keys on block geometry -- long lines, uniform leading, no value-bearing gaps."
+  },
+  {
+   "id": "G38",
+   "name": "PAGE_FURNITURE",
+   "definition": "IN, untouched: the page's own scaffolding -- every printed field label INCLUDING the label of every field this pack struck, column and row headers, section titles, table rules, the document's own title and subtitle, page numbers and 'Page m of n', form designations and version codes, printer marks, and the printed role caption of a signature block minus any name inside it. OUT: a value sitting beside a label; a name swallowed into a caption, which goes to G01.",
+   "action": "KEEP",
+   "enforcement": "label_anchored",
+   "semantic_keys": "furniture, form_code",
+   "examples": "'Name of Applicant:' as a label rather than a value; a 'Sr. No. | Particulars | Amount' header row; a numbered form designation",
+   "note": "THIS ROW IS WHAT MAKES 'ABSENT' DISTINGUISHABLE FROM 'HIDDEN'. Without it a redacted form is an undifferentiated grid of black boxes and an annotator cannot tell that a field EXISTED and was suppressed. It is also load-bearing for detection: label_anchored is the enforcement on more than twenty rows here, and a pack that destroys its own anchors degrades every one of them. At 109 dpi labels are the most reliably readable text on the page -- printed, horizontal, consistently sized."
+  },
+  {
+   "id": "G39",
+   "name": "HANDWRITTEN_CONTENT_INK",
+   "definition": "IN, untouched: pen ink that is not in an identity zone and does not inherit an identity label -- handwritten quantities, measurements, readings, calculations, ticks and crosses, corrections and strike-throughs, free-text remarks that name no person, marginalia on a drawing, a checked-and-approved annotation on an engineering print, a handwritten line item in a ledger. The complement of G27 and the default outcome of the zoning.",
+   "action": "KEEP",
+   "enforcement": "handwriting_ink",
+   "semantic_keys": "ink_unzoned",
+   "examples": "a handwritten dimension beside a drawing callout; a tick in a checklist; a handwritten amount in a bill row; an initialled 'OK' on a print",
+   "note": "THE DIRECT, AUDITABLE ANSWER TO THE OWNER'S REJECTION OF 'all of it goes' -- the kept half of the ink is an explicit row, not an OUT clause, so it is reportable. FIX ADOPTED (destruction, CRITICAL) -- THE MECHANISM MUST CHANGE OR THIS ROW INVERTS: handwriting.py's unzoned branch emits sem:clinical (verified in the shipped source at line 67), which means KEEP under the insurance pack but REDACT under THIS one. Landing this pack without changing that constant would destroy every stroke of unzoned pen ink on every colour-scanned form, ledger and marked-up print -- the exact sledgehammer this rebuild exists to remove. The unzoned branch must emit a NEUTRAL key, sem:ink_unzoned, and the zoned branch sem:handwriting_identity; both ship with the pack and both are mapped. On greyscale, bitonal or black-pen pages the chromatic segmenter sees nothing, this row has nothing to protect, and the bounded label fallback carries the page."
+  },
+  {
+   "id": "G40",
+   "name": "ID_DOCUMENT_PAGE",
+   "definition": "IN, untouched as a PAGE: a page whose subject is an identity or KYC artefact -- a national ID card, passport page, driving licence, voter card, insurance or employee ID card, a KYC form. The page as a WHOLE is KEPT; the identity ON it is removed by the ordinary rows -- G13 the number, G23 the portrait, G24 the QR and MRZ, G22 the signature, G01 and G06 the labelled fields.",
+   "action": "KEEP",
+   "enforcement": "objective_visual",
+   "semantic_keys": "id_document_page",
+   "examples": "an ID card photocopy pasted into a claim form; a passport bio page; a blank KYC form",
+   "note": "Stated as a row rather than left as a silent omission, so the decision is auditable and a future reader cannot reintroduce page-level destruction by accident. The reason it is KEEP is an OCR reality: a page-level destroy cannot distinguish a FILLED ID card from a BLANK KYC form, and blacking the latter produced the 36% measured failure. Classifying a page as an ID artefact is an ANNOTATION that raises confidence for G13's label-free claim -- never an action."
+  },
+  {
+   "id": "G41",
+   "name": "OTHER",
+   "definition": "IN, value tier: a concrete, person-linked, persistent value that no other row claims, where POSITIVE evidence exists -- an ID-shaped run a validator accepted or rejected, a detected face, symbol or signature with no row to route it, or a label read ABOVE the confidence floor whose value region could not be parsed. Each occurrence carries a note, and a pattern that recurs must be promoted to a versioned category rather than left here. IN, page tier: a page where detection is provably untrustworthy -- no usable text layer, fewer than about 40 recognised tokens, mean OCR confidence below the floor, estimated dpi below the floor, or a script the OCR engine does not support. OUT: detector silence alone; a genuinely sparse page such as a CAD sheet or a cover page.",
+   "action": "REDACT",
+   "enforcement": "label_anchored",
+   "semantic_keys": "unresolved",
+   "examples": "a Devanagari ration card; a 92 dpi fax where only the letterhead reads; a validator hit with no row to route it to",
+   "note": "Carries audio's OTHER, including audio's requirement of a note and its rule that a repeated pattern is promoted to a versioned category. FIX ADOPTED (destruction, HIGH): THE VALUE TIER IS DEFINED ON POSITIVE EVIDENCE ONLY. The previous trigger -- 'OCR below the token or confidence floor in an identity-labelled region' -- is self-referential on the worst 42% of the corpus: if OCR is below the floor, the label that would mark the region as identity-labelled did not read either. FIX ADOPTED (destruction, MEDIUM): THE PAGE TIER IS IMPLEMENTED AND METERED, and it does NOT black a page body. No code path today emits a page finding from token count, confidence, dpi or script; this pack requires one, computing all four per page and, when the gate trips, QUARANTINING the page -- withheld from the delivered bundle with a named reason and a review flag -- rather than delivering it black. A deployment may configure deliver-fully-redacted instead; the default is quarantine, because a black page and a withheld page protect equally and only one of them is honest about why. THE SIZE OF THIS ROW PER RUN IS THE PACK'S REAL COVERAGE STATEMENT."
+  },
+  {
+   "id": "G42",
+   "name": "NON_LATIN_IDENTITY_TEXT",
+   "definition": "IN: a run of text in a script other than Latin, carried in the page's own text layer, on a page that also carries identity content. An Indian ID document prints the holder's name, parentage and address twice -- once in English and once in the state language -- and the second copy is the same personal data in different glyphs. OUT: nothing here is script-specific; a non-Latin run on a page with no identity content is still covered, because the cost of redacting a printed field label or a boilerplate line is an order of magnitude below the cost of leaving a name standing.",
+   "action": "REDACT",
+   "enforcement": "objective_script",
+   "semantic_keys": "non_latin_script",
+   "examples": "ಮೀನಾ ರಾವ್ beside 'Meena Rao'; प्रिया वर्मा beside 'Priya Verma'; கவிதா beside 'Kavitha'; a Kannada address block beside its English twin",
+   "note": "Owner decision 2026-09-24. Measured on the 24-bundle corpus: 201 word tokens over 11 pages in 7 bundles, carrying patient names, parents' and spouses' names, full street addresses, gender and DOB. Deliberately NOT model-judged: the tokens were already in the prompt on every one of those pages and both detectors ignored them, so a prompt line would not be a mechanism. This row covers the BORN-DIGITAL half only. A scanned page in the same script never reaches the text layer at all, because Apple Vision supports no Indic script -- that is a separate gap."
+  }
+ ],
+ "lexicon_note": "Label vocabulary OWNED BY THIS PACK -- credentials, device and vehicle identifiers, sensitive demographics, minors, personal financial facts, document serials and non-Indian national IDs. Compiled only when this pack is selected; it never reaches insurance_medical.",
+ "lexicon": [
+  [
+   "^(user\\s*name|username|user\\s*id|login(\\s*id)?|password|passcode|pin(\\s*number)?|otp|secret\\s*(question|answer)|security\\s*(question|answer|code)|api\\s*key|access\\s*(code|token))$",
+   "sem:credential",
+   false
+  ],
+  [
+   "^(ip\\s*address|mac\\s*address|imei|imsi|device\\s*id|serial\\s*(no|number)\\s*of\\s*device|vehicle\\s*(no|number|reg(istration)?(\\s*(no|number))?)|registration\\s*(no|number)\\s*of\\s*vehicle|chassis\\s*(no|number)|engine\\s*(no|number)|licen[cs]e\\s*plate)$",
+   "sem:device_id",
+   false
+  ],
+  [
+   "^(religion|caste|sub\\s*caste|ethnicity|nationality|mother\\s*tongue|sexual\\s*orientation|marital\\s*status|(racial|ethnic)\\s*(origin|group|background)|race\\s*/\\s*ethnicity|community\\s*(category|certificate)|disability(\\s*(type|status))?|trade\\s*union|political\\s*affiliation|biometric(\\s*data)?|genetic(\\s*data)?)$",
+   "sem:sensitive_attr",
+   false
+  ],
+  [
+   "^(is\\s*(the\\s*)?(patient|child|applicant)\\s*a?\\s*minor|child'?s?\\s*name|name\\s*of\\s*(the\\s*)?(child|student|pupil)|(school|institution)\\s*name|name\\s*of\\s*(the\\s*)?school|previous\\s*school|class\\s*(and|&|/)\\s*section|class\\s*(and\\s*)?section|roll\\s*(no|number)|student\\s*(id|no|number)|admission\\s*(no|number))$",
+   "sem:minor_flag",
+   false
+  ],
+  [
+   "^((gross|net|annual|monthly|basic|total)\\s*(salary|pay|income|remuneration|emoluments)|salary\\s*(per\\s*month|p\\.?m\\.?|drawn|amount|details)|ctc|take\\s*home|(account|closing|opening|available|ledger)\\s*balance|credit\\s*limit|loan\\s*(amount|outstanding)|emi)$",
+   "sem:person_money",
+   false
+  ],
+  [
+   "^(file|case|docket|reference|ref|acknowledgement|receipt|invoice|challan|token|application)\\s*(no|number|id)$",
+   "sem:paper_serial",
+   false
+  ],
+  [
+   "^((nhs|national\\s*insurance|social\\s*security|ssn|nric|fin|medicare|medicaid|passport|visa|driv(ing|er'?s?)\\s*licen[cs]e|licen[cs]e|voter|ration|pension|tax|tin|itin|utr|aadhaar|aadhar|pan|uid|citizen|identity|id)\\s*(card\\s*)?(no|number|id)|national\\s*id|aadhaar|pan\\s*card)$",
+   "sem:gov_id",
+   false
+  ],
+  [
+   "^name\\s*of\\s*(the\\s*)?(hospital|clinic|centre|center|lab(oratory)?|company|firm|organi[sz]ation|institution|institute|school|college|university|bank|branch|employer|department|agency|vendor|supplier|contractor|practice|surgery)$",
+   "sem:org_name",
+   false
+  ],
+  [
+   "^(employee|staff|member|customer|client|account|user|student|payroll|pension|personnel|badge|enrol(l)?ment|membership|subscriber|beneficiary)\\s*(no|number|id|code|ref(erence)?)$",
+   "sem:policy_id",
+   false
+  ]
+ ],
+ "propagate_note": "A value that identifies a person on one page identifies them on every page. Without these flags propagate.propagatable() returns an empty set and the bundle-wide consistency guarantee is inert -- measured on a 62-page claim: insurance propagated 35 values, generic propagated 0."
+}

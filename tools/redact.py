@@ -283,9 +283,18 @@ def deliver(media: Path, profile: str, outdir: Path, assurance: bool,
                                    src_dir / "transcript.json",
                                    src_dir, fid, profile,
                                    channel_wavs=channel_wavs)
-            qc_report.qc_file(src_dir, fid, src_dir / "transcript.json",
-                              src_dir / "intervals.json",
-                              common.CONFIG["beep_freq_hz"])
+            # ASSIGN THE RESULT. Every other qc_file() call site updates
+            # res["qc"]; this one discarded it, so the quarantine decision at
+            # the end of deliver() read the PRE-assurance status. A file whose
+            # QC problem the second listener had just RESOLVED was quarantined
+            # anyway, with a PASS report sitting inside the quarantine folder.
+            # --assurance exists to improve quality; it must not be able to
+            # cause a quarantine by itself.
+            st1, _ = qc_report.qc_file(
+                src_dir, fid, src_dir / "transcript.json",
+                src_dir / "intervals.json", common.CONFIG["beep_freq_hz"])
+            res["qc"] = st1
+            print(f"  QC after assurance re-render: {st1}")
 
     # ---- digit-boundary auto-extension (owner decision 2026-09-10) ----
     # A digit word at a beep boundary almost always belongs to the beeped
