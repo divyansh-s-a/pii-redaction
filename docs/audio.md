@@ -129,9 +129,24 @@ file (the second listener can be a lighter model). Expect approximately 1.5-2x
 the per-audio-hour cost of the single-engine path — the price of not being
 blind to what one engine cannot hear.
 
+**The second listener's detections are placed on the primary's
+timeline.** Its word numbering is its own, and its clock is not the
+primary's — on long files its timestamps can be seconds off. So before a
+union detection is beeped, the two transcripts are aligned
+(`pipeline/align_listeners.py`) and the detection is moved to the primary's
+words and times; each one is then checked — the position whose primary words
+match the detection's own text wins, and when neither wins both stretches are
+beeped, so the audio is never covered less than at the second listener's own
+times. A union detection with no primary word under it is beeped in the
+audio and leaves the transcript as it is. `tools/replay_assurance_union.py`
+replays this on cached runs, old placement against new, without model calls.
+
 Notes: works with every other flag (`--mono`, `--langpack`, `--profile`);
 union-only intervals are marked `source: "assurance_gemini"` in
-intervals.json and the manifest records that assurance ran.
+intervals.json (with `placed_by` and `retimed_from` recording the placement)
+and the manifest records that assurance ran. A re-run strips the previous
+run's union-only intervals and re-renders the primary-only baseline before
+uniting again.
 
 ## Category-sweep detection (`--sweep`)
 

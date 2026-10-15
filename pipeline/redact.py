@@ -139,8 +139,8 @@ def redact_transcript(transcript, intervals, out_path: Path):
     """Replace covered words with <CATEGORY REDACTED>, incumbent format."""
     covered = {}   # (ui, wi) -> interval
     for iv in intervals:
-        if iv["action"] != "beep":
-            continue
+        if iv["action"] != "beep" or iv.get("start_word") is None:
+            continue                       # None: an audio-only beep
         for gi in range(iv["start_word"], iv["end_word"] + 1):
             covered[gi] = iv
     lines = []

@@ -253,8 +253,48 @@ def deliver(media: Path, profile: str, outdir: Path, assurance: bool,
     if assurance:
         prep = common.load_json(src_dir / "prepare.json")
         channel_wavs = [src_dir / n for n in prep.get("channel_wavs", [])] or None
+        # ---- clean union slate on re-runs ----
+        # union-only intervals are derived state from a previous run. Left in
+        # place they would keep that run's placement, and the coverage check
+        # below would count their beeps as covering values — so strip them
+        # and re-render the primary-only baseline first, as the audit-
+        # feedback slate above does
+        data_a = common.load_json(src_dir / "intervals.json")
+        keep_a = [iv for iv in data_a["intervals"]
+                  if iv.get("source") != "assurance_gemini"]
+        if len(keep_a) != len(data_a["intervals"]):
+            print(f"  [assurance] stripped "
+                  f"{len(data_a['intervals']) - len(keep_a)} union-only "
+                  "interval(s) from a prior run — re-rendering baseline")
+            data_a["intervals"] = keep_a
+            common.save_json(src_dir / "intervals.json", data_a)
+            redact_mod.redact_file(media, src_dir / "work_16k.wav",
+                                   src_dir / "intervals.json",
+                                   src_dir / "transcript.json",
+                                   src_dir, fid, profile,
+                                   channel_wavs=channel_wavs)
+            res["qc"], _ = qc_report.qc_file(
+                src_dir, fid, src_dir / "transcript.json",
+                src_dir / "intervals.json", common.CONFIG["beep_freq_hz"])
         a_ivs = union_assurance(fid, src_dir, media, src_dir / "work_16k.wav",
                                 model, channel_wavs)
+        # The second listener's intervals carry ITS word indices and ITS
+        # clock. Map them onto the primary transcript's words and times by
+        # aligning the two transcripts (pipeline/align_listeners.py) BEFORE
+        # the coverage check: at the second listener's own times a value can
+        # look covered when it is not, and its indices would redact the wrong
+        # primary words. Each interval is then CHECKED (align_listeners.
+        # place): the position whose primary words match the value's own
+        # text wins; when neither wins, both stretches are beeped, so the
+        # audio is never covered less than at the second listener's times.
+        import align_listeners
+        p_words = detect_pii.flatten_words(
+            common.load_json(src_dir / "transcript.json"))
+        s_words = detect_pii.flatten_words(
+            common.load_json(src_dir / "assurance" / "transcript.json"))
+        amap = align_listeners.align(p_words, s_words)
+        a_ivs = [x for iv in a_ivs
+                 for x in align_listeners.place(iv, amap, p_words, s_words)]
         el_ivs = common.load_json(src_dir / "intervals.json")["intervals"]
         rendered = common.load_json(src_dir / "rendered_intervals.json")
         merged = [(r["start_ms"], r["end_ms"]) for r in rendered["rendered_merged"]]
