@@ -122,7 +122,8 @@ def _call(model_id, wav_path: Path, context_text=""):
         if status == 200:
             resp = json.loads(body)
             usage = resp.get("usage", {})
-            with open(common.ROOT / "output" / "api_usage.jsonl", "a") as f:
+            common.OUTPUT_ROOT.mkdir(parents=True, exist_ok=True)
+            with open(common.OUTPUT_ROOT / "api_usage.jsonl", "a") as f:
                 f.write(json.dumps({
                     "engine": "openrouter_audio", "model": model_id,
                     "context": common.USAGE_CONTEXT["tag"] or None,

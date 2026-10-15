@@ -188,6 +188,90 @@ lifts a child's clinical detail out of `medical_consult`'s annotate-only
 exemption, so it is permitted in every sweep pass — never restricted to its
 own group.
 
+## Named entities: `--mapping` and `--replace pseudonym`
+
+Brands, product and model names, dealers, organisations and the research
+agency are not personal data, so the taxonomy never targets them. A project
+that must hide them (e.g. a market-research study whose material becomes a
+benchmark) supplies a **mapping** of real names to invented ones:
+
+    python3 tools/redact.py group1.mp3 --sweep --assurance \
+        --mapping study_mapping.yaml --replace pseudonym \
+        --profile-file study_profile.yaml
+
+The mapping uses the same YAML as the project's text pseudonymiser — sections
+of `{pattern: case-insensitive regex, replace: invented name}` — with three
+optional fields per entry:
+
+    brands:
+      - {pattern: "Zorvex(?:\\s+Vision)?", replace: Norvale,
+         aliases: [ज़ोरवेक्स, zor vex], category: BRAND}
+    agency:
+      - {pattern: "Brightpath Research", replace: Insightwell}
+    people:            # found, but ALWAYS beeped (never voiced)
+      - {pattern: "\\bRavindra\\b", replace: colleague}
+    keep:              # notes; never detected, never changed
+      - Pune / Nashik (fieldwork locations)
+
+`aliases` are spoken forms the regex cannot express (Devanagari spellings,
+transliterations, common mis-hearings); `tools/expand_mapping.py` generates
+them once with a model into `<mapping>.aliases.yaml` beside the mapping.
+Replace the **distinctive** name only and leave generic words to be spoken
+(`Plumora` → `Tandel`, not `Plumora Bank` → `Tandel Bank`): a mention with or
+without "Bank" then reads right, and short replacements fit their slot.
+
+**What `--mapping` turns on** (in either mode):
+
+| stage | added |
+|---|---|
+| transcribe | the real names lead ElevenLabs' keyterms, so they are spelled consistently |
+| detect | one extra model pass over the same word stream listing the entities (any language or script, inflected forms, slogans and other hints), plus a deterministic net: the regexes, aliases, Devanagari→Latin keys and a sound-alike match |
+| render | `beep`: mapped mentions are beeped. `pseudonym`: see below |
+| audit | the mapped-entity audit — matcher + confirmed judge read over the redacted transcript, and the **listen check**: the delivered audio is transcribed again and scanned for real names |
+| package | output file names are passed through the mapping (study folders often carry the brand); the manifest keeps the source hash, not its path |
+
+**Pseudonym mode** replaces a mapped mention with a stock synthetic voice
+saying the invented name (ElevenLabs premade voices, or `--tts say` for macOS
+voices offline). A speaker's voice is never cloned: their median pitch only
+picks between a low and a high stock voice. The clip is trimmed, time-fitted
+without changing pitch (widening into neighbouring silence first), matched in
+loudness and bandwidth to the speech it replaces, and laid over room tone.
+Only **confirmed** mentions are voiced — a regex or alias match, or a model
+mention that also resembles the entity; a sound-alike match alone, a slogan
+or other hint, an overlap with personal data, or a clip that cannot fit is
+**beeped** instead, and the manifest says how many and why. A wrongly voiced
+brand would put words in a speaker's mouth; a beep cannot.
+
+The transcript shows the invented name where the audio speaks it and the usual
+`<CATEGORY REDACTED>` everywhere else (`<BRAND REDACTED>` for a beeped mapped
+mention). QC checks every voiced slot on the output signal: no tone, the
+original speech gone (it would correlate with the source), loudness within
+4 dB of what it replaced.
+
+Default runs (no `--mapping`, `--replace beep`) are unchanged:
+`tools/check_beep_identity.py` re-runs the full workflow offline on synthetic
+clips in this checkout and in a worktree of `main` and compares every output.
+
+### Custom profiles (`--profile-file`)
+
+    name: market_research_example
+    annotate_only: [AGE]
+    detection_supplement: |
+      A respondent's own age is analysis data in this project; still mark it
+      as AGE. A child's age is CHILD_INFO + AGE as usual.
+
+A profile file names the policy categories a project keeps audible and,
+because a category's meaning must change in the prompt too, an optional
+supplement for the detector. `pipeline/policy.py` is not edited; the profile
+is registered at run time and recorded (name and hash) in every output.
+
+### Keeping work files outside the checkout
+
+Stage caches (`output/<file>/…`: transcripts, intervals, renders) hold
+unredacted text. `PII_WORK_DIR=/path` moves them, and `--quarantine-dir`
+moves held bundles; `PII_ENV_FILE=/path/.env` reads keys from a file outside
+the checkout.
+
 ## Processing a whole folder (`run_all.py`)
 
     python3 run_all.py --input path/to/folder --result path/to/result
@@ -286,7 +370,9 @@ Edit, bump the version, re-run with `--force detect`.
 ## Repo layout
 
     pipeline/   the 5-stage pipeline (orchestrator, engines, detector, render,
-                QC, edge listen check, judge client)
+                QC, edge listen check, judge client; entity_map,
+                mapped_detect, pseudonym_render, profiles for --mapping /
+                --replace pseudonym / --profile-file)
     tools/      production workflow, evaluation harness, report generators
     prompts/    versioned prompts + keyterms (see prompts/README.md)
     dedupe/     dataset dedupe (exact + acoustic + transcript tiers)

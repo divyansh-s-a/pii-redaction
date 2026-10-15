@@ -124,7 +124,8 @@ def judge_call(prompt: str, schema: dict, model: str = DEFAULT_JUDGE,
         if status == 200:
             resp = json.loads(body)
             usage = resp.get("usage", {})
-            log = common.ROOT / "output" / "api_usage.jsonl"
+            log = common.OUTPUT_ROOT / "api_usage.jsonl"
+            log.parent.mkdir(parents=True, exist_ok=True)
             with open(log, "a") as f:
                 f.write(json.dumps({
                     "engine": log_engine, "model": model,

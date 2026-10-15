@@ -43,6 +43,54 @@ def file_id_for(path: Path) -> str:
     return stem or hashlib.sha256(path.name.encode()).hexdigest()[:12]
 
 
+def mode_signature():
+    """What a cached detection/render depends on beyond today's default:
+    the mapping, the custom profile file, the replace mode. Empty when none
+    is in play, so default caching behaviour is unchanged."""
+    import entity_map
+    import profiles
+    import redact as _r
+    em, pdef = entity_map.active(), profiles.active()
+    sig = {}
+    if em is not None:
+        sig["mapping_sha256"] = em.sha256
+    if pdef is not None:
+        sig["profile_file_sha256"] = pdef["sha256"]
+    mode = _r.replace_mode()
+    if mode != "beep":
+        sig["replace_mode"] = mode
+        import pseudonym_render
+        sig["tts_engine"] = pseudonym_render.cfg()["engine"]
+    return sig
+
+
+def detect_stale(iv_path: Path) -> bool:
+    """A cached intervals.json made under another mapping/profile."""
+    if not iv_path.exists():
+        return True
+    d = common.load_json(iv_path)
+    sig = mode_signature()
+    have = {"mapping_sha256": (d.get("mapping") or {}).get("mapping_sha256"),
+            "profile_file_sha256": d.get("profile_file_sha256")}
+    want = {"mapping_sha256": sig.get("mapping_sha256"),
+            "profile_file_sha256": sig.get("profile_file_sha256")}
+    return have != want
+
+
+def render_stale(out: Path) -> bool:
+    ri_path = out / "rendered_intervals.json"
+    if not ri_path.exists():
+        return True
+    ri = common.load_json(ri_path)
+    sig = mode_signature()
+    return ({k: ri.get(k) for k in ("mapping_sha256", "profile_file_sha256")}
+            != {k: sig.get(k) for k in ("mapping_sha256",
+                                        "profile_file_sha256")}
+            or ri.get("replace_mode", "beep") != sig.get("replace_mode",
+                                                         "beep")
+            or ri.get("tts_engine") != sig.get("tts_engine"))
+
+
 def gather_files(one):
     if one:
         return [Path(one).resolve()]
@@ -59,7 +107,7 @@ def run_file(path: Path, model: str, profile: str, force: set,
     fid = file_id_for(path)
     suffix = ("" if engine == "gemini" else f"__{engine}") + \
              ("" if detector == "gemini" else f"__{detector}")
-    out = ROOT / "output" / (fid + suffix)
+    out = common.OUTPUT_ROOT / (fid + suffix)
     out.mkdir(parents=True, exist_ok=True)
     print(f"\n=== {path.name}  (file_id={fid}) ===")
 
@@ -106,7 +154,7 @@ def run_file(path: Path, model: str, profile: str, force: set,
     # same audio is never paid for twice just to swap detectors.
     tr = out / "transcript.json"
     if detector != "gemini" and "transcribe" not in force and not tr.exists():
-        base_tr = (ROOT / "output"
+        base_tr = (common.OUTPUT_ROOT
                    / (fid if engine == "gemini" else f"{fid}__{engine}")
                    / "transcript.json")
         if base_tr.exists():
@@ -137,7 +185,7 @@ def run_file(path: Path, model: str, profile: str, force: set,
     #   swaps the model behind the SAME policy prompt + word-index schema so
     #   detector models compare fairly on identical transcripts.
     iv = out / "intervals.json"
-    if "detect" in force or not iv.exists():
+    if "detect" in force or not iv.exists() or detect_stale(iv):
         common.set_usage_context(f"detect:{fid}{suffix}")
         try:
             detect_pii.detect_file(model, fid, tr, iv,
@@ -151,7 +199,7 @@ def run_file(path: Path, model: str, profile: str, force: set,
 
     # D redact
     beeped = out / common.beeped_name(fid)
-    if "redact" in force or not beeped.exists():
+    if "redact" in force or not beeped.exists() or render_stale(out):
         redact.redact_file(path, work, iv, tr, out, fid, profile,
                            channel_wavs=channel_wavs)
     else:
@@ -220,7 +268,7 @@ def main():
     sfx = ("" if args.engine == "gemini" else f"__{args.engine}") + \
           ("" if args.detector == "gemini" else f"__{args.detector}")
     summary = f"corpus_summary{sfx}.json"
-    common.save_json(ROOT / "output" / summary, results)
+    common.save_json(common.OUTPUT_ROOT / summary, results)
 
 
 if __name__ == "__main__":

@@ -306,8 +306,9 @@ def llm_detect(model, words, backend="gemini"):
 
 def _detect_pass(model, sub, backend, directive, langpack):
     spans = []
+    import profiles
     prompt = (policy.DETECTION_POLICY + langpack.detection_supplement() +
-              directive +
+              profiles.detection_supplement() + directive +
               "\n\nTRANSCRIPT WORDS:\n" + words_as_prompt(sub, 5000))
     if backend == "gpt":
         import judge_client
@@ -445,6 +446,12 @@ def build_intervals(file_id, transcript, spans, gap_merge_ms):
             "source": s["source"],
             "channel": ws[0].get("channel"),
         })
+        # mapped-entity spans carry their mapping record (absent otherwise,
+        # so intervals without a mapping are unchanged)
+        for k2 in ("mapping_id", "mapping_category", "render", "match",
+                   "hint_reveals"):
+            if k2 in s:
+                out[-1][k2] = s[k2]
     return out
 
 
@@ -464,15 +471,39 @@ def detect_file(model, file_id, transcript_path: Path, out_path: Path,
         llm_spans = llm_detect(model, words)
     net_spans = [n for n in safety_net(words)
                  if not any(overlaps(n, l) for l in llm_spans)]
-    intervals = build_intervals(file_id, transcript, llm_spans + net_spans,
-                                gap_merge_ms)
-    common.save_json(out_path, {"file_id": file_id,
-                                "taxonomy_version": "0.2",
-                                "detector": detector,
-                                "detector_model": (
-                                    (detector_model or GPT_DETECTOR_DEFAULT)
-                                    if detector == "gpt" else model),
-                                "intervals": intervals})
+    import entity_map
+    em = entity_map.active()
+    mapped = []
+    if em is not None:
+        import mapped_detect
+        if detector == "gpt":
+            mapped = mapped_detect.detect(
+                detector_model or GPT_DETECTOR_DEFAULT, words, em,
+                backend="gpt")
+        else:
+            mapped = mapped_detect.detect(model, words, em)
+        # a listed entity is never kept as a "public figure": an endorser's
+        # name would otherwise stay audible and give the brand away
+        for sp in llm_spans:
+            if sp.get("public_figure") and any(overlaps(sp, m)
+                                               for m in mapped):
+                sp["public_figure"] = False
+    intervals = build_intervals(file_id, transcript,
+                                llm_spans + net_spans + mapped, gap_merge_ms)
+    record = {"file_id": file_id,
+              "taxonomy_version": "0.2",
+              "detector": detector,
+              "detector_model": (
+                  (detector_model or GPT_DETECTOR_DEFAULT)
+                  if detector == "gpt" else model),
+              "intervals": intervals}
+    if em is not None:
+        record["mapping"] = em.summary()
+    import profiles
+    pdef = profiles.active()
+    if pdef is not None:
+        record["profile_file_sha256"] = pdef["sha256"]
+    common.save_json(out_path, record)
     n_net = sum(1 for i in intervals if i["source"] == "safety_net")
     print(f"  detected {len(intervals)} intervals "
           f"({len(intervals) - n_net} llm, {n_net} safety-net) -> {out_path}")

@@ -6,6 +6,7 @@ the project root and is never printed or logged.
 """
 import base64
 import json
+import os
 import time
 import urllib.request
 import urllib.error
@@ -18,6 +19,11 @@ CONFIG = json.loads((ROOT / "pipeline" / "config.json").read_text())
 # default FLAC lossless). One source of truth so the renderer, QC, edge
 # verify, delivery copy and web download all agree on the filename.
 BEEP_FORMAT = CONFIG.get("beep_format", "flac")
+
+# Stage caches (transcripts, intervals, renders) hold UNREDACTED text. They
+# default to output/ inside the checkout (gitignored); PII_WORK_DIR moves them
+# outside it, e.g. beside a project whose outputs must never sit in this repo.
+OUTPUT_ROOT = Path(os.environ.get("PII_WORK_DIR") or ROOT / "output")
 
 
 def beeped_name(file_id: str) -> str:
@@ -40,13 +46,19 @@ _BACKEND = {"ai_studio_down": False}
 
 
 def _read_env_value(name: str):
-    env = ROOT / ".env"
-    if env.exists():
-        for line in env.read_text().splitlines():
-            line = line.strip()
-            if line.startswith(name + "=") and line.split("=", 1)[1]:
-                return line.split("=", 1)[1].strip()
-    return None
+    """NAME from .env at the project root; else from the file named by
+    PII_ENV_FILE (keys kept outside the checkout); else the process
+    environment. Never printed or logged."""
+    files = [ROOT / ".env"]
+    if os.environ.get("PII_ENV_FILE"):
+        files.append(Path(os.environ["PII_ENV_FILE"]))
+    for env in files:
+        if env.exists():
+            for line in env.read_text().splitlines():
+                line = line.strip()
+                if line.startswith(name + "=") and line.split("=", 1)[1]:
+                    return line.split("=", 1)[1].strip()
+    return os.environ.get(name) or None
 
 
 def gemini_key():
@@ -178,7 +190,7 @@ def set_usage_context(tag: str):
 
 
 def _log_usage_row(row: dict):
-    log = ROOT / "output" / "api_usage.jsonl"
+    log = OUTPUT_ROOT / "api_usage.jsonl"
     log.parent.mkdir(parents=True, exist_ok=True)
     with open(log, "a") as f:
         f.write(json.dumps(row) + "\n")

@@ -419,17 +419,11 @@ def verify_and_fix(out_dir: Path, fid: str, original: Path, model: str,
             else:
                 merged_adj.append([s2, e2, c2])
         adjusted = [(s2, e2, c2) for s2, e2, c2 in merged_adj]
-        native = out_dir / "_ev_native.wav"
-        beeped = out_dir / "_ev_beeped.wav"
-        audio_utils.decode_to_wav(original, native)
-        audio_utils.mix_beeps(native, beeped, adjusted, freq, gain_db)
-        audio_utils.encode_audio(beeped, out_dir / common.beeped_name(fid))
-        native.unlink(missing_ok=True)
-        beeped.unlink(missing_ok=True)
-        # keep rendered_intervals.json truthful
+        # shared renderer: keeps voiced slots (pseudonym mode) and keeps
+        # rendered_intervals.json truthful
+        import redact as redact_mod
+        redact_mod.rerender(out_dir, fid, original, adjusted, "_ev")
         ri = common.load_json(out_dir / "rendered_intervals.json")
-        ri["rendered_merged"] = [{"start_ms": s, "end_ms": e, "channel": c}
-                                 for s, e, c in adjusted]
         ri["edge_verified"] = True
         common.save_json(out_dir / "rendered_intervals.json", ri)
     tmp.unlink(missing_ok=True)
