@@ -9,11 +9,11 @@
 Two arms over shared transport and model plumbing. They handle different media
 and answer to different rules about what counts as PII.
 
-| | [Audio](docs/audio.md) | [Documents](multimodal/README.md) |
-|---|---|---|
-| input | calls, recordings, video tracks | PDFs, scans, images, page-based formats |
-| output | 1 kHz beep + redacted transcript | redacted PDF; **nothing written into the page** |
-| taxonomy | fixed: 31 categories, 2 actions | pluggable **packs**, 5 actions |
+| | [Audio](docs/audio.md) | [Video](docs/video.md) | [Documents](multimodal/README.md) |
+|---|---|---|---|
+| input | calls, recordings | ads and other video | PDFs, scans, images, page-based formats |
+| output | 1 kHz beep (or, opt-in, a stock voice saying an invented name for a mapped brand) + redacted transcript | redacted mp4 (sound via the audio arm; logos, brand text, faces, numbers blurred) + shot-by-shot script | redacted PDF; **nothing written into the page** |
+| taxonomy | fixed: 31 categories, 2 actions; optional custom profile file and name mapping | as audio, plus every logo and face | pluggable **packs**, 5 actions |
 
 ## One entry point
 
@@ -39,7 +39,8 @@ what the file is, saying so is better:
 
 A forced choice is recorded as `explicit_override` rather than a signal score,
 so a later reader can tell which decisions a person made and which the router
-made. Auto-routing sends audio and video to the audio arm; documents, images,
+made. Auto-routing sends audio to the audio arm and video to the video arm
+(`--video`; `--audio` on a video file delivers its sound only); documents, images,
 spreadsheets, presentations, CAD, email and text to the document arm, where a
 taxonomy pack is selected from the document's own signals.
 
@@ -58,6 +59,29 @@ independent judge audit. `--assurance` adds a second independent listener;
 dataset dedupe and per-delivery metadata around the same pipeline, with both
 flags on by default. The audible watermark is a separate step
 (`tools/watermark.py`) applied to bundles before they are shared.
+
+### Named entities and invented names (opt-in)
+
+    python3 tools/redact.py group1.mp3 --sweep --assurance \
+        --mapping study_mapping.yaml --replace pseudonym --profile-file p.yaml
+
+A mapping of real names (brands, products, dealers, organisations, an agency)
+to invented ones turns on their detection in any language or script, a
+mapped-entity audit with a listen check on the delivered audio, and
+pseudonymised output names. `--replace pseudonym` speaks the invented name in
+a stock synthetic voice (never a clone) where a mention is confirmed; personal
+data stays beeped. Default runs are unchanged. See
+[docs/audio.md](docs/audio.md#named-entities---mapping-and---replace-pseudonym).
+
+## Video — [`docs/video.md`](docs/video.md)
+
+    python3 multimodal/video_pipeline/run_video.py AD.mp4 --mapping m.yaml \
+        --replace pseudonym -- --sweep --assurance
+
+Sound through the audio arm; on screen, every logo, brand mark, brand text,
+face, phone number and URL is blurred with tracking across frames (invented
+text plates on static shots in pseudonym mode); verified on unsampled frames
+with a broken control that must fail; plus a shot-by-shot script.
 
 ## Documents — [`multimodal/README.md`](multimodal/README.md)
 
@@ -107,9 +131,12 @@ verification. If the control ever passes, the verifier is broken.
 
 ## Requirements
 
-- Python ≥ 3.9. The audio workflow is standard library only. The document arm
-  additionally needs `PyMuPDF`, `numpy` and `scipy`; Apple Vision (macOS) is
-  driven through `swift -` with nothing to install.
+- Python ≥ 3.9. The default audio workflow is standard library only;
+  `--mapping` needs `pyyaml`, `--replace pseudonym` needs `numpy` (and uses
+  `scipy` when present). The document arm additionally needs `PyMuPDF`,
+  `numpy` and `scipy`; the video arm needs `numpy`, `opencv-python-headless`,
+  `Pillow` and ffmpeg (on PATH, or the `imageio-ffmpeg` wheel). Apple Vision
+  (macOS) is driven through `swift -` with nothing to install.
 - An audio converter: macOS ships `afconvert`; Linux/Windows need `ffmpeg`.
 - Your own API keys — see [Setup](docs/audio.md#setup). Keys are personal and
   never committed.
@@ -123,7 +150,8 @@ verification. If the control ever passes, the verifier is broken.
     prompts/       audio: versioned detection prompts and keyterms
     dedupe/        dataset dedupe (exact, acoustic, transcript tiers)
     metadata_qc_pipeline/   per-delivery metadata over REDACTED transcripts
-    multimodal/    the document arm — router, pipeline, taxonomies, tests
+    multimodal/    the document arm — router, pipeline, taxonomies, tests;
+                   video_pipeline/ is the video arm
     docs/          audio documentation
 
 ## Privacy notes

@@ -1,0 +1,28 @@
+You see frames from a video advertisement. Each frame comes with the text an
+OCR engine read on it (numbered tokens, "t<id>: text") and the text regions it
+found but could not read (numbered "r<id>", usually Devanagari or other Indic
+script). The project hides, in every frame:
+
+1. every listed entity (ENTITIES) shown in ANY form: logo, wordmark, brand
+   text in any script, product or packaging that shows it, store signage, a
+   mascot or character, a URL, social handle or hashtag containing it, its
+   slogan or tagline written on screen;
+2. every OTHER logo or brand mark, listed or not (text that merely names an
+   unlisted brand in a sentence can stay);
+3. every human face — real or depicted, large or small, in the background,
+   on a poster or screen inside the frame;
+4. phone numbers, URLs and social handles shown on screen.
+
+How to answer, per frame index:
+- For text the OCR read, give its token ids (ocr_ids). Prefer this whenever
+  the item is text: token geometry is exact, a box you draw is not.
+- For an unread text region, give its region id (region_ids).
+- For anything else (a logo without readable text, packaging, a mascot, a
+  face), give box_2d = [ymin, xmin, ymax, xmax] on a 0-1000 scale covering
+  the whole item generously.
+- kind is one of: logo, brand_text, packaging, mascot, signage, url_handle,
+  phone, face, other_brand.
+- entity_id is the listed entity the item shows (E1, E2, ...), or "" when it
+  shows no listed entity (faces, unlisted brands).
+Mark every item in every frame, even when it repeats from the previous frame.
+Return an empty items list for a frame with nothing to hide.
