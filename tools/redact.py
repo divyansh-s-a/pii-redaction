@@ -87,6 +87,20 @@ def union_assurance(fid, el_dir: Path, media: Path, work: Path, model,
     return common.load_json(iv)["intervals"]
 
 
+def gating(findings, profile):
+    """Audit findings that count as leak candidates under the file's render
+    profile — the SAME code-side rule the audit report applies
+    (judge_leak_audit.classify_by_profile): a finding is kept only when every
+    one of its categories is annotate_only under the profile. The judge's own
+    profile_dependent flag is audit metadata, never the gate: when it
+    disagreed with the profile, the report and the confirm step used to count
+    different findings."""
+    import policy
+    return [f for f in findings
+            if policy.action_for(f.get("categories", []), False, profile)
+            != "annotate_only"]
+
+
 def _remediate_audit_findings(src_dir, fid, media, profile, findings,
                               channel_wavs):
     """Owner decision 2026-09-11: twice-confirmed audit findings are missed
@@ -428,9 +442,8 @@ def deliver(media: Path, profile: str, outdir: Path, assurance: bool,
             print(f"  [audit] leak candidates: {audit_summary['leak_candidates']}")
             pf0 = src_dir / "audit" / f"{fid}__{engine_used}.json"
             if pf0.exists():
-                audit_summary["_findings_first_read"] = [
-                    f for f in json.loads(pf0.read_text()).get("findings", [])
-                    if not f.get("profile_dependent")]
+                audit_summary["_findings_first_read"] = gating(
+                    json.loads(pf0.read_text()).get("findings", []), profile)
             if audit_summary.get("leak_candidates"):
                 # confirm-on-second-audit (owner decision 2026-09-10): the
                 # audit judge is unstable on borderline classes (observed 0 ->
@@ -449,8 +462,8 @@ def deliver(media: Path, profile: str, outdir: Path, assurance: bool,
                     def _k(f):
                         return " ".join(str(f.get("quoted_text", ""))
                                         .lower().split())
-                    f1 = [f for f in json.loads(pf1.read_text())
-                          .get("findings", []) if not f.get("profile_dependent")]
+                    f1 = gating(json.loads(pf1.read_text())
+                                .get("findings", []), profile)
                     f2 = json.loads(pf2.read_text()).get("findings", [])
                     confirmed = [f for f in f1 if any(
                         _k(f) == _k(g)
@@ -477,8 +490,8 @@ def deliver(media: Path, profile: str, outdir: Path, assurance: bool,
     # is evidence worth beeping — more redaction, never less checking
     if remediate_audit and seed_findings:
         try:
-            seeds = [f for f in json.loads(Path(seed_findings).read_text())
-                     .get("findings", []) if not f.get("profile_dependent")]
+            seeds = gating(json.loads(Path(seed_findings).read_text())
+                           .get("findings", []), profile)
         except Exception as exc:
             seeds = []
             print(f"  [remediate] seed findings unreadable: {exc}")
@@ -592,9 +605,8 @@ def deliver(media: Path, profile: str, outdir: Path, assurance: bool,
                         def _k2(f):
                             return " ".join(str(f.get("quoted_text", ""))
                                             .lower().split())
-                        g1 = [f for f in json.loads(pf1.read_text())
-                              .get("findings", [])
-                              if not f.get("profile_dependent")]
+                        g1 = gating(json.loads(pf1.read_text())
+                                    .get("findings", []), profile)
                         g2 = json.loads(pf2.read_text()).get("findings", [])
                         n_conf = sum(1 for f in g1 if any(
                             _k2(f) == _k2(g)
