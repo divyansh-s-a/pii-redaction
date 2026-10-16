@@ -1,0 +1,153 @@
+{
+ "id": "market_research",
+ "version": "1.0.0",
+ "title": "Market research material (brands and people)",
+ "extends": "generic_document",
+ "conservative": false,
+ "description": "Proposals, questionnaires, discussion guides, decks, tab books, respondent data, transcripts and ads of a market-research study. Removes what identifies a person, as the generic pack does, AND what identifies the client, its competitors and the agency (brands, products, dealers, slogans). Keeps what an analyst works from: respondent age, sex, occupation and location, survey answers and figures, fieldwork dates, and the platforms products are sold through. In Replace mode the PSEUDONYMIZE rows take invented names from the study mapping; in Redact mode every destructive action is a black box.",
+ "owner_rules": [
+  "People in every role are removed (Redact) or given invented names (Replace): respondents, moderators, interviewers, reviewers, agency and client staff",
+  "Brands, products and models, dealers and outlets, the agency and brand-identifying details (slogans, mascots, signature products, launch facts) are removed (Redact) or given invented names (Replace)",
+  "Phone numbers, emails, street addresses and personal ID numbers are removed in both modes; respondent and record IDs and interviewer logins become consistent codes",
+  "Kept: respondent age, sex, occupation and city; survey answers and all figures; fieldwork and survey dates; delivery, shopping and payment platforms",
+  "An organisation tied to a person (employer, school) is removed",
+  "Logos, product, packaging and store photos, screenshots and photos of people are greyed"
+ ],
+ "signals": {
+  "market_research_vocabulary": {
+   "any": [
+    "questionnaire",
+    "respondent",
+    "focus group",
+    "fgd",
+    "discussion guide",
+    "tab book",
+    "banner",
+    "base:",
+    "nps",
+    "brand funnel",
+    "awareness",
+    "consideration",
+    "purchase intent",
+    "top 2 box",
+    "t2b",
+    "sample size",
+    "quota",
+    "sec ",
+    "moderator",
+    "fieldwork",
+    "concept test",
+    "ad test",
+    "campaign"
+   ],
+   "weight": 2.0,
+   "cap": 6
+  }
+ },
+ "semantics": {
+  "brand": "M01",
+  "product": "M02",
+  "dealer": "M03",
+  "agency": "M04",
+  "brand_detail": "M05",
+  "platform": "M06",
+  "brand_image": "M07"
+ },
+ "categories": [
+  {
+   "id": "G07",
+   "name": "GEO_COARSE",
+   "action": "KEEP",
+   "enforcement": "model",
+   "definition": "IN: city, district, state, region or zone — fieldwork locations and respondent cities are analysis data in market research. OUT: a street-level address (G06).",
+   "note": "Market-research override: the generic pack generalises this row."
+  },
+  {
+   "id": "G09",
+   "name": "AGE_AND_SEX",
+   "action": "KEEP",
+   "enforcement": "model",
+   "definition": "IN: a respondent's age, age band, sex or gender. Kept: they are the analysis variables of the study (owner decision, parity with the earlier study). OUT: date of birth (G08); a child's age stays CHILD_INFO (G11).",
+   "note": "Market-research override of the generic REDACT."
+  },
+  {
+   "id": "G12",
+   "name": "OCCUPATION_AND_EMPLOYER",
+   "action": "KEEP",
+   "enforcement": "model",
+   "definition": "IN: occupation, profession, SEC or household role as survey data. OUT: the NAME of a person's employer or school (G29).",
+   "note": "Market-research override: occupation is analysis data."
+  },
+  {
+   "id": "G29",
+   "name": "ORGANIZATION_PERSON_LINKED",
+   "action": "REDACT",
+   "enforcement": "model",
+   "definition": "IN: a named employer, school, clinic or branch tied to a specific person ('I work at <name>', 'student of <school>'). OUT: a brand the person buys or uses (M01-M03)."
+  },
+  {
+   "id": "G30",
+   "name": "ISSUING_ORGANISATION",
+   "action": "PSEUDONYMIZE",
+   "enforcement": "model",
+   "definition": "IN: the organisation that wrote or sent the document — the agency or the client on a letterhead, title slide, footer or signature block. Takes its invented name from the study mapping.",
+   "note": "Market-research override: the generic pack keeps or redacts issuers; here the issuer is the agency or client."
+  },
+  {
+   "id": "M01",
+   "name": "BRAND",
+   "action": "PSEUDONYMIZE",
+   "enforcement": "model",
+   "definition": "IN: the name of the study's client brand or company, any competitor in its category, and their parent companies — in any language or script, misspelled or abbreviated. OUT: platforms and channels (M06); generic product words.",
+   "semantic_keys": "brand"
+  },
+  {
+   "id": "M02",
+   "name": "PRODUCT_OR_MODEL",
+   "action": "PSEUDONYMIZE",
+   "enforcement": "model",
+   "definition": "IN: a product line, model name or number, variant or menu item that belongs to a client or competitor brand. OUT: a generic category ('television', 'burger').",
+   "semantic_keys": "product"
+  },
+  {
+   "id": "M03",
+   "name": "DEALER_OR_OUTLET",
+   "action": "PSEUDONYMIZE",
+   "enforcement": "model",
+   "definition": "IN: a named dealer, showroom, outlet, franchisee, store or distributor of a client or competitor brand. OUT: a city or area alone (G07).",
+   "semantic_keys": "dealer"
+  },
+  {
+   "id": "M04",
+   "name": "RESEARCH_OR_AD_AGENCY",
+   "action": "PSEUDONYMIZE",
+   "enforcement": "model",
+   "definition": "IN: the research agency, advertising or media agency, or fieldwork partner named in the material. Their staff are people (G01/G02).",
+   "semantic_keys": "agency"
+  },
+  {
+   "id": "M05",
+   "name": "BRAND_IDENTIFYING_DETAIL",
+   "action": "PSEUDONYMIZE",
+   "enforcement": "model",
+   "definition": "IN: anything that reveals a client or competitor brand without naming it: slogan, tagline, jingle line, mascot or character, signature product, endorser, distinctive fact (launch date, store count, country of origin).",
+   "semantic_keys": "brand_detail"
+  },
+  {
+   "id": "M06",
+   "name": "PLATFORM_OR_CHANNEL",
+   "action": "KEEP",
+   "enforcement": "model",
+   "definition": "IN: platforms and channels products are found or sold through — delivery, shopping, payment and social apps, TV channels, search engines — unless the platform is itself the study's client or competitor.",
+   "semantic_keys": "platform"
+  },
+  {
+   "id": "M07",
+   "name": "BRAND_IMAGE",
+   "action": "REDACT",
+   "enforcement": "visual",
+   "definition": "IN: an image that shows a brand: logo or wordmark, product, packaging, store or signage photo, screenshot or advertisement. Greyed in both modes.",
+   "semantic_keys": "brand_image"
+  }
+ ]
+}

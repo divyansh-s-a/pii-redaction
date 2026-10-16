@@ -208,7 +208,7 @@ optional fields per entry:
          aliases: [ज़ोरवेक्स, zor vex], category: BRAND}
     agency:
       - {pattern: "Brightpath Research", replace: Insightwell}
-    people:            # found, but ALWAYS beeped (never voiced)
+    people:            # replace mode: spoken as the invented name
       - {pattern: "\\bRavindra\\b", replace: colleague}
     keep:              # notes; never detected, never changed
       - Pune / Nashik (fieldwork locations)

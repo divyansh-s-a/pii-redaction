@@ -15,7 +15,7 @@ Merge rule — voice only what is confirmed:
   net fuzzy match alone, LLM mention that does not resemble the entity,
   or any hint                                -> beep (suspected; never
                                                 put a name in a mouth)
-Person entries are always beeped (categories FULL_NAME).
+Person entries (categories FULL_NAME) are spoken as their invented name in replace mode when confirmed.
 """
 import difflib
 import json
@@ -194,7 +194,7 @@ def _self_test():
                        "mapping_net", "regex")]
         m = merge(llm, net)
         assert [(s["start_word"], s["end_word"], s["render"]) for s in m] == \
-            [(3, 4, "voice"), (7, 7, "beep"), (9, 9, "beep")], m
+            [(3, 4, "voice"), (7, 7, "voice"), (9, 9, "beep")], m
         assert m[0]["match"] == "llm+net" and m[1]["categories"] == ["FULL_NAME"]
         # a lone fuzzy hit stays a beep
         m2 = merge([], [em.span(3, 3, e, "zorvecks", "s", "mapping_net",

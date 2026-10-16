@@ -10,8 +10,8 @@ targets them. A project that must hide them supplies a MAPPING file:
          aliases: [ज़ोरवेक्स, zor vex], category: BRAND}
     agency:
       - {pattern: "Brightpath Research", replace: Insightwell}
-    people:                       # detected, but ALWAYS beeped (never voiced)
-      - {pattern: "\\bRavindra\\b", replace: colleague}
+    people:                       # replace mode: spoken as the invented name
+      - {pattern: "\\bRavindra\\b", replace: Mohan}
     keep:                         # notes: never detected, never changed
       - Pune / Bangalore (fieldwork locations)
 
@@ -47,7 +47,7 @@ SECTION_DEFAULTS = {
     "abbreviations": ("BRAND", "voice"),
     "brand_facts": ("BRAND_FACT", "voice"),
     "agency": ("AGENCY", "voice"),
-    "people": ("PERSON", "beep"),
+    "people": ("PERSON", "voice"),
 }
 PERSON_CATEGORY = "PERSON"
 NOTE_SECTIONS = {"keep"}
@@ -309,9 +309,10 @@ class EntityMap:
                      "replace": str(it.get("replace") or "").strip(),
                      "category": str(it.get("category") or cat).upper(),
                      "render": str(it.get("render") or render).lower(),
+                     # a name that is also an ordinary word ("Vision"):
+                     # only the context-reading LLM pass may mark it
+                     "context_only": bool(it.get("context_only")),
                      "aliases": aliases, "name": name}
-                if e["category"] == PERSON_CATEGORY:
-                    e["render"] = "beep"      # owner rule: people never voiced
                 lits = literals(pat)
                 forms = ([name] if name else []) + aliases + lits
                 e["forms"] = [f for f in dict.fromkeys(forms) if f.strip()]
@@ -323,6 +324,14 @@ class EntityMap:
                                     if len(key(f)) >= 2})
                 self.entries.append(e)
         self.by_id = {e["id"]: e for e in self.entries}
+        # what DETECTION depends on — everything but the invented names. A
+        # mapping whose replacements change (e.g. reconciled with another
+        # project's names) re-renders, but never re-detects.
+        self.detect_sha256 = hashlib.sha256(json.dumps(
+            [[e["id"], e["pattern"], e["category"], e["render"],
+              e["name"], e["aliases"], e["context_only"]]
+             for e in self.entries]
+            + [self.keep_terms], ensure_ascii=False).encode()).hexdigest()
         self._index()
         self.validate()
 
@@ -370,6 +379,8 @@ class EntityMap:
         self._by_bigram = {}             # bigram -> {fuzzy index}
         self.max_window = 1
         for e in self.entries:
+            if e["context_only"]:
+                continue                 # never matched without context
             for k in e["keys"]:
                 self._exact.setdefault(k, e)
                 if len(k) >= FUZZY_MIN_LEN:
@@ -434,6 +445,8 @@ class EntityMap:
             text += c + " "
             pos += len(c) + 1
         for e in self.entries:
+            if e["context_only"]:
+                continue
             for m in e["rx"].finditer(text):
                 if not m.group(0).strip():
                     continue
@@ -545,7 +558,10 @@ class EntityMap:
         for k, e in enumerate(self.entries, 1):
             forms = "; ".join(e["forms"][:8])
             lines.append(f"E{k}\t{e['category']}\t{forms}\t"
-                         f"regex: {e['pattern']}")
+                         f"regex: {e['pattern']}"
+                         + ("\t(also an ordinary word: mark it only where "
+                            "the context shows the brand)"
+                            if e["context_only"] else ""))
         out = "ENTITIES (id, category, known forms, regex):\n" + "\n".join(lines)
         if self.keep_terms:
             out += ("\n\nKEEP — never mark these, the project keeps them: "
@@ -563,7 +579,9 @@ class EntityMap:
         cats = {}
         for e in self.entries:
             cats[e["category"]] = cats.get(e["category"], 0) + 1
-        return {"mapping_sha256": self.sha256, "entries": len(self.entries),
+        return {"mapping_sha256": self.sha256,
+                "detect_sha256": self.detect_sha256,
+                "entries": len(self.entries),
                 "by_category": cats,
                 "voiced": sum(e["render"] == "voice" for e in self.entries),
                 "warnings": list(self.warnings)}
@@ -625,7 +643,7 @@ def _self_test():
         "abbreviations": [{"pattern": r"\bZVX\b", "replace": "KLM"}],
         "agency": [{"pattern": r"Brightpath(?:\s+Research)?",
                     "replace": "Insightwell"}],
-        "people": [{"pattern": r"\bRavindra\b", "replace": "colleague"}],
+        "people": [{"pattern": r"\bRavindra\b", "replace": "Mohan"}],
         "keep": ["Pune / Nashik (fieldwork locations)"],
     }
     import yaml
@@ -633,7 +651,7 @@ def _self_test():
         p = Path(td) / "m.yaml"
         p.write_text(yaml.safe_dump(mapping, allow_unicode=True))
         em = load(p)
-        assert em.by_id["people:0"]["render"] == "beep"
+        assert em.by_id["people:0"]["render"] == "voice"
         assert em.keep_terms == ["Pune", "Nashik"]
         toks = "maine ज़ोरवेक्स ka TV liya aur zorveks bhi".split()
         hits = em.match_tokens(toks)
@@ -662,7 +680,7 @@ def _self_test():
         assert sp["render"] == "voice"
         sp = em.span(0, 0, em.by_id["people:0"], "Ravindra", "s0",
                      "mapping_net", "regex")
-        assert sp["categories"] == ["FULL_NAME"] and sp["render"] == "beep"
+        assert sp["categories"] == ["FULL_NAME"] and sp["render"] == "voice"
         # audit scan ignores invented names and markers
         text = ("[00:00:01.00 - 00:00:02.00] speaker_0 - Kelmora is good, "
                 "<BRAND REDACTED> too\n[x] speaker_1 - but Zorvex Vision no")

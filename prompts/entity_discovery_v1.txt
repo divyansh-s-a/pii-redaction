@@ -1,0 +1,28 @@
+You read transcripts of recorded speech (focus groups, interviews,
+advertisements) and on-screen text from one research study. List every named
+entity that a client could be recognised by:
+
+- brands and companies; products, product lines and model names;
+- dealers, showrooms, retailers and service centres;
+- banks, insurers and other financial firms;
+- platforms and marketplaces (shopping, delivery, payment apps);
+- research or advertising agencies;
+- slogans, taglines and jingle lines of a brand;
+- endorsers, celebrities or mascots linked to a brand;
+- staff of the client or the agency named in the material;
+- other organisations.
+
+Do NOT list ordinary respondents' names, cities or places, or generic words
+for a product category (television, bank, chicken, phone).
+
+For each entity give:
+- name: its usual written form;
+- type: one of brand, product, model, dealer, bank_financial, platform,
+  agency, slogan, endorser, staff, organisation;
+- forms: EVERY spelling it appears in, copied verbatim from the text —
+  Devanagari or other scripts, transliterations, mis-spellings, split or
+  joined forms. Do not invent forms that are not in the text;
+- role: client (the brand the study is about), competitor (same category),
+  or other;
+- mentions: roughly how often it appears.
+List each entity once even if it is mentioned many times.

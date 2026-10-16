@@ -306,7 +306,7 @@ def redact_file(original: Path, work_wav: Path, intervals_path: Path,
         # pseudonym mode voices a CONFIRMED mapped mention with nothing
         # personal stacked on it; everything else keeps its policy action
         if (em is not None and iv["action"] == "beep"
-                and iv["categories"] == ["MAPPED_ENTITY"]
+                and iv["categories"] in (["MAPPED_ENTITY"], ["FULL_NAME"])
                 and iv.get("render") == "voice"
                 and iv.get("mapping_id") in em.by_id
                 and em.by_id[iv["mapping_id"]]["render"] == "voice"):

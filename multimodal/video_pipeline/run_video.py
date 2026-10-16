@@ -146,7 +146,7 @@ def run(src: Path, args, model, em):
     # detections are cached per (samples, detectors, mapping): a re-render
     # after a render/tracking change must not pay for detection again
     sig = hashlib.sha256(json.dumps(
-        [order, [m for m, _n in dets], em.sha256 if em else None,
+        [order, [m for m, _n in dets], em.detect_sha256 if em else None,
          (HERE.parent / "prompts" / "video_frame_detection_v1.txt"
           ).read_text()]).encode()).hexdigest()
     cache = work / "detections.json"

@@ -488,6 +488,16 @@ def detect_file(model, file_id, transcript_path: Path, out_path: Path,
             if sp.get("public_figure") and any(overlaps(sp, m)
                                                for m in mapped):
                 sp["public_figure"] = False
+    # a person the mapping names (confirmed, voiced in replace mode) is one
+    # span: the policy's own name span over the same words would beep it
+    voiced_people = [m for m in mapped if m.get("render") == "voice"
+                     and m.get("categories") == ["FULL_NAME"]]
+    if voiced_people:
+        llm_spans = [s for s in llm_spans if not (
+            set(s["categories"]) <= {"FULL_NAME"}
+            and any(m["start_word"] <= s["start_word"]
+                    and s["end_word"] <= m["end_word"]
+                    for m in voiced_people))]
     intervals = build_intervals(file_id, transcript,
                                 llm_spans + net_spans + mapped, gap_merge_ms)
     record = {"file_id": file_id,

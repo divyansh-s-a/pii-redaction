@@ -54,6 +54,7 @@ def mode_signature():
     sig = {}
     if em is not None:
         sig["mapping_sha256"] = em.sha256
+        sig["mapping_detect_sha256"] = em.detect_sha256
     if pdef is not None:
         sig["profile_file_sha256"] = pdef["sha256"]
     mode = _r.replace_mode()
@@ -70,9 +71,13 @@ def detect_stale(iv_path: Path) -> bool:
         return True
     d = common.load_json(iv_path)
     sig = mode_signature()
-    have = {"mapping_sha256": (d.get("mapping") or {}).get("mapping_sha256"),
+    m = d.get("mapping") or {}
+    # detection depends on what the mapping MATCHES, not on its invented
+    # names: compare the detection fingerprint (whole-file hash for records
+    # written before it existed)
+    have = {"mapping": m.get("detect_sha256") or m.get("mapping_sha256"),
             "profile_file_sha256": d.get("profile_file_sha256")}
-    want = {"mapping_sha256": sig.get("mapping_sha256"),
+    want = {"mapping": sig.get("mapping_detect_sha256"),
             "profile_file_sha256": sig.get("profile_file_sha256")}
     return have != want
 
@@ -101,9 +106,12 @@ def gather_files(one):
     return files
 
 
-def run_file(path: Path, model: str, profile: str, force: set,
-             engine: str = "gemini", engine_model=None,
-             detector: str = "gemini", detector_model=None):
+def stage_ab(path: Path, model: str, force: set, engine: str = "gemini",
+             engine_model=None, detector: str = "gemini"):
+    """Stages A (prepare) and B (transcribe) alone, cached exactly as
+    run_file caches them — so a study-level step (tools/build_mapping.py)
+    can read every transcript first and the redaction reuses them.
+    Returns (fid, suffix, out_dir, transcript_path, work_wav, channel_wavs)."""
     fid = file_id_for(path)
     suffix = ("" if engine == "gemini" else f"__{engine}") + \
              ("" if detector == "gemini" else f"__{detector}")
@@ -180,6 +188,15 @@ def run_file(path: Path, model: str, profile: str, force: set,
                 common.set_usage_context("")
     else:
         print("  transcribe: cached")
+
+    return fid, suffix, out, tr, work, channel_wavs
+
+
+def run_file(path: Path, model: str, profile: str, force: set,
+             engine: str = "gemini", engine_model=None,
+             detector: str = "gemini", detector_model=None):
+    fid, suffix, out, tr, work, channel_wavs = stage_ab(
+        path, model, force, engine, engine_model, detector)
 
     # C detect — pluggable detector, default Gemini (`model`); --detector gpt
     #   swaps the model behind the SAME policy prompt + word-index schema so

@@ -1,0 +1,38 @@
+You prepare invented names for a research dataset that is shared with every
+real person and brand replaced. Below are the entities found across the
+dataset (documents, survey data, recordings, file names), each with its type,
+the spellings found and a short context.
+
+For EACH entity return:
+- core: the DISTINCTIVE part to match, as written in Latin script when it
+  exists in Latin script (else as written). For a brand "Zorvex Bank" the
+  core is "Zorvex": generic words (Bank, Electronics, TV, Showroom, Pvt Ltd)
+  stay as they are and are not part of the core. A common word alone
+  ("Vision", "Smart", "Plus", "Lifestyle") is never a core on its own: use
+  the multi-word name ("Zorvex Vision") when the name is made of common
+  words. For a person the core is the name exactly as written (first name, or
+  first and last name).
+- invented: the new name for the CORE ONLY (for "Zorvex Bank" with core
+  "Zorvex", invented is "Kelmora", not "Kelmora Bank": the generic words stay
+  in the text as they are).
+  * Person: an invented Indian name of the same shape — a first name alone
+    gets a first name, a full name gets a full name, an initial stays an
+    initial — that keeps the gender the name suggests. Two different people
+    never get the same invented name. When the list has both a first name
+    alone and a full name that starts with it (likely the same person), the
+    first name alone gets the invented first name of that full name.
+  * Brand, product, model, dealer, bank, agency, organisation: a new name
+    that fits the category (a bank sounds like a bank, a model keeps the
+    style of letters and digits with different ones), is easy to say in
+    English, Hindi and Marathi, is not a real brand or company you know of,
+    and does not sound or look like any real name in the list.
+  * Slogan or tagline: a neutral invented line of similar length.
+  * A spelling that is clearly a mis-spelling or mis-hearing of another
+    entity in the list gets the SAME invented name as that entity.
+- category: PERSON, BRAND, PRODUCT, MODEL, DEALER, BANK, AGENCY, SLOGAN or
+  ORGANISATION.
+- keep: true only when the entity should NOT be replaced after all — a
+  platform or marketplace that only carries products (shopping, delivery,
+  payment apps), a government body, a city or place, a generic category word,
+  or not a name at all. Otherwise false.
+Return one decision per entity id.
