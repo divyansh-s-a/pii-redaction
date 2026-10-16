@@ -437,8 +437,9 @@ def classify_media(ctx, blob, media):
 def stage_detect(ctx, items):
     import office
     ledir = ctx.work / "ledger"
-    docs = [it for it in items if it["route"] in ("office", "text", "pdf",
-                                                  "image")]
+    docs = [] if ctx.a.media_only else [
+        it for it in items if it["route"] in ("office", "text", "pdf",
+                                              "image")]
     jobs, meta = [], {}
 
     def prep(it):
@@ -502,15 +503,18 @@ def stage_detect(ctx, items):
     # media
     media = [it for it in items if it["route"] in ("audio", "video")]
     if media and not ctx.a.skip_media:
-        for it in media:
-            if (ledir / f"{it['id']}.json").exists() and not ctx.a.redetect:
-                continue
+        todo = [it for it in media if ctx.a.redetect
+                or not (ledir / f"{it['id']}.json").exists()]
+
+        def det(it):
             try:
-                led = media_detect(ctx, it)
-                jdump(ledir / f"{it['id']}.json", led)
+                jdump(ledir / f"{it['id']}.json", media_detect(ctx, it))
             except Exception as exc:          # noqa: BLE001
                 it["route"], it["held_reason"] = "held", \
                     f"media detection failed: {str(exc)[:160]}"
+        # each file is its own process (the audio / video arm): parallel
+        with cf.ThreadPoolExecutor(ctx.a.media_workers) as ex:
+            list(ex.map(det, todo))
     elif media:
         for it in media:
             it["route"], it["held_reason"] = "held", "skipped (--skip-media)"
@@ -551,7 +555,8 @@ def media_env(ctx, mapping=None, replace="beep"):
     return env
 
 
-def media_cmd(ctx, it, outdir, mapping=None, replace="beep", audit=True):
+def media_cmd(ctx, it, outdir, mapping=None, replace="beep", audit=True,
+              sweep=None):
     tool = (ROOT / "tools" / "redact.py" if it["route"] == "audio"
             else PKG / "video_pipeline" / "run_video.py")
     cmd = [sys.executable, str(tool), it["path"], "--outdir", str(outdir),
@@ -572,7 +577,8 @@ def media_cmd(ctx, it, outdir, mapping=None, replace="beep", audit=True):
     # dataset defaults, as run_all.py: category sweep and the second
     # listener (Gemini) unioned with the primary — the strongest recall
     # configuration; --no-sweep / --no-assurance turn them off
-    arm = (["--sweep"] if ctx.a.sweep else []) + \
+    sweep = ctx.a.sweep if sweep is None else sweep
+    arm = (["--sweep"] if sweep else []) + \
         (["--assurance"] if ctx.a.assurance else [])
     if arm:
         cmd += arm if it["route"] == "audio" else ["--"] + arm
@@ -589,7 +595,9 @@ def media_detect(ctx, it):
     log.parent.mkdir(parents=True, exist_ok=True)
     print(f"  [media] detecting {it['rel']}", flush=True)
     with open(log, "w") as lf:
-        r = subprocess.run(media_cmd(ctx, it, out, audit=False),
+        # stage 1 finds who and what is named (one detection pass); the
+        # render detects again with the mapping and the full sweep
+        r = subprocess.run(media_cmd(ctx, it, out, audit=False, sweep=False),
                            env=media_env(ctx), stdout=lf, stderr=lf,
                            cwd=str(ROOT))
     if r.returncode != 0:
@@ -1084,6 +1092,50 @@ def build_entries(ents, decisions):
         m[sec].append(entry)
     return {k: build_mapping._merge_same(v) if k != "keep" else v
             for k, v in m.items() if v}
+
+
+def grow_mapping(ctx, items):
+    """Append invented names for ledger entities the given mapping does
+    not cover; existing entries never change."""
+    import build_mapping
+    import yaml
+    ents = collect_entities(ctx, items)
+    new = []
+    for e in ents:
+        if any(ctx.em.match_tokens(f.split()) for f in e["forms"] if f):
+            continue
+        new.append(e)
+    if not new:
+        return ctx.a.mapping_path
+    print(f"  mapping: {len(new)} new entit(ies) to name "
+          f"({sum(e['type'] == 'person' for e in new)} people)", flush=True)
+    taken = {e["replace"].lower() for e in ctx.em.entries if e["replace"]}
+    decisions = [None] * len(new)
+    batches = [list(range(i, min(i + 120, len(new))))
+               for i in range(0, len(new), 120)]
+    with cf.ThreadPoolExecutor(6) as ex:
+        res = list(ex.map(lambda b: name_batch(
+            ctx, [new[i] for i in b], avoid=taken), batches))
+    for b, r in zip(batches, res):
+        for k, d in r.items():
+            decisions[b[k]] = d
+    real = [{"name": e.get("name") or "", "forms": e["forms"]}
+            for e in ctx.em.entries]
+    fix_collisions(ctx, new, decisions, extra_real=real)
+    add = build_entries(new, decisions)
+    m = yaml.safe_load(Path(ctx.a.mapping_path).read_text()) or {}
+    for sec, its in add.items():
+        if sec == "keep":
+            m.setdefault("keep", []).extend(its)
+        else:
+            m.setdefault(sec, []).extend(its)
+    out = ctx.work / "mapping.yaml"
+    validate_and_repair(m, out, "dataset mapping, grown with names from "
+                        "files the given mapping had not seen")
+    jdump(ctx.work / "mapping_entities.json",
+          [{"name": e["name"], "type": e["type"], "forms": e["forms"],
+            "decision": d} for e, d in zip(new, decisions)])
+    return out
 
 
 def extend_mapping(ctx, cands):
@@ -1627,108 +1679,192 @@ KIND_CAT = {"person": "FULL_NAME", "brand": "BRAND",
 
 # =============================================================== main flow
 
-def stage_render(ctx, items, extra_forms=None):
+def render_item(ctx, net, name_led, staging, it):
+    """Render, verify and (when needed) repair one document; -> (it, res)."""
+    ledir = ctx.work / "ledger"
+    led = jload(ledir / f"{it['id']}.json")
+    if not led:
+        return it, {"status": "held", "reason": "no ledger"}
+    if any(r.get("incomplete") for r in led["subs"].values()):
+        return it, {"status": "held",
+                    "reason": "detection incomplete (model call failed)"}
+    try:
+        blob, ext, rep = render_doc(ctx, it, led, net)
+    except Exception as exc:              # noqa: BLE001
+        return it, {"status": "held", "reason":
+                    f"render failed: {str(exc)[:160]}"}
+    fmt = check_format(blob, ext, it["route"], it["path"])
+    text = output_text(blob, ext, it["route"])
+    left = leftovers(ctx, text, net)
+    if any(x["kind"] == "form" for x in left) and \
+            it["route"] in ("office", "text", "pdf"):
+        # automated repair: the net applied once more to the OUTPUT
+        # itself (a hidden copy the first pass did not edit, a PDF page
+        # whose text sat in an object redaction cannot reach)
+        try:
+            blob = repair(ctx, it, blob, ext, net,
+                          ctx.codes.setdefault(it["study"], {}))
+            text = output_text(blob, ext, it["route"])
+            left = leftovers(ctx, text, net)
+            fmt = check_format(blob, ext, it["route"], it["path"])
+        except Exception as exc:          # noqa: BLE001
+            left.append({"kind": f"repair failed: {str(exc)[:60]}"})
+    if ext == "asc":
+        left += [{"kind": "form_in_fixed_width", "categories": c,
+                  "len": b - a_} for a_, b, c in net.find_loose(text)]
+    if it["route"] == "office":
+        # binary members the reader cannot edit (OLE objects, VBA): a
+        # real name inside one holds the file rather than shipping it
+        # (names only: random bytes look like phone numbers)
+        left += [{"kind": "form_in_binary_member", "categories": c,
+                  "len": b - a_}
+                 for a_, b, c in net.find(binary_member_text(blob))]
+    res = {"status": "held" if (fmt or left) else "ok",
+           "reason": fmt or (f"{len(left)} leftover(s): "
+                             + ", ".join(sorted({x['kind'] for x in left}))
+                             if left else ""),
+           "report": rep, "leftovers": left[:20]}
+    rel = out_rel(ctx, it, name_led, net)
+    if it.get("container"):
+        res["member_out"] = "/".join(clean_name(ctx, p, name_led, net)
+                                     if i < len(it["member"].split("/"))
+                                     - 1 else
+                                     clean_name(ctx, Path(p).stem,
+                                                name_led, net)
+                                     + Path(p).suffix
+                                     for i, p in enumerate(
+                                         it["member"].split("/")))
+    dst = staging / it["id"]
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    dst.write_bytes(blob)
+    res["staged"] = str(dst)
+    res["out_rel"] = rel
+    res["tokens"] = sorted(set(re.findall(r"\w+", text.lower())))[:200000]
+    return it, res
+
+
+_W = {}
+
+
+def _init_worker(a_dict, extra, codes, keep):
+    """A render process: its own context, mapping and net (built once)."""
+    import argparse
+    import entity_map
+    a = argparse.Namespace(**a_dict)
+    ctx = Ctx(a)
+    if a.mapping_path and a.mode == "replace":
+        ctx.em = entity_map.load(a.mapping_path)
+    ctx.codes = codes
+    ctx.keep_forms = set(keep)
+    items = jload(ctx.work / "inventory.json", [])
+    _W.update(ctx=ctx, net=build_net(ctx, items, extra),
+              name_led=jload(ctx.work / "ledger" / "__names__.json",
+                             {"segs": [], "spans": []}),
+              staging=ctx.work / "staging")
+
+
+def _render_worker(it):
+    return render_item(_W["ctx"], _W["net"], _W["name_led"], _W["staging"],
+                       it)
+
+
+def precompute_codes(ctx, items):
+    """The code book for every linking id in every ledger, in a fixed order,
+    before rendering (parallel renderers then agree on every code)."""
+    import office
+    ledir = ctx.work / "ledger"
+    for it in items:
+        led = jload(ledir / f"{it['id']}.json")
+        if not led or led.get("media"):
+            continue
+        rp = office.Replacer("replace", ctx.pack, None,
+                             ctx.codes.setdefault(it["study"], {}))
+        for sub in sorted(led["subs"]):
+            for sp in sorted(led["subs"][sub]["spans"],
+                             key=lambda x: (x["seg"], x["a"])):
+                cats = set(sp["categories"])
+                if cats & office.ID_CATS and not (
+                        cats - office.ID_CATS - {"OTHER"}) and \
+                        ctx.pack.action_for(sp["categories"]) == "PSEUDONYMIZE":
+                    rp.code_for(sp["text"], sp.get("code_prefix"))
+
+
+def broken_controls(ctx, items, results, net):
+    """Per route, the ORIGINAL of one file with removals must fail the same
+    check (proves the check can catch a leak)."""
+    controls = {}
+    ledir = ctx.work / "ledger"
+    for it in items:
+        r = it["route"]
+        if r in controls or r not in ("office", "text", "pdf", "image") or \
+                it["id"] not in results:
+            continue
+        led = jload(ledir / f"{it['id']}.json")
+        if not led or not led_has_removals(ctx, led):
+            continue
+        try:
+            if r == "office":
+                orig, oext = doc_blob(ctx, it)
+            else:
+                orig = Path(it["path"]).read_bytes()
+                oext = Path(it["path"]).suffix.lower().lstrip(".")
+            caught = bool(leftovers(ctx, output_text(orig, oext, r), net))
+            controls[r] = {"file_id": it["id"], "caught": caught}
+        except Exception as exc:              # noqa: BLE001
+            controls[r] = {"file_id": it["id"], "caught": None,
+                           "error": str(exc)[:80]}
+    return controls
+
+
+def stage_render(ctx, items, extra_forms=None, only=None, prior=None):
     import entity_map
     ledir = ctx.work / "ledger"
     name_led = jload(ledir / "__names__.json", {"segs": [], "spans": []})
     net = build_net(ctx, items, extra_forms)
     staging = ctx.work / "staging"
-    if staging.exists():
+    if only is None and staging.exists():
         shutil.rmtree(staging)
-    results = {}
-    controls = {}
-    used_out = set()
-    docs = [it for it in items if it["route"] in ("office", "text", "pdf",
-                                                  "image")]
+    results = dict(prior or {})
+    docs = [] if ctx.a.media_only else [
+        it for it in items if it["route"] in ("office", "text", "pdf",
+                                              "image")
+        and (only is None or it["id"] in only)]
     print(f"\n[stage 3] rendering {len(docs)} document(s) "
-          f"({ctx.mode} mode)", flush=True)
+          f"({ctx.mode} mode, {ctx.a.processes} process(es))", flush=True)
+    if docs and ctx.mode == "replace":
+        precompute_codes(ctx, items)
 
-    def one(it):
-        led = jload(ledir / f"{it['id']}.json")
-        if not led:
-            return it, {"status": "held", "reason": "no ledger"}
-        if any(r.get("incomplete") for r in led["subs"].values()):
-            return it, {"status": "held",
-                        "reason": "detection incomplete (model call failed)"}
-        try:
-            blob, ext, rep = render_doc(ctx, it, led, net)
-        except Exception as exc:              # noqa: BLE001
-            return it, {"status": "held", "reason":
-                        f"render failed: {str(exc)[:160]}"}
-        fmt = check_format(blob, ext, it["route"], it["path"])
-        text = output_text(blob, ext, it["route"])
-        left = leftovers(ctx, text, net)
-        if any(x["kind"] == "form" for x in left) and \
-                it["route"] in ("office", "text", "pdf"):
-            # automated repair: the net applied once more to the OUTPUT
-            # itself (a hidden copy the first pass did not edit, a PDF page
-            # whose text sat in an object redaction cannot reach)
-            try:
-                blob = repair(ctx, it, blob, ext, net,
-                              ctx.codes.setdefault(it["study"], {}))
-                text = output_text(blob, ext, it["route"])
-                left = leftovers(ctx, text, net)
-                fmt = check_format(blob, ext, it["route"], it["path"])
-            except Exception as exc:          # noqa: BLE001
-                left.append({"kind": f"repair failed: {str(exc)[:60]}"})
-        if ext == "asc":
-            left += [{"kind": "form_in_fixed_width", "categories": c,
-                      "len": b - a_} for a_, b, c in net.find_loose(text)]
-        if it["route"] == "office":
-            # binary members the reader cannot edit (OLE objects, VBA): a
-            # real name inside one holds the file rather than shipping it
-            # (names only: random bytes look like phone numbers)
-            left += [{"kind": "form_in_binary_member", "categories": c,
-                      "len": b - a_}
-                     for a_, b, c in net.find(binary_member_text(blob))]
-        res = {"status": "held" if (fmt or left) else "ok",
-               "reason": fmt or (f"{len(left)} leftover(s): "
-                                 + ", ".join(sorted({x['kind'] for x in left}))
-                                 if left else ""),
-               "report": rep, "leftovers": left[:20]}
-        rel = out_rel(ctx, it, name_led, net)
-        if it.get("container"):
-            res["member_out"] = "/".join(clean_name(ctx, p, name_led, net)
-                                         if i < len(it["member"].split("/"))
-                                         - 1 else
-                                         clean_name(ctx, Path(p).stem,
-                                                    name_led, net)
-                                         + Path(p).suffix
-                                         for i, p in enumerate(
-                                             it["member"].split("/")))
-        dst = staging / it["id"]
-        dst.parent.mkdir(parents=True, exist_ok=True)
-        dst.write_bytes(blob)
-        res["staged"] = str(dst)
-        res["out_rel"] = rel
-        # broken control: the ORIGINAL must fail the same check, once per
-        # route (proves the check can catch a leak)
-        if it["route"] not in controls and led_has_removals(ctx, led):
-            try:
-                if it["route"] == "office":
-                    orig, oext = doc_blob(ctx, it)
-                else:
-                    orig, oext = Path(it["path"]).read_bytes(), ext
-                ot = output_text(orig, oext, it["route"])
-                caught = bool(leftovers(ctx, ot, net))
-                with LOCK:
-                    controls.setdefault(it["route"], {
-                        "file_id": it["id"], "caught": caught})
-            except Exception as exc:          # noqa: BLE001
-                with LOCK:
-                    controls.setdefault(it["route"], {
-                        "file_id": it["id"], "caught": None,
-                        "error": str(exc)[:80]})
-        return it, res
-    with cf.ThreadPoolExecutor(ctx.a.workers) as ex:
-        futs = [ex.submit(one, it) for it in docs]
-        for fut in cf.as_completed(futs):
-            it, res = fut.result()
-            results[it["id"]] = res
-            flag = "ok  " if res["status"] == "ok" else "HELD"
-            print(f"  {flag} {it['route']:6s} {Path(it['rel']).name[:60]}"
-                  + (f"  ({res['reason']})" if res["status"] != "ok" else ""),
-                  flush=True)
+    def show(it, res):
+        results[it["id"]] = res
+        flag = "ok  " if res["status"] == "ok" else "HELD"
+        print(f"  {flag} {it['route']:6s} {Path(it['rel']).name[:60]}"
+              + (f"  ({res['reason']})" if res["status"] != "ok" else ""),
+              flush=True)
+    if docs and ctx.a.processes > 1:
+        a_dict = dict(vars(ctx.a))
+        with cf.ProcessPoolExecutor(
+                ctx.a.processes, initializer=_init_worker,
+                initargs=(a_dict, extra_forms or {}, ctx.codes,
+                          sorted(ctx.keep_forms))) as ex:
+            futs = [ex.submit(_render_worker, it) for it in docs]
+            for fut in cf.as_completed(futs):
+                try:
+                    it, res = fut.result()
+                except Exception as exc:      # noqa: BLE001
+                    print(f"  !! render process failed: {str(exc)[:120]}")
+                    continue
+                show(it, res)
+    elif docs:
+        with cf.ThreadPoolExecutor(ctx.a.workers) as ex:
+            futs = [ex.submit(render_item, ctx, net, name_led, staging, it)
+                    for it in docs]
+            for fut in cf.as_completed(futs):
+                show(*fut.result())
+    for it in docs:
+        if it["id"] not in results:
+            results[it["id"]] = {"status": "held",
+                                 "reason": "render process failed"}
+    controls = broken_controls(ctx, items, results, net)
     ctx.save_images()
     for it in items:
         if it["route"] == "zip":
@@ -1740,21 +1876,27 @@ def stage_render(ctx, items, extra_forms=None):
         mapping = ctx.a.mapping_path
         if ctx.mode == "redact":
             mapping = redact_media_list(ctx, items)
-        for it in media:
+        def rend(it):
             if not (ledir / f"{it['id']}.json").exists():
-                results[it["id"]] = {"status": "held",
-                                     "reason": "no media ledger"}
-                continue
+                return it, None, "no media ledger"
             bundle, why = media_render(ctx, it, mapping)
-            if bundle is None:
-                results[it["id"]] = {"status": "held", "reason": why}
-            else:
-                results[it["id"]] = {"status": "ok", "bundle": str(bundle),
-                                     "out_rel": out_rel(ctx, it, name_led,
-                                                        net)}
-            print(f"  {'ok  ' if bundle else 'HELD'} {it['route']:6s} "
-                  f"{Path(it['rel']).name[:60]}" + (f"  ({why})" if why
-                                                   else ""), flush=True)
+            return it, bundle, why
+        print(f"  rendering {len(media)} audio/video file(s), "
+              f"{ctx.a.media_workers} at a time", flush=True)
+        with cf.ThreadPoolExecutor(ctx.a.media_workers) as ex:
+            futs = [ex.submit(rend, it) for it in media]
+            for fut in cf.as_completed(futs):
+                it, bundle, why = fut.result()
+                if bundle is None:
+                    results[it["id"]] = {"status": "held", "reason": why}
+                else:
+                    results[it["id"]] = {"status": "ok",
+                                         "bundle": str(bundle),
+                                         "out_rel": out_rel(ctx, it,
+                                                            name_led, net)}
+                print(f"  {'ok  ' if bundle else 'HELD'} {it['route']:6s} "
+                      f"{Path(it['rel']).name[:60]}"
+                      + (f"  ({why})" if why else ""), flush=True)
     return results, controls, net
 
 
@@ -1823,11 +1965,16 @@ def deliver(ctx, items, results, net):
         return rel
     for it in items:
         res = results.get(it["id"])
+        if ctx.a.media_only and it["route"] not in ("audio", "video") and \
+                not it.get("held_reason", "").startswith("media"):
+            continue
         if it["route"] == "held":
             held.append({"rel_id": it["id"], "route": it["route"],
                          "reason": it.get("held_reason")})
             continue
         if it.get("container") or res is None:
+            continue
+        if ctx.a.media_only and it["route"] not in ("audio", "video"):
             continue
         if it["route"] == "zip":
             members = [results.get(m) for m in it["members"]]
@@ -1946,6 +2093,11 @@ def main():
                     help="render with this mapping (no new mapping built)")
     ap.add_argument("--context", default="")
     ap.add_argument("--skip-media", action="store_true")
+    ap.add_argument("--media-only", action="store_true",
+                    help="process only the audio and video files (documents "
+                         "untouched: e.g. while their own run is going)")
+    ap.add_argument("--media-workers", type=int, default=6,
+                    help="audio / video files processed at a time")
     ap.add_argument("--no-sweep", dest="sweep", action="store_false",
                     help="audio / video: one free-form detection pass instead "
                          "of the category sweep (sweep is on by default)")
@@ -1955,6 +2107,9 @@ def main():
                          "beeps)")
     ap.add_argument("--redetect", action="store_true")
     ap.add_argument("--workers", type=int, default=24)
+    ap.add_argument("--processes", type=int, default=6,
+                    help="documents rendered at a time, in separate "
+                         "processes (1 = threads in this process)")
     ap.add_argument("--thinking", type=int, default=4096,
                     help="thinking-token budget per detection call "
                          "(0 = the model's default)")
@@ -1987,17 +2142,20 @@ def main():
     for it in items:
         counts[it["route"]] = counts.get(it["route"], 0) + 1
     print(f"[stage 0] {len(items)} item(s): {counts}", flush=True)
-    if not a.mapping or a.redetect:
-        # with --mapping, --redetect re-reads every file (detection answers
-        # come from the text cache) so ledgers match the current readers
-        stage_detect(ctx, items)
-        jdump(work / "inventory.json", items)
+    # stage 1 skips files whose ledger exists (unless --redetect, which
+    # re-reads them; answers come from the text cache)
+    stage_detect(ctx, items)
+    jdump(work / "inventory.json", items)
     if a.stop_after == "detect":
         return
     if ctx.mode == "replace":
         import entity_map
         if a.mapping:
             a.mapping_path = Path(a.mapping).resolve()
+            ctx.em = entity_map.load(a.mapping_path)
+            # the mapping only grows: names found in files it has not seen
+            # (e.g. spoken in the recordings) are invented and appended
+            a.mapping_path = grow_mapping(ctx, items)
         else:
             a.mapping_path = stage_mapping(ctx, items)
             if a.stop_after == "mapping":
@@ -2043,7 +2201,14 @@ def main():
             jdump(work / "audit_forms.json", extra)
             print(f"  re-rendering with the audit's findings (round "
                   f"{rounds})", flush=True)
-            results, controls, _net = stage_render(ctx, items, extra)
+            # only files whose output contains a new finding are rendered
+            # again; everything else keeps its verified result
+            firsts = {t for f in new for t in re.findall(r"\w+", f.lower())[:1]}
+            affected = {k for k, r in results.items()
+                        if firsts & set(r.get("tokens") or ())}
+            print(f"  {len(affected)} file(s) contain a finding", flush=True)
+            results, controls, _net = stage_render(
+                ctx, items, extra, only=affected, prior=results)
             audit["after"] = run_audit(ctx, items, results)
             cands = audit["after"]["candidates"]
             ctx.keep_forms -= {c["text"].lower() for c in cands}
