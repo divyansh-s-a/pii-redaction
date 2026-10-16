@@ -64,9 +64,11 @@ PARA_RX = {"w": re.compile(r"<w:p[ >].*?</w:p>", re.S),
 NODE_RX = {"w": re.compile(r"(<w:(?:t|delText)(?: [^>]*)?>)(.*?)"
                            r"(</w:(?:t|delText)>)", re.S),
            "a": re.compile(r"(<a:t>|<a:t [^>]*>)(.*?)(</a:t>)", re.S)}
-SI_RX = re.compile(r"<si>.*?</si>", re.S)
-T_RX = re.compile(r"(<t(?: [^>]*)?>)(.*?)(</t>)", re.S)
-IS_RX = re.compile(r"<is>.*?</is>", re.S)
+# SpreadsheetML elements may carry a namespace prefix (<x:si>, <x:t>): some
+# exporters write every element that way
+SI_RX = re.compile(r"<(?:\w+:)?si>.*?</(?:\w+:)?si>", re.S)
+T_RX = re.compile(r"(<(?:\w+:)?t(?: [^>]*)?>)(.*?)(</(?:\w+:)?t>)", re.S)
+IS_RX = re.compile(r"<(?:\w+:)?is>.*?</(?:\w+:)?is>", re.S)
 STRCACHE_RX = re.compile(r"<c:strCache>.*?</c:strCache>", re.S)
 CV_RX = re.compile(r"(<c:v>)(.*?)(</c:v>)", re.S)
 SHEET_RX = re.compile(r'(<sheet [^>]*?name=")([^"]*)(")')
@@ -90,9 +92,10 @@ AUTHOR_EL_RX = re.compile(r"(<author>)(.*?)(</author>)", re.S)
 ABSPATH_RX = re.compile(r'(<x15ac:absPath [^>]*?url=")([^"]*)(")')
 EXT_V_RX = re.compile(r"(<v>)(.*?)(</v>)", re.S)
 NAMEATTR_W_RX = re.compile(r'((?:w15:userId|w15:author)=")([^"]*)(")')
-STRV_RX = re.compile(r'<c\b[^>]*?\bt="str"[^>]*>(?:(?!</c>).)*?<v>(.*?)</v>',
+STRV_RX = re.compile(r'<(?:\w+:)?c\b[^>]*?\bt="str"[^>]*>'
+                     r'(?:(?!</(?:\w+:)?c>).)*?<(?:\w+:)?v>(.*?)</(?:\w+:)?v>',
                      re.S)
-HF_RX = re.compile(r"(<(?:oddHeader|oddFooter|evenHeader|evenFooter|"
+HF_RX = re.compile(r"(<(?:\w+:)?(?:oddHeader|oddFooter|evenHeader|evenFooter|"
                    r"firstHeader|firstFooter)>)(.*?)(</)", re.S)
 
 
@@ -156,7 +159,7 @@ def segments_of(part, xml):
         if part.startswith("xl/pivotCache/"):
             for m in PIVOT_S_RX.finditer(xml):
                 add("pivot", [(m.start(2), m.end(2))])
-        if re.match(r"xl/worksheets/sheet\d+\.xml$", part):
+        if re.match(r"xl/worksheets/sheet\d*\.xml$", part):
             # a formula's cached text result, and page headers / footers
             if 't="str"' in xml:
                 for m in STRV_RX.finditer(xml):

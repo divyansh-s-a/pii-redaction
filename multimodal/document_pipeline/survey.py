@@ -196,9 +196,10 @@ def csv_segments(text, part="text"):
 
 # a cell is either self-closing or has a body; [^>]* never runs past its
 # own tag, so a sheet of empty styled cells is read in linear time
-CELL_RX = re.compile(r'<c\b([^>]*?)(/>|>(.*?)</c>)', re.S)
-ROW_RX = re.compile(r"<row\b[^>]*?/>|<row\b[^>]*>(.*?)</row>", re.S)
-V_RX = re.compile(r"<v>(.*?)</v>", re.S)
+CELL_RX = re.compile(r'<(?:\w+:)?c\b([^>]*?)(/>|>(.*?)</(?:\w+:)?c>)', re.S)
+ROW_RX = re.compile(r"<(?:\w+:)?row\b[^>]*?/>|<(?:\w+:)?row\b[^>]*>(.*?)"
+                    r"</(?:\w+:)?row>", re.S)
+V_RX = re.compile(r"<(?:\w+:)?v>(.*?)</(?:\w+:)?v>", re.S)
 REF_RX = re.compile(r'\br="([A-Z]+)(\d+)"')
 T_ATTR_RX = re.compile(r'\bt="(\w+)"')
 
@@ -237,7 +238,7 @@ def xlsx_rules(parts, segs):
     extra, spans = [], []
     base = len(segs)
     for part, xml in parts.items():
-        if not re.match(r"xl/worksheets/sheet\d+\.xml$", part):
+        if not re.match(r"xl/worksheets/sheet\d*\.xml$", part):
             continue
         rows = []
         for rm in ROW_RX.finditer(xml):
@@ -319,7 +320,8 @@ def xlsx_rules(parts, segs):
     return extra, spans
 
 
-PHONE_V_RX = re.compile(r"<v>((?:91)?[6-9]\d{9}(?:\.0)?)</v>")
+PHONE_V_RX = re.compile(r"<(?:\w+:)?v>((?:91)?[6-9]\d{9}(?:\.0)?)"
+                        r"</(?:\w+:)?v>")
 
 
 def phone_numcells(parts, base):
@@ -327,9 +329,9 @@ def phone_numcells(parts, base):
     needed): 10-digit Indian mobiles, optionally with 91."""
     extra, spans = [], []
     for part, xml in parts.items():
-        if not re.match(r"xl/worksheets/sheet\d+\.xml$", part):
+        if not re.match(r"xl/worksheets/sheet\d*\.xml$", part):
             continue
-        if "<v>" not in xml:
+        if "v>" not in xml:
             continue
         for m in CELL_RX.finditer(xml):
             body = m.group(3)
@@ -352,12 +354,13 @@ def numcell_xml(cell_xml, new_text):
     """A numeric <c> rewritten as an inline-string cell holding new_text
     (or an empty cell when new_text is empty)."""
     import html
-    m = re.match(r"<c ([^>]*?)(/>|>)", cell_xml, re.S)
-    attrs = re.sub(r'\s*\bt="\w+"', "", m.group(1)).rstrip("/").rstrip()
+    m = re.match(r"<((?:\w+:)?)c ([^>]*?)(/>|>)", cell_xml, re.S)
+    px = m.group(1)                     # keep the document's prefix
+    attrs = re.sub(r'\s*\bt="\w+"', "", m.group(2)).rstrip("/").rstrip()
     if not new_text:
-        return f"<c {attrs}/>"
-    return (f'<c {attrs} t="inlineStr"><is><t xml:space="preserve">'
-            f"{html.escape(new_text, quote=False)}</t></is></c>")
+        return f"<{px}c {attrs}/>"
+    return (f'<{px}c {attrs} t="inlineStr"><{px}is><{px}t xml:space="preserve">'
+            f"{html.escape(new_text, quote=False)}</{px}t></{px}is></{px}c>")
 
 
 def _self_test():
