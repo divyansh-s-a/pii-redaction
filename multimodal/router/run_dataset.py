@@ -4,7 +4,7 @@
     python3 multimodal/router/run_dataset.py INPUT --mode redact|replace \
         --taxonomy market_research --out DELIVERY --work WORK
         [--stop-after detect|mapping] [--mapping FILE] [--context TEXT]
-        [--skip-media] [--workers 12]
+        [--skip-media] [--no-sweep] [--no-assurance] [--workers 24]
 
 INPUT is a folder (or one file). DELIVERY receives only redacted files, in a
 mirror of the input tree with folder and file names cleaned. WORK holds the
@@ -90,7 +90,10 @@ NAMING = (ROOT / "prompts" / "dataset_naming_v1.txt").read_text()
 LOCK = threading.Lock()
 HONORIFICS = {"shri", "shree", "smt", "kumari", "miss", "mister", "madam",
               "sahab", "saheb", "ji", "doctor", "prof", "professor", "team",
-              "respondent", "moderator", "interviewer", "client", "manager"}
+              "respondent", "moderator", "interviewer", "client", "manager",
+              # account and software words that sit in author fields
+              "microsoft", "office", "user", "users", "admin", "administrator",
+              "windows", "owner", "guest", "google", "apple", "default"}
 CALL_TIMEOUT = 360         # seconds per model call before it is retried
 MAX_PIECES = 120           # text pieces per detection call
 
@@ -566,9 +569,13 @@ def media_cmd(ctx, it, outdir, mapping=None, replace="beep", audit=True):
         cmd += ["--replace", "pseudonym"]
     if not audit:
         cmd += ["--no-audit"]
-    # second listener (Gemini) unioned with the primary: lower leak rate
-    cmd += ["--assurance"] if it["route"] == "audio" else ["--",
-                                                            "--assurance"]
+    # dataset defaults, as run_all.py: category sweep and the second
+    # listener (Gemini) unioned with the primary — the strongest recall
+    # configuration; --no-sweep / --no-assurance turn them off
+    arm = (["--sweep"] if ctx.a.sweep else []) + \
+        (["--assurance"] if ctx.a.assurance else [])
+    if arm:
+        cmd += arm if it["route"] == "audio" else ["--"] + arm
     return cmd
 
 
@@ -659,7 +666,7 @@ def collect_entities(ctx, items):
     ledir = ctx.work / "ledger"
     forms = {}            # normalised form -> record
 
-    def add(text, etype, ctxt=""):
+    def add(text, etype, ctxt="", study=""):
         t = re.sub(r"\s+", " ", str(text)).strip(" \t.,;:!?\"'()[]{}<>-–—")
         if len(t) < 2 or not any(ch.isalpha() for ch in t) or len(t) > 80:
             return
@@ -671,6 +678,8 @@ def collect_entities(ctx, items):
             r["type"] = "person"
         if ctxt and len(r["ctx"]) < 2:
             r["ctx"].append(ctxt[:140])
+        if study:
+            r.setdefault("studies", set()).add(study)
     for it in items:
         led = jload(ledir / f"{it['id']}.json")
         if not led:
@@ -689,11 +698,12 @@ def collect_entities(ctx, items):
             for s in rec["spans"]:
                 cats = set(s["categories"])
                 if cats & PERSON_CATS:
-                    add(s["text"], "person")
+                    add(s["text"], "person", study=it["study"])
                 else:
                     for c in cats:
                         if c in ENTITY_CATS:
-                            add(s["text"], ENTITY_CATS[c].lower())
+                            add(s["text"], ENTITY_CATS[c].lower(),
+                                study=it["study"])
                             break
     nl = jload(ledir / "__names__.json", {})
     for s in nl.get("spans", []):
@@ -717,7 +727,9 @@ def collect_entities(ctx, items):
         ents.append({"name": rs[0]["form"], "type": rs[0]["type"],
                      "forms": sorted({r["form"] for r in rs}),
                      "mentions": sum(r["n"] for r in rs),
-                     "ctx": [c for r in rs for c in r["ctx"]][:2]})
+                     "ctx": [c for r in rs for c in r["ctx"]][:2],
+                     "studies": sorted({st for r in rs
+                                        for st in r.get("studies", ())})[:4]})
     ents.sort(key=lambda e: (e["type"] != "person", e["name"].lower()))
     return ents
 
@@ -740,6 +752,8 @@ def name_batch(ctx, batch, avoid=()):
         f"E{k}\t{e['type']}\t{e['name']}\tforms: "
         + "; ".join(e["forms"][:6])
         + (f"\tcontext: {' | '.join(e['ctx'])}" if e["ctx"] else "")
+        + (f"\tstudy: {'; '.join(e.get('studies') or [])}"
+           if e.get("studies") else "")
         for k, e in enumerate(batch, 1))
     extra = ("\n\nDo NOT use these invented names (already taken): "
              + "; ".join(sorted(avoid)[:400])) if avoid else ""
@@ -768,13 +782,30 @@ def stage_mapping(ctx, items):
     ents = collect_entities(ctx, items)
     print(f"\n[stage 2] mapping: {len(ents)} entities "
           f"({sum(e['type'] == 'person' for e in ents)} people)", flush=True)
-    batches = [ents[i:i + 120] for i in range(0, len(ents), 120)]
-    decisions = [None] * len(ents)
+    # naming answers are cached by entity, so a rebuilt mapping (new rules
+    # below, a resumed run) never pays for or re-rolls a name
+    cache_f = ctx.work / "naming_cache.json"
+    cache = jload(cache_f, {}) or {}
+
+    def ekey(e):
+        return e["type"] + "|" + "|".join(sorted(f.lower() for f in e["forms"]))
+    if not cache and (ctx.work / "mapping_entities.json").exists():
+        # a run before the cache existed: its decisions seed it
+        for r in jload(ctx.work / "mapping_entities.json", []) or []:
+            if r.get("decision"):
+                cache[ekey(r)] = r["decision"]
+    decisions = [cache.get(ekey(e)) for e in ents]
+    todo = [i for i, d in enumerate(decisions) if d is None]
+    batches = [todo[i:i + 120] for i in range(0, len(todo), 120)]
     with cf.ThreadPoolExecutor(6) as ex:
-        res = list(ex.map(lambda b: name_batch(ctx, b), batches))
-    for bi, r in enumerate(res):
+        res = list(ex.map(lambda b: name_batch(ctx, [ents[i] for i in b]),
+                          batches))
+    for b, r in zip(batches, res):
         for k, d in r.items():
-            decisions[bi * 120 + k] = d
+            decisions[b[k]] = d
+            cache[ekey(ents[b[k]])] = d
+    jdump(cache_f, cache)
+    canonical_names(ents, decisions)
     # two different entities must not share an invented name
     seen, dup = {}, []
     for i, d in enumerate(decisions):
@@ -792,28 +823,68 @@ def stage_mapping(ctx, items):
             if k in fresh:
                 decisions[i] = fresh[k]
     fix_collisions(ctx, ents, decisions)
+    canonical_names(ents, decisions)          # again: after any re-invention
+    split = {}
+    for e, d in zip(ents, decisions):
+        if d and not d.get("keep") and e["type"] != "person" and \
+                len((d.get("core") or e["name"]).split()) == 1:
+            split.setdefault((d.get("core") or e["name"]).strip().lower(),
+                             set()).add(d.get("invented"))
+    multi = {k: v for k, v in split.items() if len(v) > 1}
+    print(f"  one name per core: {len(split) - len(multi)}/{len(split)}"
+          + (f" (still split: {list(multi)[:5]})" if multi else ""),
+          flush=True)
     mapping = build_entries(ents, decisions)
     path = ctx.work / "mapping.yaml"
-    for attempt in range(4):
-        build_mapping.dump(mapping, path, "dataset mapping (run_dataset.py)")
-        try:
-            entity_map.load(path)
-            break
-        except ValueError as exc:
-            bad = set(re.findall(r"invented name '([^']+)'", str(exc)))
-            if not bad or attempt == 3:
-                raise
-            print(f"  re-inventing {len(bad)} name(s)")
-            for sec in mapping.values():
-                if isinstance(sec, list):
-                    for e in sec:
-                        if isinstance(e, dict) and e.get("replace") in bad:
-                            e["replace"] = e["replace"] + ("a" if attempt
-                                                           < 2 else "o")
+    validate_and_repair(mapping, path, "dataset mapping (run_dataset.py)")
     jdump(ctx.work / "mapping_entities.json",
           [{"name": e["name"], "type": e["type"], "forms": e["forms"],
             "decision": d} for e, d in zip(ents, decisions)])
     return path
+
+
+def canonical_names(ents, decisions):
+    """One invented name per real name across the dataset. Entities named in
+    different batches can share a core ("Zorvex" inside "Zorvex Mobility"
+    and "Zorvex Edge"): the core takes ONE invented name (that of its most
+    mentioned entity), and a compound core is composed from the canonical
+    names of the cores inside it, so a model line reads the same everywhere."""
+    canon = {}
+    order = sorted(range(len(ents)), key=lambda i: -ents[i]["mentions"])
+    for i in order:
+        d = decisions[i]
+        if not d or d.get("keep") or ents[i]["type"] == "person" or \
+                not (d.get("invented") or "").strip():
+            continue
+        core = (d.get("core") or ents[i]["name"]).strip()
+        canon.setdefault(core.lower(), d["invented"].strip())
+    cores = sorted(canon, key=len, reverse=True)
+    for i, d in enumerate(decisions):
+        if not d or d.get("keep") or ents[i]["type"] == "person" or \
+                not (d.get("invented") or "").strip():
+            continue
+        core = (d.get("core") or ents[i]["name"]).strip()
+        if core.lower() in canon and len(core.split()) == 1:
+            inv = canon[core.lower()]
+            d["invented"] = inv.lower() if core.islower() else \
+                inv.upper() if core.isupper() and len(core) > 1 else inv
+            continue
+        # compose: every smaller canonical core inside this one
+        out, low, hit = core, core.lower(), False
+        for c in cores:
+            if c == low or len(c) < 3:
+                continue
+            m = re.search(rf"(?<!\w){re.escape(c)}(?!\w)", low)
+            if m:
+                hit = True
+                inv = canon[c]
+                inv = inv.upper() if core[m.start():m.end()].isupper() else inv
+                out = out[:m.start()] + inv + out[m.end():]
+                low = low[:m.start()] + "\0" * len(inv) + low[m.end():]
+        if hit:
+            d["invented"] = out
+        elif core.lower() in canon:
+            d["invented"] = canon[core.lower()]
 
 
 def fix_collisions(ctx, ents, decisions, extra_real=()):
@@ -905,6 +976,69 @@ def fix_collisions(ctx, ents, decisions, extra_real=()):
         seen[d["invented"].lower()] = i
 
 
+ERR_RX = re.compile(r"(\w+):(\d+): invented name '([^']+)' (matches real "
+                    r"pattern|sounds the same as a real form of) (\w+):(\d+)")
+
+
+def validate_and_repair(mapping, path, note, tries=8):
+    """Write the mapping and load it through entity_map's checks; an
+    invented name a real pattern matches (or that sounds like a real form)
+    gets exactly its offending token swapped — a pool name for a person, a
+    changed ending for a brand — until the mapping loads."""
+    import build_mapping
+    import entity_map
+    pool = json.loads((ROOT / "prompts" / "name_pool_india_v1.json"
+                       ).read_text())
+    used = {t.lower() for sec in mapping.values() if isinstance(sec, list)
+            for e in sec if isinstance(e, dict)
+            for t in str(e.get("replace", "")).split()}
+    pools = {k: [n for n in pool[k] if n.lower() not in used]
+             for k in ("male", "female", "surname")}
+    for attempt in range(tries):
+        build_mapping.dump(mapping, path, note)
+        try:
+            return entity_map.load(path)
+        except ValueError as exc:
+            errs = ERR_RX.findall(str(exc))
+            if not errs or attempt == tries - 1:
+                raise
+            print(f"  repairing {len(errs)} invented name(s) "
+                  f"(round {attempt + 1})", flush=True)
+            for sec, i, inv, how, rsec, ri in errs:
+                e = mapping[sec][int(i)]
+                if e.get("replace") != inv:
+                    continue           # already changed this round
+                real = mapping[rsec][int(ri)]
+                toks = inv.split()
+                bad_idx = set(range(len(toks)))
+                if how.startswith("matches"):
+                    rx = re.compile(str(real["pattern"]),
+                                    0 if rsec == "abbreviations" else re.I)
+                    m = rx.search(inv)
+                    if m:
+                        pos, bad_idx = 0, set()
+                        for k, t in enumerate(toks):
+                            a = inv.index(t, pos)
+                            b = a + len(t)
+                            pos = b
+                            if a < m.end() and b > m.start():
+                                bad_idx.add(k)
+                for k in sorted(bad_idx):
+                    t = toks[k]
+                    if sec == "people":
+                        kind = ("surname" if k > 0 else
+                                "female" if t.lower() in {
+                                    n.lower() for n in pool["female"]}
+                                else "male")
+                        lst = pools[kind] or pool[kind]
+                        new = lst.pop(0) if pools[kind] else \
+                            lst[(attempt * 7 + k) % len(lst)]
+                        toks[k] = new.upper() if t.isupper() else new
+                    else:
+                        toks[k] = t + ("ro" if attempt % 2 == 0 else "vi")
+                e["replace"] = " ".join(toks)
+
+
 def build_entries(ents, decisions):
     import build_mapping
     m = {"brands": [], "abbreviations": [], "brand_facts": [], "agency": [],
@@ -915,6 +1049,9 @@ def build_entries(ents, decisions):
             continue
         cat = (d.get("category") or "BRAND").upper()
         core = (d.get("core") or e["name"]).strip()
+        if sum(ch.isalpha() for ch in core) < 2:
+            m["keep"].append(f"{e['name']} (core too short to match safely)")
+            continue
         if e["type"] == "person":
             cat = "PERSON"
             core = e["name"]
@@ -972,6 +1109,9 @@ def extend_mapping(ctx, cands):
     taken = {e["replace"].lower() for e in ctx.em.entries if e["replace"]}
     dec = name_batch(ctx, ents, avoid=taken)
     decs = [dec.get(k) for k in range(len(ents))]
+    for d in decs:
+        if d:
+            d["keep"] = False      # the audit found it: it is replaced
     real = [{"name": e.get("name") or "", "forms": e["forms"]}
             for e in ctx.em.entries]
     fix_collisions(ctx, ents, decs, extra_real=real)
@@ -981,19 +1121,8 @@ def extend_mapping(ctx, cands):
             continue
         m.setdefault(sec, []).extend(items)
     new = ctx.work / "mapping.yaml"
-    for attempt in range(3):
-        build_mapping.dump(m, new, "dataset mapping (run_dataset.py), "
-                           "extended by the leak audit")
-        try:
-            entity_map.load(new)
-            break
-        except ValueError as exc:
-            bad = set(re.findall(r"invented name '([^']+)'", str(exc)))
-            for sec in m.values():
-                if isinstance(sec, list):
-                    for e in sec:
-                        if isinstance(e, dict) and e.get("replace") in bad:
-                            e["replace"] += "a"
+    validate_and_repair(m, new, "dataset mapping (run_dataset.py), "
+                        "extended by the leak audit")
     print(f"  mapping extended with {sum(len(v) for k, v in add.items() if k != 'keep')} "
           f"audit name(s)", flush=True)
     return new
@@ -1058,8 +1187,13 @@ class Net:
         return hits
 
 
+NAMESPACE_WORDS = {"microsoft", "openxmlformats", "schemas", "purl", "w3",
+                   "xmlsoap", "office", "word", "excel", "powerpoint"}
+
+
 def build_net(ctx, items, extra_forms=None):
-    forms = dict(extra_forms or {})
+    forms = {f: c for f, c in (extra_forms or {}).items()
+             if f.strip().lower() not in NAMESPACE_WORDS}
     ledir = ctx.work / "ledger"
     for it in items:
         led = jload(ledir / f"{it['id']}.json")
@@ -1074,6 +1208,17 @@ def build_net(ctx, items, extra_forms=None):
                     continue      # codes are per value, never netted
                 t = s["text"].strip()
                 if t.lower() in ctx.keep_forms:
+                    continue
+                cats = set(s["categories"])
+                if getattr(ctx, "em", None) is not None and \
+                        cats & set(ENTITY_CATS) and not cats & PERSON_CATS:
+                    # replace mode: a brand span is netted by the part the
+                    # mapping replaces (its core); generic words around it
+                    # ("service center") stay in the text by design
+                    toks = t.split()
+                    for i0, i1, _e, _how in ctx.em.match_tokens(toks):
+                        forms.setdefault(" ".join(toks[i0:i1 + 1]),
+                                         s["categories"])
                     continue
                 forms.setdefault(t, s["categories"])
                 if set(s["categories"]) & PERSON_CATS:
@@ -1265,6 +1410,39 @@ def check_format(blob, ext, route, src_path=None):
     return None
 
 
+def repair(ctx, it, blob, ext, net, codes):
+    import office
+    import pdfimg
+    if it["route"] == "office":
+        _p, segs, _m, _e, _r = office.read_ooxml(blob)
+        spans = office._dedupe(net_spans(net, segs))
+        if not spans:
+            return blob
+        out, _rep = office.process_ooxml(
+            blob, ctx.pack, ctx.model, ctx.mode, ctx.em, codes,
+            ctx.img_cache, ctx.img_model, detections=spans,
+            embedded_fn=lambda n, d: d)
+        return out
+    if it["route"] == "text":
+        _t, _e, _b, segs, _r = office.read_text(blob, ext)
+        spans = net_spans(net, segs)
+        if ext in office.FIXED_WIDTH:
+            spans += [{"seg": si, "a": a, "b": b, "text": sg["text"][a:b],
+                       "categories": c, "source": "dataset_net"}
+                      for si, sg in enumerate(segs)
+                      for a, b, c in net.find_loose(sg["text"])]
+        spans = office._dedupe(spans)
+        if not spans:
+            return blob
+        out, _rep = office.process_text(blob, ctx.pack, ctx.model, ctx.mode,
+                                        ctx.em, codes, detections=spans,
+                                        ext=ext)
+        return out
+    if it["route"] == "pdf":
+        return pdfimg.flatten_pages_with(blob, lambda t: bool(net.find(t)))
+    return blob
+
+
 def binary_member_text(blob):
     import io
     out = []
@@ -1281,10 +1459,30 @@ def binary_member_text(blob):
     return "\n".join(out)
 
 
+def invented_spans(ctx, text):
+    """Where the mapping's invented names occur (replace mode): a real
+    first name that is also part of an invented one is not a leftover."""
+    if getattr(ctx, "em", None) is None:
+        return []
+    if not hasattr(ctx, "_inv_rx"):
+        inv = sorted({e["replace"] for e in ctx.em.entries
+                      if e["replace"] and len(e["replace"]) >= 3},
+                     key=len, reverse=True)
+        ctx._inv_rx = re.compile("|".join(
+            rf"(?<!\w){re.escape(v)}(?!\w)" for v in inv), re.I) \
+            if inv else None
+    if ctx._inv_rx is None:
+        return []
+    return [(m.start(), m.end()) for m in ctx._inv_rx.finditer(text)]
+
+
 def leftovers(ctx, text, net):
     import office
     found = []
+    inv = invented_spans(ctx, text)
     for a, b, cats in net.find(text):
+        if any(x <= a and b <= y for x, y in inv):
+            continue
         found.append({"kind": "form", "categories": cats,
                       "len": b - a})
     for _m in office.EMAIL_RX.finditer(text):
@@ -1460,6 +1658,19 @@ def stage_render(ctx, items, extra_forms=None):
         fmt = check_format(blob, ext, it["route"], it["path"])
         text = output_text(blob, ext, it["route"])
         left = leftovers(ctx, text, net)
+        if any(x["kind"] == "form" for x in left) and \
+                it["route"] in ("office", "text", "pdf"):
+            # automated repair: the net applied once more to the OUTPUT
+            # itself (a hidden copy the first pass did not edit, a PDF page
+            # whose text sat in an object redaction cannot reach)
+            try:
+                blob = repair(ctx, it, blob, ext, net,
+                              ctx.codes.setdefault(it["study"], {}))
+                text = output_text(blob, ext, it["route"])
+                left = leftovers(ctx, text, net)
+                fmt = check_format(blob, ext, it["route"], it["path"])
+            except Exception as exc:          # noqa: BLE001
+                left.append({"kind": f"repair failed: {str(exc)[:60]}"})
         if ext == "asc":
             left += [{"kind": "form_in_fixed_width", "categories": c,
                       "len": b - a_} for a_, b, c in net.find_loose(text)]
@@ -1733,6 +1944,13 @@ def main():
                     help="render with this mapping (no new mapping built)")
     ap.add_argument("--context", default="")
     ap.add_argument("--skip-media", action="store_true")
+    ap.add_argument("--no-sweep", dest="sweep", action="store_false",
+                    help="audio / video: one free-form detection pass instead "
+                         "of the category sweep (sweep is on by default)")
+    ap.add_argument("--no-assurance", dest="assurance", action="store_false",
+                    help="audio / video: no second listener (on by default: "
+                         "Gemini also transcribes, its detections join the "
+                         "beeps)")
     ap.add_argument("--redetect", action="store_true")
     ap.add_argument("--workers", type=int, default=24)
     ap.add_argument("--thinking", type=int, default=4096,
@@ -1800,6 +2018,8 @@ def main():
         cands = audit["candidates"]
         print(f"  audit: {len(cands)} leak candidate(s) in {audit['files']} "
               f"file(s)", flush=True)
+        # what the audit flags is replaced even if naming had kept it
+        ctx.keep_forms -= {c["text"].lower() for c in cands}
         if cands and ctx.mode == "replace":
             # a missed real brand or person must get an invented name: the
             # audit's names join the mapping (one naming call) and the dataset
@@ -1824,6 +2044,7 @@ def main():
             results, controls, _net = stage_render(ctx, items, extra)
             audit["after"] = run_audit(ctx, items, results)
             cands = audit["after"]["candidates"]
+            ctx.keep_forms -= {c["text"].lower() for c in cands}
             print(f"  audit after remediation: {len(cands)} candidate(s)",
                   flush=True)
             if cands and ctx.mode == "replace":

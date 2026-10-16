@@ -32,14 +32,14 @@ python3 multimodal/router/run_dataset.py INPUT --mode redact|replace \
 
 | Input | Route | Notes |
 |---|---|---|
-| mp3, wav, m4a, … | audio | the audio arm (`tools/redact.py`) with the pack's `audio_profile.yaml` and the second listener |
+| mp3, wav, m4a, … | audio | the audio arm (`tools/redact.py`) with the pack's `audio_profile.yaml`, `--sweep` and `--assurance` on by default as in `run_all.py` (`--no-sweep` / `--no-assurance` turn them off) |
 | mp4, mov, … | video | the video arm (`run_video.py`): sound through the audio arm, frames blurred |
 | docx, pptx, xlsx, xlsm | office | body, tables, comments and their authors, tracked deletions, notes, headers/footers, charts and their data, sheet names, cells (shared, inline, numbers), pivot caches, properties, `app.xml` titles, hyperlinks, embedded office files (routed again), images (classified; brand / product / screenshot / person images greyed), thumbnails (always greyed) |
 | doc, rtf | office | converted to docx by macOS `textutil`; delivered as `.docx` |
 | csv, tsv | text | cell by cell; survey column rules |
 | txt, qdf, qtf, stpn, qpsmran | text | line by line; encoding kept (UTF-16 stays UTF-16, CRLF stays CRLF) |
-| asc | text | fixed-width data: patterns and the dataset net only; every replacement padded or cut to the column width, removed values become spaces |
-| pdf | pdf | text layer, or OCR (Apple Vision) on a scanned page; true removal (PyMuPDF redaction); images and faces greyed; metadata blanked |
+| asc | text | fixed-width data: the runs of text inside each record (open answers, models) are detected; known forms are also searched without word boundaries (fields are glued together); every replacement padded or cut to the column width, removed values become spaces |
+| pdf | pdf | text layer read with a box per CHARACTER (a brand glued into another word is boxed alone), or OCR (Apple Vision) on a scanned page; true removal (PyMuPDF redaction); a scanned page is re-rasterised with its boxes; a page whose text sits where redaction cannot reach is flattened; images and faces greyed; metadata blanked |
 | png, jpg, … | image | OCR; a brand image or person photo greyed entirely, otherwise boxes |
 | zip | zip | members routed, then zipped again under cleaned names |
 
@@ -70,8 +70,13 @@ Every person and brand-like form in every ledger is grouped into entities
 shape and gender; brands, products, dealers, the agency and slogans get
 invented names that fit their category; the invented name replaces the
 distinctive CORE only (`Zorvex Electronics Hub` → `Kelmora Electronics Hub`).
-`entity_map` refuses an invented name that a real form matches or sounds like.
-Two different entities never share an invented name.
+`entity_map` refuses an invented name that a real form matches or sounds like;
+the refused token is swapped (people: a pool name from
+`prompts/name_pool_india_v1.json` that occurs nowhere among the dataset's real
+names, the same swap everywhere; brands: a changed ending) until the mapping
+loads. Two different entities never share an invented name. Naming sees the
+study each entity appears in, so a retailer that competes with the client is
+replaced while a mere marketplace is kept.
 
 `--stop-after mapping` pauses after writing `WORK/mapping.yaml`; a later run
 with `--mapping FILE` renders without detecting again. The mapping only ever
@@ -93,10 +98,24 @@ net** applies every removable form found in ANY file to EVERY file.
 ## Verify (stage 4)
 
 Each output is read back — joined segment text AND the raw text of every XML
-part, the PDF text layer, OCR of images and scans — and must hold no removable
-form from the ledgers and no email or phone; it must open (zip and XML parse,
-PDF and image load, fixed-width line lengths unchanged). A **broken control**
-per route (the original file) must fail the same check. A failing file is held.
+part (namespaces and typography parts excepted), the PDF text layer, OCR of
+images and scans, and binary members of office files (names only) — and must
+hold no removable form and no email or phone; it must open (zip and XML parse,
+PDF and image load, fixed-width line lengths unchanged). In replace mode a
+brand is checked by the part the mapping replaces (generic words around it
+stay by design). An output with leftovers first gets an automated **repair
+pass** (the net applied to the output itself; PDF pages flattened); only if
+that fails is the file held. A **broken control** per route (the original
+file) must fail the same check.
+
+## Leak audit (stage 4b)
+
+A second model family (`--audit-model`, default GPT) reads a stratified sample
+of delivered files (`--audit-files`, default 40) and lists anything that
+should have been removed. Findings that really occur in the output join the
+net; in replace mode names join the mapping (even ones naming had kept), and
+the dataset is rendered again — up to two rounds. Invented names, codes,
+boxes, platforms, fonts and software names are not leaks.
 
 ## Testing
 

@@ -33,6 +33,11 @@ For EACH entity return:
   ORGANISATION.
 - keep: true only when the entity should NOT be replaced after all — a
   platform or marketplace that only carries products (shopping, delivery,
-  payment apps), a government body, a city or place, a generic category word,
-  or not a name at all. Otherwise false.
+  payment apps) and is NOT a competitor of the study's client, a government
+  body, a city or place, a generic category word, or not a name at all.
+  The study name shows the client and category: a retailer, app or store
+  that competes with the client in that study is a competitor and is
+  replaced (in a fashion-retail study, the other fashion retailers and
+  fashion shopping apps). A brand that is also an ordinary word is still a
+  brand. Otherwise false.
 Return one decision per entity id.

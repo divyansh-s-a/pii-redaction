@@ -313,6 +313,20 @@ def _rasterise(doc, pno, edits):
     page.insert_image(rect, stream=buf.getvalue())
 
 
+def flatten_pages_with(blob, finder):
+    """Pages whose text layer still holds a removable form (text inside an
+    object redaction cannot edit) are flattened into images: the boxes
+    already drawn cover what was removed, the hidden text is gone."""
+    import fitz
+    doc = fitz.open(stream=blob, filetype="pdf")
+    hit = [p.number for p in doc if finder(p.get_text())]
+    for pno in hit:
+        _rasterise(doc, pno, [])
+    out = doc.tobytes(garbage=3, deflate=True) if hit else blob
+    doc.close()
+    return out
+
+
 def output_text_pdf(blob):
     """Text of a rendered PDF for verification (text layer; scanned pages
     re-read by OCR)."""

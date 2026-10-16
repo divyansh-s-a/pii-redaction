@@ -698,14 +698,25 @@ def fixed_width_runs(text):
     the tab files read by position and are left to patterns and the net."""
     segs, pos = [], 0
     for line in text.splitlines(keepends=True):
-        for m in FW_RUN_RX.finditer(line.rstrip("\r\n")):
+        body = line.rstrip("\r\n")
+        taken = []
+        for m in FW_RUN_RX.finditer(body):
             t = m.group(0).rstrip()
             if len(t) >= 2:
                 segs.append({"part": "text", "kind": "run",
                              "pieces": [(pos + m.start(),
                                          pos + m.start() + len(t))],
                              "text": t})
+                taken.append((m.start(), m.start() + len(t)))
+        # long digit runs (phones and ids glued to other fields) for the
+        # patterns and the net; the model never reads them (no letters)
+        for m in re.finditer(r"\d{8,}", body):
+            if not any(a <= m.start() < b for a, b in taken):
+                segs.append({"part": "text", "kind": "digits",
+                             "pieces": [(pos + m.start(), pos + m.end())],
+                             "text": m.group(0)})
         pos += len(line)
+    segs.sort(key=lambda s: s["pieces"][0][0])
     return segs
 
 
@@ -784,6 +795,10 @@ def raw_ooxml_text(blob):
         for n in z.namelist():
             if TEXT_PART_RX.search(n) and not NO_PEOPLE_PART_RX.search(n):
                 x = z.read(n).decode("utf-8", "replace")
+                # namespace and schema URIs are format plumbing, not content
+                x = re.sub(r'\s(?:xmlns(?::\w+)?|mc:Ignorable|xsi:\w+)="[^"]*"',
+                           " ", x)
+                x = re.sub(r'="https?://schemas\.[^"]*"', '=""', x)
                 x = re.sub(r"</w:p>|</a:p>|</si>|</row>|</c>", "\n", x)
                 vals = ([] if n.startswith(("xl/worksheets/", "xl/styles"))
                         else re.findall(r'="([^"]*)"', x))
