@@ -1137,9 +1137,12 @@ def validate_and_repair(mapping, path, note, tries=8):
                                 "female" if t.lower() in {
                                     n.lower() for n in pool["female"]}
                                 else "male")
-                        lst = pools[kind] or pool[kind]
-                        new = lst.pop(0) if pools[kind] else \
-                            lst[(attempt * 7 + k) % len(lst)]
+                        if pools[kind] and attempt < 2:
+                            new = pools[kind].pop(0)
+                        else:
+                            # pool used up or still colliding: a coined
+                            # name no real name contains
+                            new = _coin(f"{sec}:{i}:{k}:{attempt}:{t}")
                         toks[k] = new.upper() if t.isupper() else new
                     elif attempt < 1 and not t.endswith(("ro", "vi")):
                         toks[k] = t + "ro"
