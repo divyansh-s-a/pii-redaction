@@ -505,8 +505,11 @@ def stage_detect(ctx, items):
     # media
     media = [it for it in items if it["route"] in ("audio", "video")]
     if media and not ctx.a.skip_media:
-        todo = [it for it in media if ctx.a.redetect
-                or not (ledir / f"{it['id']}.json").exists()]
+        # --only-held re-renders held media from their existing ledgers
+        # (no second transcription); --redetect alone re-runs stage 1
+        todo = [it for it in media
+                if not (ledir / f"{it['id']}.json").exists()
+                or (ctx.a.redetect and not ctx.a.only_held)]
 
         def det(it):
             try:
@@ -1967,7 +1970,8 @@ def stage_render(ctx, items, extra_forms=None, only=None, prior=None):
             results[it["id"]] = {"status": "zip",
                                  "out_rel": out_rel(ctx, it, name_led, net)}
     # media
-    media = [it for it in items if it["route"] in ("audio", "video")]
+    media = [it for it in items if it["route"] in ("audio", "video")
+             and (only is None or it["id"] in only)]
     if media and not ctx.a.skip_media:
         mapping = ctx.a.mapping_path
         if ctx.mode == "redact":
