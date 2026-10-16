@@ -1134,8 +1134,8 @@ def validate_and_repair(mapping, path, note, tries=8):
                         new = lst.pop(0) if pools[kind] else \
                             lst[(attempt * 7 + k) % len(lst)]
                         toks[k] = new.upper() if t.isupper() else new
-                    elif attempt < 3:
-                        toks[k] = t + ("ro" if attempt % 2 == 0 else "vi")
+                    elif attempt < 1 and not t.endswith(("ro", "vi")):
+                        toks[k] = t + "ro"
                     else:
                         # still colliding: a coined word no real name
                         # contains (syllables chosen by a hash of the entry)
