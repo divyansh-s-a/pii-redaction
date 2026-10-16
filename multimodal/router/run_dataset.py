@@ -1330,22 +1330,26 @@ class Net:
             self.cats[f.lower()] = cats
         self.rx = {}
 
-    def find_loose(self, text):
+    def find_loose(self, text, digits_only=False):
         """Forms of 5+ characters found anywhere, word boundaries ignored —
-        for text a PDF or OCR glued together ("HierarchyZorvex")."""
-        if not hasattr(self, "_loose"):
+        for text a PDF or OCR glued together ("HierarchyZorvex"), and long
+        digit forms (phones, ids) glued into fixed-width records."""
+        key = "_loose_d" if digits_only else "_loose"
+        if not hasattr(self, key):
             fs = sorted({f for fl in self.by_first.values() for f in fl
-                         if (len(f) >= 5 and any(c.isalpha() for c in f))
+                         if (not digits_only and len(f) >= 5
+                             and any(c.isalpha() for c in f))
                          or (len(f) >= 8 and f.isdigit())},
                         key=len, reverse=True)
-            self._loose = re.compile("|".join(
-                re.escape(f).replace(r"\ ", r"\s*") for f in fs), re.I) \
-                if fs else None
-        if self._loose is None:
+            setattr(self, key, re.compile("|".join(
+                re.escape(f).replace(r"\ ", r"\s*") for f in fs), re.I)
+                if fs else None)
+        rx = getattr(self, key)
+        if rx is None:
             return []
         return [(m.start(), m.end(), self.cats[m.group(0).lower()]
                  if m.group(0).lower() in self.cats else ["OTHER"])
-                for m in self._loose.finditer(text)]
+                for m in rx.finditer(text)]
 
     def find(self, text):
         low_toks = set(re.findall(r"\w+", text.lower()))
@@ -1524,7 +1528,7 @@ def render_doc(ctx, it, led, net):
             extra = [{"seg": si, "a": a, "b": b, "text": sg["text"][a:b],
                       "categories": c, "source": "dataset_net"}
                      for si, sg in enumerate(segs)
-                     for a, b, c in net.find_loose(sg["text"])]
+                     for a, b, c in net.find_loose(sg["text"], digits_only=True)]
         spans = office._dedupe(rec["spans"] + net_spans(net, segs) + extra)
         out, rep = office.process_text(raw, ctx.pack, ctx.model, ctx.mode,
                                        ctx.em, codes, detections=spans,
@@ -1609,7 +1613,7 @@ def repair(ctx, it, blob, ext, net, codes):
             spans += [{"seg": si, "a": a, "b": b, "text": sg["text"][a:b],
                        "categories": c, "source": "dataset_net"}
                       for si, sg in enumerate(segs)
-                      for a, b, c in net.find_loose(sg["text"])]
+                      for a, b, c in net.find_loose(sg["text"], digits_only=True)]
         spans = office._dedupe(spans)
         if not spans:
             return blob
@@ -1851,7 +1855,8 @@ def render_item(ctx, net, name_led, staging, it):
             left.append({"kind": f"repair failed: {str(exc)[:60]}"})
     if ext == "asc":
         left += [{"kind": "form_in_fixed_width", "categories": c,
-                  "len": b - a_} for a_, b, c in net.find_loose(text)]
+                  "len": b - a_}
+                 for a_, b, c in net.find_loose(text, digits_only=True)]
     if it["route"] == "office":
         # binary members the reader cannot edit (OLE objects, VBA): a
         # real name inside one holds the file rather than shipping it
