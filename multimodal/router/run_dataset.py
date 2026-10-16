@@ -1071,7 +1071,8 @@ def fix_collisions(ctx, ents, decisions, extra_real=()):
         seen[d["invented"].lower()] = i
 
 
-ERR_RX = re.compile(r"(\w+):(\d+): invented name '([^']+)' (matches real "
+# an invented name may itself hold an apostrophe ("Daisy's Grill")
+ERR_RX = re.compile(r"(\w+):(\d+): invented name '(.+?)' (matches real "
                     r"pattern|sounds the same as a real form of) (\w+):(\d+)")
 
 
@@ -1641,19 +1642,30 @@ def binary_member_text(blob):
 
 def invented_spans(ctx, text):
     """Where the mapping's invented names occur (replace mode): a real
-    first name that is also part of an invented one is not a leftover."""
+    first name that is also part of an invented one is not a leftover.
+    Candidates by first word (one alternation of thousands of names over a
+    large workbook is far too slow)."""
     if getattr(ctx, "em", None) is None:
         return []
-    if not hasattr(ctx, "_inv_rx"):
-        inv = sorted({e["replace"] for e in ctx.em.entries
-                      if e["replace"] and len(e["replace"]) >= 3},
-                     key=len, reverse=True)
-        ctx._inv_rx = re.compile("|".join(
-            rf"(?<!\w){re.escape(v)}(?!\w)" for v in inv), re.I) \
-            if inv else None
-    if ctx._inv_rx is None:
-        return []
-    return [(m.start(), m.end()) for m in ctx._inv_rx.finditer(text)]
+    if not hasattr(ctx, "_inv_idx"):
+        idx = {}
+        for e in ctx.em.entries:
+            v = e["replace"]
+            if v and len(v) >= 3:
+                toks = re.findall(r"\w+", v.lower())
+                if toks:
+                    idx.setdefault(toks[0], set()).add(v)
+        ctx._inv_idx, ctx._inv_rx = idx, {}
+    words = set(re.findall(r"\w+", text.lower()))
+    out = []
+    for w in words & ctx._inv_idx.keys():
+        for v in ctx._inv_idx[w]:
+            rx = ctx._inv_rx.get(v)
+            if rx is None:
+                rx = re.compile(rf"(?<!\w){re.escape(v)}(?!\w)", re.I)
+                ctx._inv_rx[v] = rx
+            out += [(m.start(), m.end()) for m in rx.finditer(text)]
+    return out
 
 
 def leftovers(ctx, text, net):
