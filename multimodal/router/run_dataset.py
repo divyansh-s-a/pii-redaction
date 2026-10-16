@@ -363,6 +363,7 @@ class Ctx:
         self.em = None
         self.codes = {}
         self.keep_forms = set()
+        self.only_ids = None
 
     def classify(self, data, ext):
         import office
@@ -439,7 +440,8 @@ def stage_detect(ctx, items):
     ledir = ctx.work / "ledger"
     docs = [] if ctx.a.media_only else [
         it for it in items if it["route"] in ("office", "text", "pdf",
-                                              "image")]
+                                              "image")
+        and (ctx.only_ids is None or it["id"] in ctx.only_ids)]
     jobs, meta = [], {}
 
     def prep(it):
@@ -552,6 +554,7 @@ def media_env(ctx, mapping=None, replace="beep"):
     else:
         env.pop("PII_MAPPING_FILE", None)
     env["PII_REPLACE_MODE"] = replace
+    env["PYTHONUNBUFFERED"] = "1"
     return env
 
 
@@ -644,9 +647,62 @@ def media_detect(ctx, it):
             "people": people, "entities": ents}
 
 
-def media_render(ctx, it, mapping):
+def audio_dir(ctx, it):
+    """The audio arm's work folder for a media item (video: its track)."""
+    import run_pipeline
+    cache = ctx.work / "media_cache"
+    path = Path(it["path"])
+    if it["route"] == "video":
+        fid = run_pipeline.file_id_for(path)
+        afid = run_pipeline.file_id_for(cache / "video" / fid / f"{fid}.wav")
+        d = cache / "video" / fid / "audio_deliveries"
+        cand = [cache / f"{afid}__elevenlabs", cache / afid]
+    else:
+        afid = run_pipeline.file_id_for(path)
+        cand = [cache / f"{afid}__elevenlabs", cache / afid]
+    return next((c for c in cand if (c / "intervals.json").exists()), cand[0])
+
+
+def listen_remap(ctx, it, mapping):
+    """A file held ONLY because the listen check heard a real name where an
+    invented one was spoken (an invented name that sounds like a real one):
+    for this file those invented names are beeped instead of spoken."""
+    import yaml
+    d = audio_dir(ctx, it)
+    ma = jload(d / "mapped_audit" / "mapped_audit.json", {}) or {}
+    listen = ma.get("listen") or {}
+    hits = listen.get("hits") or []
+    if not hits or ma.get("transcript_hits") or \
+            (ma.get("judge") or {}).get("confirmed"):
+        return None
+    ivs = (jload(d / "intervals.json", {}) or {}).get("intervals", [])
+    ids = {iv["mapping_id"] for iv in ivs
+           if iv.get("render") == "voice" and iv.get("mapping_id")
+           and any(not (iv["end_ms"] <= h["start_ms"]
+                        or h["end_ms"] <= iv["start_ms"]) for h in hits)}
+    if not ids:
+        return None
+    m = yaml.safe_load(Path(mapping).read_text()) or {}
+    changed = 0
+    for sec, items in m.items():
+        if isinstance(items, list):
+            for i, e in enumerate(items):
+                if isinstance(e, dict) and f"{sec}:{i}" in ids:
+                    e["render"] = "beep"
+                    changed += 1
+    if not changed:
+        return None
+    out = ctx.work / "media_remap" / f"{it['id']}.yaml"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(yaml.safe_dump(m, allow_unicode=True, sort_keys=False,
+                                  width=1000))
+    return out
+
+
+def media_render(ctx, it, mapping, _retry=True):
     out = ctx.work / "media_out" / it["id"]
-    log = ctx.work / "logs" / f"render_{it['id']}.log"
+    log = ctx.work / "logs" / (f"render_{it['id']}.log" if _retry
+                               else f"render_{it['id']}_remap.log")
     replace = "pseudonym" if ctx.mode == "replace" else "beep"
     with open(log, "w") as lf:
         r = subprocess.run(media_cmd(ctx, it, out, mapping, replace),
@@ -662,6 +718,16 @@ def media_render(ctx, it, mapping):
         for d in hb:
             m = jload(d / "manifest.json", {}) or {}
             why = m.get("quarantined_reason") or why
+        if _retry and ctx.mode == "replace" and "mapped-entity audit" in why:
+            remap = listen_remap(ctx, it, mapping)
+            if remap is not None:
+                # automated fix: render again with those names beeped
+                shutil.rmtree(out, ignore_errors=True)
+                shutil.rmtree(held, ignore_errors=True)
+                bundle, why2 = media_render(ctx, it, remap, _retry=False)
+                if bundle is not None:
+                    return bundle, None
+                why = why2 or why
         return None, f"held by the media arm: {why or 'see ' + str(log)}"
     return bundles[0], None
 
@@ -1100,8 +1166,21 @@ def grow_mapping(ctx, items):
     import build_mapping
     import yaml
     ents = collect_entities(ctx, items)
+    # what the mapping deliberately kept ("Name (type, kept)" notes, and the
+    # keep decisions of the run that built it) is not new
+    m0 = __import__("yaml").safe_load(Path(ctx.a.mapping_path).read_text()) \
+        or {}
+    kept = {str(k).split(" (")[0].strip().lower()
+            for k in m0.get("keep") or [] if isinstance(k, str)}
+    kept |= ctx.keep_forms
+    for f in ctx.work.glob("mapping_entities*.json"):
+        for r in jload(f, []) or []:
+            if (r.get("decision") or {}).get("keep"):
+                kept |= {x.lower() for x in r.get("forms", [])}
     new = []
     for e in ents:
+        if any(f.lower() in kept for f in e["forms"]):
+            continue
         if any(ctx.em.match_tokens(f.split()) for f in e["forms"] if f):
             continue
         new.append(e)
@@ -1132,7 +1211,7 @@ def grow_mapping(ctx, items):
     out = ctx.work / "mapping.yaml"
     validate_and_repair(m, out, "dataset mapping, grown with names from "
                         "files the given mapping had not seen")
-    jdump(ctx.work / "mapping_entities.json",
+    jdump(ctx.work / "mapping_entities_grown.json",
           [{"name": e["name"], "type": e["type"], "forms": e["forms"],
             "decision": d} for e, d in zip(new, decisions)])
     return out
@@ -1502,7 +1581,9 @@ def binary_member_text(blob):
         for n in z.namelist():
             low = n.lower()
             if low.endswith((".xml", ".rels", ".png", ".jpg", ".jpeg",
-                             ".gif", ".emf", ".wmf", ".tif", ".tiff")) \
+                             ".gif", ".emf", ".wmf", ".tif", ".tiff", ".wdp",
+                             ".jxr", ".bmp", ".svg")) or "/media/" in low \
+                    or "printersettings" in low \
                     or low.endswith(tuple("." + e for e in OOXML_EXT)):
                 continue
             data = z.read(n)
@@ -1716,9 +1797,11 @@ def render_item(ctx, net, name_led, staging, it):
         # binary members the reader cannot edit (OLE objects, VBA): a
         # real name inside one holds the file rather than shipping it
         # (names only: random bytes look like phone numbers)
+        bt = binary_member_text(blob)
         left += [{"kind": "form_in_binary_member", "categories": c,
                   "len": b - a_}
-                 for a_, b, c in net.find(binary_member_text(blob))]
+                 for a_, b, c in net.find(bt)
+                 if b - a_ >= 5 and any(ch.isalpha() for ch in bt[a_:b])]
     res = {"status": "held" if (fmt or left) else "ok",
            "reason": fmt or (f"{len(left)} leftover(s): "
                              + ", ".join(sorted({x['kind'] for x in left}))
@@ -2093,6 +2176,9 @@ def main():
                     help="render with this mapping (no new mapping built)")
     ap.add_argument("--context", default="")
     ap.add_argument("--skip-media", action="store_true")
+    ap.add_argument("--only-held", action="store_true",
+                    help="render again only the files the last run held "
+                         "(their ledgers are re-read); other results kept")
     ap.add_argument("--media-only", action="store_true",
                     help="process only the audio and video files (documents "
                          "untouched: e.g. while their own run is going)")
@@ -2142,6 +2228,15 @@ def main():
     for it in items:
         counts[it["route"]] = counts.get(it["route"], 0) + 1
     print(f"[stage 0] {len(items)} item(s): {counts}", flush=True)
+    if a.only_held:
+        # a second pass over the files the last run held (after a fix):
+        # they are read and rendered again, every other result is kept
+        prev = (jload(work / "report.json", {}) or {}).get("results", {})
+        ctx.only_ids = {k for k, r in prev.items()
+                        if r.get("status") == "held"}
+        a.redetect = True
+        print(f"  --only-held: {len(ctx.only_ids)} held file(s) from the "
+              f"last run", flush=True)
     # stage 1 skips files whose ledger exists (unless --redetect, which
     # re-reads them; answers come from the text cache)
     stage_detect(ctx, items)
@@ -2171,7 +2266,11 @@ def main():
     ctx.codes = jload(work / "codebook.json", {}) or {}
     ctx.codes = {k: {tuple(json.loads(kk)): v for kk, v in d.items()}
                  for k, d in ctx.codes.items()}
-    results, controls, _net = stage_render(ctx, items)
+    prior = None
+    if a.only_held:
+        prior = (jload(work / "report.json", {}) or {}).get("results", {})
+    results, controls, _net = stage_render(
+        ctx, items, only=ctx.only_ids, prior=prior)
     audit = None
     if a.audit_files > 0:
         audit = run_audit(ctx, items, results)

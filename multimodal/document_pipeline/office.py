@@ -74,7 +74,10 @@ AUTHOR_RX = re.compile(r'((?:w:author|w:initials|author)=")([^"]*)(")')
 PROP_RX = re.compile(r"(<(dc:creator|cp:lastModifiedBy|dc:title|dc:subject|"
                      r"cp:keywords|dc:description|Company|Manager|"
                      r"cp:category)(?: [^>]*)?>)(.*?)(</\2>)", re.S)
-TARGET_RX = re.compile(r'(Target=")(https?://[^"]*|mailto:[^"]*)(")')
+# link targets: web, mail, and local or network file paths (external links
+# often carry the folder a file was saved from)
+TARGET_RX = re.compile(r'(Target=")((?:https?://|mailto:|file:)[^"]*|'
+                       r'[^"]*\\[^"]*)(")')
 # hidden copies Office keeps: Excel cell comments and threaded comments,
 # comment-author lists, PowerPoint legacy comments, pivot caches
 COMMENT_RX = re.compile(r"<comment [^>]*>.*?</comment>", re.S)
