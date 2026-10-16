@@ -1068,6 +1068,18 @@ ERR_RX = re.compile(r"(\w+):(\d+): invented name '([^']+)' (matches real "
                     r"pattern|sounds the same as a real form of) (\w+):(\d+)")
 
 
+_SYL = ["ka", "ve", "lo", "ri", "ta", "no", "mi", "sa", "du", "pe", "zo",
+        "ba", "ne", "vi", "ru", "da"]
+
+
+def _coin(seed, upper=False):
+    import hashlib
+    h = hashlib.sha1(seed.encode()).digest()
+    w = "".join(_SYL[b % len(_SYL)] for b in h[:3]) + "n"
+    w = w.capitalize()
+    return w.upper() if upper else w
+
+
 def validate_and_repair(mapping, path, note, tries=8):
     """Write the mapping and load it through entity_map's checks; an
     invented name a real pattern matches (or that sounds like a real form)
@@ -1122,8 +1134,13 @@ def validate_and_repair(mapping, path, note, tries=8):
                         new = lst.pop(0) if pools[kind] else \
                             lst[(attempt * 7 + k) % len(lst)]
                         toks[k] = new.upper() if t.isupper() else new
-                    else:
+                    elif attempt < 3:
                         toks[k] = t + ("ro" if attempt % 2 == 0 else "vi")
+                    else:
+                        # still colliding: a coined word no real name
+                        # contains (syllables chosen by a hash of the entry)
+                        toks[k] = _coin(f"{sec}:{i}:{attempt}:{t}",
+                                        t.isupper())
                 e["replace"] = " ".join(toks)
 
 
@@ -2193,6 +2210,9 @@ def main():
                     help="render with this mapping (no new mapping built)")
     ap.add_argument("--context", default="")
     ap.add_argument("--skip-media", action="store_true")
+    ap.add_argument("--no-grow", action="store_true",
+                    help="with --mapping: use it exactly as given (forms it "
+                         "lacks are removed, not given invented names)")
     ap.add_argument("--only-held", action="store_true",
                     help="render again only the files the last run held "
                          "(their ledgers are re-read); other results kept")
@@ -2264,10 +2284,21 @@ def main():
         import entity_map
         if a.mapping:
             a.mapping_path = Path(a.mapping).resolve()
-            ctx.em = entity_map.load(a.mapping_path)
+            try:
+                ctx.em = entity_map.load(a.mapping_path)
+            except ValueError:
+                # a given mapping that fails the checks is repaired (the
+                # offending invented tokens swapped), not rejected
+                import yaml
+                m = yaml.safe_load(a.mapping_path.read_text()) or {}
+                fixed = work / "mapping_repaired.yaml"
+                ctx.em = validate_and_repair(
+                    m, fixed, "given mapping, repaired by run_dataset.py")
+                a.mapping_path = fixed
             # the mapping only grows: names found in files it has not seen
             # (e.g. spoken in the recordings) are invented and appended
-            a.mapping_path = grow_mapping(ctx, items)
+            if not a.no_grow:
+                a.mapping_path = grow_mapping(ctx, items)
         else:
             a.mapping_path = stage_mapping(ctx, items)
             if a.stop_after == "mapping":
