@@ -324,8 +324,8 @@ def deterministic(segs, em=None):
             toks = [(m.group(0), m.start(), m.end())
                     for m in re.finditer(r"\S+", t)]
             for i0, i1, e, how in em.match_tokens([x[0] for x in toks]):
-                if e.get("context_only") and how != "regex":
-                    continue
+                if e.get("context_only"):
+                    continue     # an ordinary word: never matched blind
                 cat = ("FULL_NAME" if e["category"] == "PERSON"
                        else _map_cat(e["category"]))
                 out.append({"seg": si, "a": toks[i0][1], "b": toks[i1][2],
@@ -437,7 +437,7 @@ class Replacer:
             e = self.em.by_id[span["mapping_id"]]
             return e["replace"] or None
         toks = span["text"].split()
-        hits = self.em.match_tokens(toks)
+        hits = self.em.match_tokens(toks, with_context=True)
         if not hits:
             return None
         # replace every matched piece inside the span; keep the rest
@@ -893,7 +893,7 @@ def _self_test():
     class EM:     # minimal mapping stand-in
         by_id = {"b:0": {"replace": "Kelmora"}, "p:0": {"replace": "Anita"}}
 
-        def match_tokens(self, toks):
+        def match_tokens(self, toks, **kw):
             out = []
             for i, w in enumerate(toks):
                 if w.startswith("Zorvex"):

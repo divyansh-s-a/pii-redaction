@@ -1073,6 +1073,125 @@ def fix_collisions(ctx, ents, decisions, extra_real=()):
 
 
 # an invented name may itself hold an apostrophe ("Daisy's Grill")
+SIMPLE_ALT_RX = re.compile(r"^(\\b[^|()]+?\\b)(\|\\b[^|()]+?\\b)+$")
+
+
+def _core_of(alt):
+    """'\\bZorvex\\s*Vision\\b' -> 'Zorvex Vision'."""
+    s = alt[2:] if alt.startswith(r"\b") else alt
+    s = s[:-2] if s.endswith(r"\b") else s
+    s = s.replace(r"\s*", " ").replace(r"\s+", " ")
+    return re.sub(r"\\(.)", r"\1", s).strip()
+
+
+def _similar(a, b):
+    import difflib
+    import entity_map
+    ka, kb = entity_map.key(a), entity_map.key(b)
+    return bool(ka and kb) and difflib.SequenceMatcher(
+        None, ka, kb).ratio() >= 0.8
+
+
+def clean_mapping(m):
+    """Mapping hygiene (in place). Automatically built mappings collect
+    noise: unrelated names merged because they got the same invented name
+    ("Capital|Hp|Shall" -> one name), two-letter cores that match the
+    letters anywhere ("ge", "Mi"), brands that are ordinary words. Merged
+    entries are split (variants stay together, the rest get their own coined
+    name); a core of one or two letters stays only as an exact-case
+    abbreviation (HP, BP) and is dropped otherwise; an ordinary-word core is
+    matched only where the model marked it in context. Returns a report."""
+    import build_mapping
+    rep = {"split": 0, "dropped_short": 0, "to_abbreviation": 0,
+           "context_only": 0}
+    abbrev = m.setdefault("abbreviations", []) if isinstance(
+        m.get("abbreviations", []), list) else []
+    keep = m.setdefault("keep", []) if isinstance(m.get("keep", []),
+                                                    list) else []
+    for sec in list(m):
+        items = m[sec]
+        if sec in ("keep", "abbreviations") or not isinstance(items, list):
+            continue
+        out = []
+        for e in items:
+            if not isinstance(e, dict) or "pattern" not in e:
+                out.append(e)
+                continue
+            if e.get("from_reconcile") or e.get("reconciled_with"):
+                out.append(e)          # curated entries are left as given
+                continue
+            pat = str(e["pattern"])
+            alts = pat.split("|") if SIMPLE_ALT_RX.match(pat) else [pat]
+            groups = []
+            for a in alts:
+                c = _core_of(a)
+                for g in groups:
+                    if _similar(c, _core_of(g[0])):
+                        g.append(a)
+                        break
+                else:
+                    groups.append([a])
+            if len(groups) > 1:
+                rep["split"] += len(groups) - 1
+            for gi, g in enumerate(groups):
+                ne = dict(e, pattern="|".join(g))
+                core = _core_of(g[0])
+                if gi > 0 or len(groups) > 1:
+                    ne["name"] = core
+                    ne["aliases"] = [x for x in e.get("aliases") or []
+                                     if _similar(x, core)]
+                if gi > 0:
+                    ne["replace"] = _coin(f"{sec}:{core}:{e.get('replace')}",
+                                          str(e.get("replace", "")).isupper())
+                letters = sum(ch.isalpha() for ch in core)
+                if letters <= 2:
+                    forms = [core] + list(ne.get("aliases") or [])
+                    up = [f for f in forms if f.isupper() and 2 <= len(f) <= 4]
+                    if up and sec != "people":
+                        abbrev.append({"pattern": r"\b" + re.escape(up[0])
+                                       + r"\b", "replace": ne["replace"]
+                                       .upper() if len(ne["replace"]) <= 4
+                                       else ne["replace"],
+                                       "category": ne.get("category",
+                                                          "BRAND"),
+                                       "name": up[0]})
+                        rep["to_abbreviation"] += 1
+                    else:
+                        keep.append(f"{core} (core too short to match "
+                                    f"safely)")
+                        rep["dropped_short"] += 1
+                    continue
+                if sec != "people" and len(core.split()) == 1 and \
+                        build_mapping.ordinary_word(core) and \
+                        not ne.get("context_only"):
+                    ne["context_only"] = True
+                    rep["context_only"] += 1
+                out.append(ne)
+        m[sec] = out
+    # one invented name per real core across the whole mapping (entries
+    # added by different growth steps can name the same core twice)
+    first, unified = {}, 0
+    for sec, items in m.items():
+        if sec == "keep" or not isinstance(items, list):
+            continue
+        for e in items:
+            if not isinstance(e, dict) or not e.get("replace"):
+                continue
+            core = (e.get("name") or _core_of(str(e["pattern"]).split("|")[0])
+                    ).strip().lower()
+            if not core:
+                continue
+            if core in first:
+                inv = first[core]
+                if e["replace"] != inv:
+                    e["replace"] = inv
+                    unified += 1
+            else:
+                first[core] = e["replace"]
+    rep["unified"] = unified
+    return rep
+
+
 ERR_RX = re.compile(r"(\w+):(\d+): invented name '(.+?)' (matches real "
                     r"pattern|sounds the same as a real form of) (\w+):(\d+)")
 
@@ -1103,6 +1222,9 @@ def validate_and_repair(mapping, path, note, tries=8):
             for t in str(e.get("replace", "")).split()}
     pools = {k: [n for n in pool[k] if n.lower() not in used]
              for k in ("male", "female", "surname")}
+    crep = clean_mapping(mapping)
+    if any(crep.values()):
+        print(f"  mapping hygiene: {crep}", flush=True)
     for attempt in range(tries):
         build_mapping.dump(mapping, path, note)
         try:
@@ -1201,6 +1323,8 @@ def build_entries(ents, decisions):
         m[sec].append(entry)
     return {k: build_mapping._merge_same(v) if k != "keep" else v
             for k, v in m.items() if v}
+    # (clean_mapping, run on every write, splits what _merge_same joined
+    # that is not a spelling variant)
 
 
 def grow_mapping(ctx, items):
@@ -2317,17 +2441,15 @@ def main():
         import entity_map
         if a.mapping:
             a.mapping_path = Path(a.mapping).resolve()
-            try:
-                ctx.em = entity_map.load(a.mapping_path)
-            except ValueError:
-                # a given mapping that fails the checks is repaired (the
-                # offending invented tokens swapped), not rejected
-                import yaml
-                m = yaml.safe_load(a.mapping_path.read_text()) or {}
-                fixed = work / "mapping_repaired.yaml"
-                ctx.em = validate_and_repair(
-                    m, fixed, "given mapping, repaired by run_dataset.py")
-                a.mapping_path = fixed
+            # a given mapping is cleaned (hygiene) and checked; one that
+            # fails the checks is repaired, not rejected
+            import yaml
+            m = yaml.safe_load(a.mapping_path.read_text()) or {}
+            fixed = work / "mapping_checked.yaml"
+            ctx.em = validate_and_repair(
+                m, fixed, "given mapping, cleaned and checked by "
+                "run_dataset.py")
+            a.mapping_path = fixed
             # the mapping only grows: names found in files it has not seen
             # (e.g. spoken in the recordings) are invented and appended
             if not a.no_grow:

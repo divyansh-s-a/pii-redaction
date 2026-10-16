@@ -381,7 +381,7 @@ def _self_test():
         class EM:
             by_id = {}
 
-            def match_tokens(self, toks):
+            def match_tokens(self, toks, **kw):
                 out = []
                 for i, w in enumerate(toks):
                     if w == "Zorvex":

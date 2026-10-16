@@ -435,7 +435,7 @@ class EntityMap:
                 best = (ae, "fuzzy", r)
         return best
 
-    def match_tokens(self, toks, fuzzy_min=FUZZY_MIN):
+    def match_tokens(self, toks, fuzzy_min=FUZZY_MIN, with_context=False):
         """toks: list of token strings. Returns non-overlapping hits
         [(i0, i1, entry, how)] (inclusive token indices), preferring
         regex > alias > fuzzy and longer spans."""
@@ -448,7 +448,9 @@ class EntityMap:
             text += c + " "
             pos += len(c) + 1
         for e in self.entries:
-            if e["context_only"]:
+            # a name that is also an ordinary word: only inside a span the
+            # model already marked as that kind of name (with_context)
+            if e["context_only"] and not with_context:
                 continue
             for m in e["rx"].finditer(text):
                 if not m.group(0).strip():
