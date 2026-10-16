@@ -276,7 +276,7 @@ def _clean(tok: str) -> str:
 
 
 class EntityMap:
-    def __init__(self, path, data, aliases_sidecar=None):
+    def __init__(self, path, data, aliases_sidecar=None, validate=True):
         self.path = Path(path)
         self.sha256 = hashlib.sha256(self.path.read_bytes()).hexdigest()
         self.entries = []
@@ -333,7 +333,10 @@ class EntityMap:
              for e in self.entries]
             + [self.keep_terms], ensure_ascii=False).encode()).hexdigest()
         self._index()
-        self.validate()
+        if validate:
+            self.validate()
+        else:
+            self.warnings = []
 
     # ---------------------------------------------------------- validation
     def validate(self):
@@ -601,14 +604,15 @@ def _keep_terms(note: str):
     return [t.strip() for t in re.split(r"[/,]", core) if t.strip()]
 
 
-def load(path) -> EntityMap:
+def load(path, validate=True) -> EntityMap:
     import yaml           # pyyaml: needed only when a mapping is used
     path = Path(path)
     data = yaml.safe_load(path.read_text()) or {}
     side_path = path.with_name(path.stem + ".aliases.yaml")
     side = (yaml.safe_load(side_path.read_text()) or {}
             if side_path.exists() else {})
-    return EntityMap(path, data, side.get("entries") if side else None)
+    return EntityMap(path, data, side.get("entries") if side else None,
+                     validate=validate)
 
 
 _CACHE = {}

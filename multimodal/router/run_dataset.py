@@ -1363,7 +1363,11 @@ NAMESPACE_WORDS = {"microsoft", "openxmlformats", "schemas", "purl", "w3",
 
 
 def build_net(ctx, items, extra_forms=None):
-    forms = {f: c for f, c in (extra_forms or {}).items()
+    # what an earlier leak audit found stays found (WORK/audit_forms.json)
+    saved = jload(ctx.work / "audit_forms.json", {}) or {}
+    merged = dict(saved)
+    merged.update(extra_forms or {})
+    forms = {f: c for f, c in merged.items()
              if f.strip().lower() not in NAMESPACE_WORDS}
     ledir = ctx.work / "ledger"
     for it in items:
@@ -1876,7 +1880,8 @@ def _init_worker(a_dict, extra, codes, keep):
     a = argparse.Namespace(**a_dict)
     ctx = Ctx(a)
     if a.mapping_path and a.mode == "replace":
-        ctx.em = entity_map.load(a.mapping_path)
+        # checked once by the main process; a worker only needs to match
+        ctx.em = entity_map.load(a.mapping_path, validate=False)
     ctx.codes = codes
     ctx.keep_forms = set(keep)
     items = jload(ctx.work / "inventory.json", [])
@@ -2357,9 +2362,10 @@ def main():
                   f"{rounds})", flush=True)
             # only files whose output contains a new finding are rendered
             # again; everything else keeps its verified result
-            firsts = {t for f in new for t in re.findall(r"\w+", f.lower())[:1]}
+            need = [set(re.findall(r"\w+", f.lower())) for f in new]
+            need = [n for n in need if n]
             affected = {k for k, r in results.items()
-                        if firsts & set(r.get("tokens") or ())}
+                        if any(n <= set(r.get("tokens") or ()) for n in need)}
             print(f"  {len(affected)} file(s) contain a finding", flush=True)
             results, controls, _net = stage_render(
                 ctx, items, extra, only=affected, prior=results)
