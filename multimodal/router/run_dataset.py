@@ -559,6 +559,7 @@ def media_env(ctx, mapping=None, replace="beep"):
         env["PII_PROFILE_FILE"] = str(prof)
     if mapping:
         env["PII_MAPPING_FILE"] = str(mapping)
+        env["PII_MAPPING_TRUSTED"] = "1"     # checked by this run already
     else:
         env.pop("PII_MAPPING_FILE", None)
     env["PII_REPLACE_MODE"] = replace

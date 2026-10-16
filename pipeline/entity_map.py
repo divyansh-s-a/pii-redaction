@@ -627,7 +627,10 @@ def active():
     stamp = (str(p), p.stat().st_mtime)
     if stamp not in _CACHE:
         _CACHE.clear()
-        _CACHE[stamp] = load(p)
+        # PII_MAPPING_TRUSTED=1: a caller that already checked this exact
+        # file (the dataset route) spares every arm the quadratic check
+        _CACHE[stamp] = load(p, validate=os.environ.get(
+            "PII_MAPPING_TRUSTED", "") != "1")
     return _CACHE[stamp]
 
 
