@@ -1721,7 +1721,9 @@ def stage_render(ctx, items, extra_forms=None):
                         "error": str(exc)[:80]})
         return it, res
     with cf.ThreadPoolExecutor(ctx.a.workers) as ex:
-        for it, res in ex.map(one, docs):
+        futs = [ex.submit(one, it) for it in docs]
+        for fut in cf.as_completed(futs):
+            it, res = fut.result()
             results[it["id"]] = res
             flag = "ok  " if res["status"] == "ok" else "HELD"
             print(f"  {flag} {it['route']:6s} {Path(it['rel']).name[:60]}"

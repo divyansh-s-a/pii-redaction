@@ -486,9 +486,23 @@ def apply_to_xml(xml, segs, spans, replacer):
             nt = "".join(cs)
             if nt != t:
                 edits.append((a, b, html.escape(nt, quote=True)))
-    for a, b, nt in sorted(edits, key=lambda e: -e[0]):
-        xml = xml[:a] + nt + xml[b:]
-    return xml
+    return _splice(xml, edits)
+
+
+def _splice(text, edits):
+    """Apply (start, end, new) edits in ONE pass (a copy per edit is
+    quadratic on a sheet with tens of thousands of cells)."""
+    if not edits:
+        return text
+    out, pos = [], 0
+    for a, b, nt in sorted(edits, key=lambda e: e[0]):
+        if a < pos:
+            continue                 # overlapping edit: the first one wins
+        out.append(text[pos:a])
+        out.append(nt)
+        pos = b
+    out.append(text[pos:])
+    return "".join(out)
 
 
 def rename_sheet_refs(parts, renames):
@@ -754,8 +768,7 @@ def process_text(raw, pack, model, mode, em, codes, detections=None,
             continue
         a0 = segs[sp["seg"]]["pieces"][0][0]
         edits.append((a0 + sp["a"], a0 + sp["b"], new))
-    for a, b, new in sorted(edits, key=lambda e: -e[0]):
-        text = text[:a] + new + text[b:]
+    text = _splice(text, edits)
     out = survey.encode(text, enc, bom)
     return out, {"segments": len(segs), "spans": len(spans),
                  "encoding": enc, "by_action": _count_actions(spans, pack),
