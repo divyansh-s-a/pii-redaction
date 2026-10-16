@@ -213,15 +213,8 @@ class TextDetector:
         self.chunk = chunk_words
         self.names = set(pack.categories)
         self.cache_file = cache_file
-        self.cache = {}
-        if cache_file.exists():
-            for ln in cache_file.read_text().splitlines():
-                try:
-                    h, res = json.loads(ln)
-                    self.cache[h] = res
-                except ValueError:
-                    pass
-        self.failed = set()
+        self.cache = None          # loaded on first use (render processes
+        self.failed = set()        # never need it)
         self.calls = 0
         self.thinking = None
 
@@ -235,8 +228,20 @@ class TextDetector:
         t = seg["text"]
         return len(t.strip()) >= 2 and any(ch.isalpha() for ch in t)
 
+    def _load(self):
+        if self.cache is None:
+            self.cache = {}
+            if self.cache_file.exists():
+                for ln in self.cache_file.read_text().splitlines():
+                    try:
+                        h, res = json.loads(ln)
+                        self.cache[h] = res
+                    except ValueError:
+                        pass
+
     def run(self, jobs):
         """jobs: [(key, segs, label)] -> {key: (spans, incomplete)}"""
+        self._load()
         pending, batches = set(), []
         for _key, segs, label in jobs:
             cur, n = [], 0
@@ -758,6 +763,8 @@ def collect_entities(ctx, items):
         t = re.sub(r"\s+", " ", str(text)).strip(" \t.,;:!?\"'()[]{}<>-–—")
         if len(t) < 2 or not any(ch.isalpha() for ch in t) or len(t) > 80:
             return
+        if "\\" in t or "/" in t or re.search(r"\.[A-Za-z0-9]{2,4}$", t):
+            return       # a path or file name: its name parts are entities
         k = t.lower()
         r = forms.setdefault(k, {"form": t, "type": etype, "n": 0,
                                  "ctx": []})

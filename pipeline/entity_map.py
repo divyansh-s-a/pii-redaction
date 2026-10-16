@@ -548,7 +548,11 @@ class EntityMap:
         """Apply every replacement to a name or path (outputs must not carry
         a real brand in their file names)."""
         for e in sorted(self.entries, key=lambda e: -len(e["pattern"])):
-            s = e["rx"].sub(e["replace"] or "REDACTED", s)
+            # a function, not a template: an invented name may hold a
+            # backslash (a path-like entry) that re.sub would read as an
+            # escape ("bad escape \D")
+            rep = e["replace"] or "REDACTED"
+            s = e["rx"].sub(lambda _m, rep=rep: rep, s)
         return s
 
     def prompt_block(self):
