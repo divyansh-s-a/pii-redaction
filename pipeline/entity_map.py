@@ -540,7 +540,11 @@ class EntityMap:
         for e in self.entries:
             for f in ([e["name"]] if e["name"] else []) + e["forms"][:2]:
                 f = " ".join(f.split())
-                if f and len(f) < 50 and f not in out and f.isascii():
+                # the transcription API accepts letters, digits, spaces,
+                # hyphens and apostrophes only (a path or a curly quote in
+                # one keyterm rejects the whole request)
+                if f and len(f) < 50 and f not in out and \
+                        re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9 '\-]*", f):
                     out.append(f)
         return out[:cap]
 
