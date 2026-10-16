@@ -88,6 +88,7 @@ PIVOT_S_RX = re.compile(r'(<s v=")([^"]*)(")')
 LPSTR_RX = re.compile(r"(<vt:lpw?str>)(.*?)(</vt:lpw?str>)", re.S)
 AUTHOR_EL_RX = re.compile(r"(<author>)(.*?)(</author>)", re.S)
 ABSPATH_RX = re.compile(r'(<x15ac:absPath [^>]*?url=")([^"]*)(")')
+EXT_V_RX = re.compile(r"(<v>)(.*?)(</v>)", re.S)
 NAMEATTR_W_RX = re.compile(r'((?:w15:userId|w15:author)=")([^"]*)(")')
 STRV_RX = re.compile(r'<c\b[^>]*?\bt="str"[^>]*>(?:(?!</c>).)*?<v>(.*?)</v>',
                      re.S)
@@ -147,6 +148,11 @@ def segments_of(part, xml):
         if part.startswith("xl/persons/"):
             for m in NAMEATTR_RX.finditer(xml):
                 add("author", [(m.start(2), m.end(2))])
+        if part.startswith("xl/externalLinks/"):
+            # values cached from the linked workbook
+            for m in EXT_V_RX.finditer(xml):
+                if any(ch.isalpha() for ch in html.unescape(m.group(2))):
+                    add("external_value", [(m.start(2), m.end(2))])
         if part.startswith("xl/pivotCache/"):
             for m in PIVOT_S_RX.finditer(xml):
                 add("pivot", [(m.start(2), m.end(2))])
@@ -171,9 +177,11 @@ def segments_of(part, xml):
             for m in AUTHOR_RX.finditer(xml):
                 add("author", [(m.start(2), m.end(2))])
     if "/charts/" in part:
-        for cm in STRCACHE_RX.finditer(xml):
-            for a, b in _nodes_in(xml, cm.start(), cm.end(), CV_RX):
-                add("chart", [(a, b)])
+        # every cached chart value with letters (string, multi-level and
+        # literal caches alike)
+        for m in CV_RX.finditer(xml):
+            if any(ch.isalpha() for ch in html.unescape(m.group(2))):
+                add("chart", [(m.start(2), m.end(2))])
         for pm in PARA_RX["a"].finditer(xml):
             add("para", list(_nodes_in(xml, pm.start(), pm.end(),
                                        NODE_RX["a"])))
@@ -816,7 +824,8 @@ def raw_ooxml_text(blob):
                            " ", x)
                 x = re.sub(r'="https?://schemas\.[^"]*"', '=""', x)
                 x = re.sub(r"</w:p>|</a:p>|</si>|</row>|</c>", "\n", x)
-                vals = ([] if n.startswith(("xl/worksheets/", "xl/styles"))
+                vals = ([] if n.startswith(("xl/worksheets/", "xl/styles",
+                                            "xl/calcChain", "xl/tables/"))
                         else re.findall(r'="([^"]*)"', x))
                 # a tag becomes a separator no pattern spans (a space would
                 # join neighbouring numbers into a phone-like run)

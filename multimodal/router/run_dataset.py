@@ -734,6 +734,17 @@ def media_render(ctx, it, mapping, _retry=True):
 
 # =============================================================== stage 2
 
+def names_of(ctx, cats):
+    """Category ids (the model sometimes answers "M03") as their names."""
+    out = set()
+    for c in cats:
+        row = ctx.pack.categories.get(c) if hasattr(ctx.pack, "categories") \
+            else None
+        out.add(row["name"] if isinstance(row, dict) and row.get("name")
+                else c)
+    return out
+
+
 def collect_entities(ctx, items):
     """Entities from every ledger: forms, type, counts, contexts."""
     import entity_map
@@ -770,7 +781,7 @@ def collect_entities(ctx, items):
             continue
         for sub, rec in led["subs"].items():
             for s in rec["spans"]:
-                cats = set(s["categories"])
+                cats = names_of(ctx, s["categories"])
                 if cats & PERSON_CATS:
                     add(s["text"], "person", study=it["study"])
                 else:
@@ -781,7 +792,7 @@ def collect_entities(ctx, items):
                             break
     nl = jload(ledir / "__names__.json", {})
     for s in nl.get("spans", []):
-        cats = set(s["categories"])
+        cats = names_of(ctx, s["categories"])
         if cats & PERSON_CATS:
             add(s["text"], "person")
         else:
@@ -1282,6 +1293,8 @@ class Net:
                 continue
             if len(toks) == 1 and letters and build_mapping.ordinary_word(f):
                 continue
+            if re.fullmatch(r"[A-Z]{1,3}\$?\d{1,7}", f):
+                continue          # a cell reference ("E13"), not a name
             self.by_first.setdefault(toks[0], []).append(f)
             self.cats[f.lower()] = cats
         self.rx = {}
@@ -1340,7 +1353,7 @@ def build_net(ctx, items, extra_forms=None):
                 t = s["text"].strip()
                 if t.lower() in ctx.keep_forms:
                     continue
-                cats = set(s["categories"])
+                cats = names_of(ctx, s["categories"])
                 if getattr(ctx, "em", None) is not None and \
                         cats & set(ENTITY_CATS) and not cats & PERSON_CATS:
                     # replace mode: a brand span is netted by the part the
@@ -1352,7 +1365,7 @@ def build_net(ctx, items, extra_forms=None):
                                          s["categories"])
                     continue
                 forms.setdefault(t, s["categories"])
-                if set(s["categories"]) & PERSON_CATS:
+                if cats & PERSON_CATS:
                     # a name seen once in full is caught alone too
                     for tok in re.findall(r"[^\W\d_]{4,}", t):
                         if tok.lower() not in HONORIFICS:
