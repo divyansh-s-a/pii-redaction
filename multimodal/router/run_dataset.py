@@ -708,6 +708,30 @@ def listen_remap(ctx, it, mapping):
     return out
 
 
+def held_bundle(ctx, it):
+    held = ctx.work / "media_out" / (it["id"] + "_held")
+    if held.exists():
+        ds = [d for d in held.iterdir() if d.is_dir()]
+        return ds[0] if ds else None
+    return None
+
+
+def major_problem(res):
+    """A held file that is NOT delivered even with --deliver-held: it does
+    not open, its render failed, or what is left is far too much."""
+    r = res.get("reason") or ""
+    if any(k in r for k in ("does not open", "render failed", "no ledger",
+                            "detection incomplete", "corrupt",
+                            "line lengths changed", "repair failed",
+                            "render process failed")):
+        return True
+    m = re.match(r"(\d+) leftover", r)
+    return bool(m and int(m.group(1)) > MAJOR_LEFTOVERS)
+
+
+MAJOR_LEFTOVERS = 200
+
+
 def media_render(ctx, it, mapping, _retry=True):
     out = ctx.work / "media_out" / it["id"]
     log = ctx.work / "logs" / (f"render_{it['id']}.log" if _retry
@@ -2162,7 +2186,11 @@ def stage_render(ctx, items, extra_forms=None, only=None, prior=None):
             for fut in cf.as_completed(futs):
                 it, bundle, why = fut.result()
                 if bundle is None:
-                    results[it["id"]] = {"status": "held", "reason": why}
+                    hb = held_bundle(ctx, it)
+                    results[it["id"]] = {"status": "held", "reason": why,
+                                         "bundle": str(hb) if hb else None,
+                                         "out_rel": out_rel(ctx, it,
+                                                            name_led, net)}
                 else:
                     results[it["id"]] = {"status": "ok",
                                          "bundle": str(bundle),
@@ -2228,6 +2256,7 @@ def deliver(ctx, items, results, net):
     by_id = {it["id"]: it for it in items}
     delivered, held = [], []
     used = set()
+    status_rows = []
 
     def unique(rel):
         base, k = rel, 2
@@ -2267,11 +2296,18 @@ def deliver(ctx, items, results, net):
                     z.write(r["staged"], r["member_out"])
             delivered.append({"id": it["id"], "out": rel})
             continue
+        as_held = False
         if res["status"] != "ok":
             held.append({"rel_id": it["id"], "route": it["route"],
                          "reason": res["reason"]})
-            continue
+            if not (ctx.a.deliver_held and (res.get("staged")
+                                            or res.get("bundle"))
+                    and not major_problem(res)):
+                continue
+            as_held = True
         rel = unique(res["out_rel"])
+        status_rows.append((rel, it["route"], "held" if as_held else "clean",
+                            res.get("reason", "") if as_held else ""))
         dst = out / rel
         dst.parent.mkdir(parents=True, exist_ok=True)
         if it["route"] in ("audio", "video"):
@@ -2303,7 +2339,30 @@ def deliver(ctx, items, results, net):
         else:
             shutil.copy2(res["staged"], dst)
         delivered.append({"id": it["id"], "out": rel})
+    write_status(out, status_rows)
     return delivered, held
+
+
+def write_status(out, rows):
+    """DELIVERY/_redaction_status.csv: every delivered file, clean or held
+    (delivered as-is after the correction rounds), with the reason. Merged
+    with an earlier record, so a pass over held files updates their rows."""
+    import csv
+    f = out / "_redaction_status.csv"
+    old = {}
+    if f.exists():
+        with open(f, newline="") as fh:
+            for r in csv.DictReader(fh):
+                old[r["file"]] = r
+    for rel, route, status, reason in rows:
+        old[rel] = {"file": rel, "route": route, "status": status,
+                    "reason": reason}
+    out.mkdir(parents=True, exist_ok=True)
+    with open(f, "w", newline="") as fh:
+        w = csv.DictWriter(fh, ["file", "route", "status", "reason"])
+        w.writeheader()
+        for k in sorted(old):
+            w.writerow(old[k])
 
 
 def report(ctx, items, results, controls, delivered, held, t0, audit=None):
@@ -2367,6 +2426,10 @@ def main():
                     help="render with this mapping (no new mapping built)")
     ap.add_argument("--context", default="")
     ap.add_argument("--skip-media", action="store_true")
+    ap.add_argument("--deliver-held", action="store_true",
+                    help="also deliver held files as they are (unless they "
+                         "do not open, failed, or leak far too much), marked "
+                         "held in DELIVERY/_redaction_status.csv")
     ap.add_argument("--no-grow", action="store_true",
                     help="with --mapping: use it exactly as given (forms it "
                          "lacks are removed, not given invented names)")
