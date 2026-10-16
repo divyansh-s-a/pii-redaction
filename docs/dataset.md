@@ -82,6 +82,14 @@ replaced while a mere marketplace is kept.
 with `--mapping FILE` renders without detecting again. The mapping only ever
 grows: the leak audit appends names, existing invented names never change.
 
+**One mapping, before any replacement.** A single run over the dataset builds
+the mapping from every ledger (documents, recordings, names) before anything is
+rendered. A dataset may be split into two runs (`--skip-media`, then
+`--media-only`) only SEQUENTIALLY: the second run takes the first run's final
+mapping (`--mapping WORK1/mapping.yaml`) and only appends names the first never
+saw. Two split runs growing the same base in parallel can give one real name
+two invented names.
+
 ## Render (stage 3)
 
 | | redact | replace |
