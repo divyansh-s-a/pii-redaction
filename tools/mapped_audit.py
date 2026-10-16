@@ -112,9 +112,10 @@ def listen(src_dir, fid, em, out_dir):
     work.unlink(missing_ok=True)
     words = detect_pii.flatten_words(common.load_json(tr))
     inv_rx = em._invented_rx
-    removed = [(iv["start_ms"], iv["end_ms"]) for iv in common.load_json(
+    removed_ivs = [iv for iv in common.load_json(
         src_dir / "intervals.json")["intervals"]
         if iv.get("mapping_id") or "MAPPED_ENTITY" in iv["categories"]]
+    removed = [(iv["start_ms"], iv["end_ms"]) for iv in removed_ivs]
     hits, suspected = [], []
     near_removed, run, prev = [], 0, None
     for w in words:
@@ -143,8 +144,14 @@ def listen(src_dir, fid, em, out_dir):
         # an exact form heard anywhere is a leak; a sound-alike only where a
         # mapped mention was removed (a partly covered name) — elsewhere a
         # common word that sounds close is reported, not gated
-        at_removed = any(h["start_ms"] <= e + 500 and s0 - 500 <= h["end_ms"]
-                         for s0, e in removed)
+        # ... and only when it sounds like the entity removed THERE: with a
+        # large mapping, an ordinary word near any replacement sounds close
+        # to some name ("finally", "coming") and is reported, not gated
+        at_removed = any(iv["start_ms"] - 500 <= h["end_ms"]
+                         and h["start_ms"] <= iv["end_ms"] + 500
+                         and (iv.get("mapping_id") is None
+                              or iv.get("mapping_id") == sp["mapping_id"])
+                         for iv in removed_ivs)
         (hits if sp["match"] != "fuzzy" or at_removed
          else suspected).append(h)
     ri = common.load_json(src_dir / "rendered_intervals.json")
