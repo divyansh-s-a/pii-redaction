@@ -708,6 +708,16 @@ def listen_remap(ctx, it, mapping):
     return out
 
 
+QC_ONLY_RX = re.compile(r"^(held by the media arm: )*(audio track: )?"
+                        r"QC FLAGGED\W*$")
+
+
+def qc_only(why):
+    """Held ONLY because the audio arm's QC flagged borderline beep edges
+    (that strictness was set for another project): advisory here."""
+    return bool(QC_ONLY_RX.match((why or "").strip()))
+
+
 def held_bundle(ctx, it):
     held = ctx.work / "media_out" / (it["id"] + "_held")
     if held.exists():
@@ -2244,7 +2254,16 @@ def stage_render(ctx, items, extra_forms=None, only=None, prior=None):
             futs = [ex.submit(rend, it) for it in media]
             for fut in cf.as_completed(futs):
                 it, bundle, why = fut.result()
-                if bundle is None:
+                if bundle is None and qc_only(why) and \
+                        not ctx.a.strict_qc and held_bundle(ctx, it):
+                    # borderline QC edges only: delivered as clean, noted
+                    results[it["id"]] = {"status": "ok",
+                                         "bundle": str(held_bundle(ctx, it)),
+                                         "qc_note": "QC edge flags (advisory)",
+                                         "out_rel": out_rel(ctx, it,
+                                                            name_led, net)}
+                    why = None
+                elif bundle is None:
                     hb = held_bundle(ctx, it)
                     results[it["id"]] = {"status": "held", "reason": why,
                                          "bundle": str(hb) if hb else None,
@@ -2366,7 +2385,8 @@ def deliver(ctx, items, results, net):
             as_held = True
         rel = unique(res["out_rel"])
         status_rows.append((rel, it["route"], "held" if as_held else "clean",
-                            res.get("reason", "") if as_held else ""))
+                            res.get("reason", "") if as_held
+                            else res.get("qc_note", "")))
         dst = out / rel
         dst.parent.mkdir(parents=True, exist_ok=True)
         if it["route"] in ("audio", "video"):
@@ -2485,6 +2505,9 @@ def main():
                     help="render with this mapping (no new mapping built)")
     ap.add_argument("--context", default="")
     ap.add_argument("--skip-media", action="store_true")
+    ap.add_argument("--strict-qc", action="store_true",
+                    help="hold audio whose only problem is the audio arm's "
+                         "QC edge flags (default: advisory, delivered clean)")
     ap.add_argument("--deliver-held", action="store_true",
                     help="also deliver held files as they are (unless they "
                          "do not open, failed, or leak far too much), marked "
