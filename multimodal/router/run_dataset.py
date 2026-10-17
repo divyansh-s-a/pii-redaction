@@ -732,10 +732,69 @@ def major_problem(res):
 MAJOR_LEFTOVERS = 200
 
 
+def file_mapping(ctx, it, mapping):
+    """The entries of the dataset mapping whose spellings occur in THIS
+    recording's transcripts (same invented names, a few dozen entries
+    instead of thousands — the arm's per-window prompts stay small)."""
+    import entity_map
+    import yaml
+    d = audio_dir(ctx, it)
+    texts = []
+    for tr in (d / "transcript.json", d / "assurance" / "transcript.json"):
+        if tr.exists():
+            t = jload(tr, {}) or {}
+            texts.append(" ".join(w["w"] for u in t.get("utterances", [])
+                                  for w in u.get("words", [])))
+    scr = d / "onscreen.txt"
+    if scr.exists():
+        texts.append(scr.read_text())
+    if not texts:
+        return mapping
+    text = " ".join(texts)
+    low = text.lower()
+    toks = re.findall(r"\w+", low)
+    keys = {entity_map.key(t) for t in toks}
+    keys |= {entity_map.key(a + b) for a, b in zip(toks, toks[1:])}
+    m = yaml.safe_load(Path(mapping).read_text()) or {}
+    out, kept = {}, 0
+    for sec, items in m.items():
+        if not isinstance(items, list):
+            out[sec] = items
+            continue
+        sel = []
+        for e in items:
+            if not isinstance(e, dict) or "pattern" not in e:
+                sel.append(e)
+                continue
+            forms = [str(e.get("name") or "")] + [str(a) for a in
+                                                  e.get("aliases") or []]
+            hit = any(entity_map.key(f) in keys for f in forms if f.strip())
+            if not hit:
+                try:
+                    hit = bool(re.search(str(e["pattern"]), text,
+                                         0 if sec == "abbreviations"
+                                         else re.I))
+                except re.error:
+                    hit = False
+            if hit:
+                sel.append(e)
+                kept += 1
+        out[sec] = sel
+    path = ctx.work / "media_maps" / f"{it['id']}.yaml"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(yaml.safe_dump(out, allow_unicode=True, sort_keys=False,
+                                   width=1000))
+    print(f"  [media] {Path(it['rel']).name}: {kept} mapping entr(ies) "
+          f"occur in it", flush=True)
+    return path
+
+
 def media_render(ctx, it, mapping, _retry=True):
     out = ctx.work / "media_out" / it["id"]
     log = ctx.work / "logs" / (f"render_{it['id']}.log" if _retry
                                else f"render_{it['id']}_remap.log")
+    if _retry and ctx.mode == "replace" and mapping:
+        mapping = file_mapping(ctx, it, mapping)
     replace = "pseudonym" if ctx.mode == "replace" else "beep"
     with open(log, "w") as lf:
         r = subprocess.run(media_cmd(ctx, it, out, mapping, replace),
