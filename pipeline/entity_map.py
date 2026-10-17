@@ -546,6 +546,7 @@ class EntityMap:
                 # hyphens and apostrophes only (a path or a curly quote in
                 # one keyterm rejects the whole request)
                 if f and len(f) < 50 and f not in out and \
+                        f.count(" ") <= 4 and \
                         re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9 '\-]*", f):
                     out.append(f)
         return out[:cap]
