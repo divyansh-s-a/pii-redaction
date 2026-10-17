@@ -2561,6 +2561,9 @@ def main():
     ap.add_argument("--only-held", action="store_true",
                     help="render again only the files the last run held "
                          "(their ledgers are re-read); other results kept")
+    ap.add_argument("--only-prefix", default=None,
+                    help="process only files whose path inside INPUT starts "
+                         "with this (e.g. one study folder)")
     ap.add_argument("--media-only", action="store_true",
                     help="process only the audio and video files (documents "
                          "untouched: e.g. while their own run is going)")
@@ -2605,6 +2608,9 @@ def main():
     ctx = Ctx(a)
     a.mapping_path = None
     items = inventory(src, work)
+    if a.only_prefix:
+        # e.g. re-run one study's recordings: other files are left alone
+        items = [it for it in items if it["rel"].startswith(a.only_prefix)]
     jdump(work / "inventory.json", items)
     counts = {}
     for it in items:
