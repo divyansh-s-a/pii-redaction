@@ -287,7 +287,7 @@ def llm_detect(model, words, backend="gemini"):
         sub = words[base: base + CHUNK]
         import langpack
         for pass_name, directive in passes:
-            got = _detect_pass(model, sub, backend, directive, langpack)
+            got = _detect_split(model, sub, backend, directive, langpack)
             if sweep:
                 # CHILD_INFO stacks additively onto ANY category (taxonomy
                 # cat. 26 / rule 8 exception) and is what lifts a child's
@@ -302,6 +302,27 @@ def llm_detect(model, words, backend="gemini"):
                 print(f"    detect sweep[{pass_name}]: {len(got)} span(s)")
             spans.extend(got)
     return _dedupe_sweep(spans) if sweep else spans
+
+
+def _detect_split(model, sub, backend, directive, langpack, min_words=300):
+    """One detection read; a read whose answer overflows the output limit
+    (a very dense stretch of a long recording) is split in halves, and a
+    piece that still overflows at min_words is left to the safety net.
+    Without an overflow this is exactly one _detect_pass."""
+    try:
+        return _detect_pass(model, sub, backend, directive, langpack)
+    except RuntimeError as exc:
+        if "truncated" not in str(exc):
+            raise
+        if len(sub) <= min_words:
+            print(f"    detect: words {sub[0]['i']}-{sub[-1]['i']} too dense "
+                  "even split; left to the safety net")
+            return []
+        h = len(sub) // 2
+        return (_detect_split(model, sub[:h], backend, directive, langpack,
+                              min_words)
+                + _detect_split(model, sub[h:], backend, directive, langpack,
+                                min_words))
 
 
 def _detect_pass(model, sub, backend, directive, langpack):
