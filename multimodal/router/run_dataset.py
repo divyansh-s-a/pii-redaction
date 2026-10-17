@@ -1290,6 +1290,31 @@ def clean_mapping(m):
         for f in fs:
             first.setdefault(f, e["replace"])
     rep["unified"] = unified
+    # a model code keeps no digits of the real one ("Q770" -> "R770" still
+    # points to the 770): every digit the invented name shares with the
+    # real code is shifted; a repaired token that still contains the real
+    # code ("Q770ro") is rebuilt the same way
+    shifted = 0
+    for e in entries:
+        core = str(e.get("name") or "")
+        digits = re.findall(r"\d+", core)
+        if not digits:
+            continue
+        inv = str(e["replace"])
+        new = inv
+        for d in set(digits):
+            if len(d) >= 2 and d in new:
+                new = new.replace(d, "".join(str((int(c) + 3) % 10)
+                                             for c in d))
+        if core.strip() and core.strip().lower() in new.lower():
+            new = re.sub(re.escape(core.strip()), lambda m_: "".join(
+                str((int(c) + 3) % 10) if c.isdigit() else c
+                for c in m_.group(0)), new, flags=re.I)
+        new = re.sub(r"(\d)(ro|vi)\b", r"\1", new)
+        if new != inv:
+            e["replace"] = new
+            shifted += 1
+    rep["digits_shifted"] = shifted
     return rep
 
 
