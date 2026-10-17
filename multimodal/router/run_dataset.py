@@ -1237,7 +1237,10 @@ def clean_mapping(m):
                     ne["replace"] = _coin(f"{sec}:{core}:{e.get('replace')}",
                                           str(e.get("replace", "")).isupper())
                 letters = sum(ch.isalpha() for ch in core)
-                if letters <= 2:
+                alnum = sum(ch.isalnum() for ch in core)
+                # unsafe: two characters or fewer ("ge", "Mi"), or a short
+                # bare number; a model code ("Q770") is distinctive
+                if alnum <= 2 or (letters == 0 and alnum <= 3):
                     forms = [core] + list(ne.get("aliases") or [])
                     up = [f for f in forms if f.isupper() and 2 <= len(f) <= 4]
                     if up and sec != "people":
@@ -1261,26 +1264,31 @@ def clean_mapping(m):
                     rep["context_only"] += 1
                 out.append(ne)
         m[sec] = out
-    # one invented name per real core across the whole mapping (entries
-    # added by different growth steps can name the same core twice)
+    # one invented name per real spelling across the whole mapping: an entry
+    # whose spellings (name, every pattern alternative, aliases) overlap an
+    # earlier entry's takes that entry's name; curated (converged) entries
+    # are read first, so their names win
+    def forms_of(e):
+        out = {str(e.get("name") or "").strip().lower()}
+        pat = str(e.get("pattern") or "")
+        alts = pat.split("|") if SIMPLE_ALT_RX.match(pat) else [pat]
+        out |= {_core_of(a).lower() for a in alts}
+        out |= {str(a).strip().lower() for a in e.get("aliases") or []}
+        return {f for f in out if f and len(f) >= 3}
+    entries = [e for sec, items in m.items()
+               if sec != "keep" and isinstance(items, list)
+               for e in items if isinstance(e, dict) and e.get("replace")]
+    entries.sort(key=lambda e: 0 if (e.get("reconciled_with")
+                                     or e.get("from_reconcile")) else 1)
     first, unified = {}, 0
-    for sec, items in m.items():
-        if sec == "keep" or not isinstance(items, list):
-            continue
-        for e in items:
-            if not isinstance(e, dict) or not e.get("replace"):
-                continue
-            core = (e.get("name") or _core_of(str(e["pattern"]).split("|")[0])
-                    ).strip().lower()
-            if not core:
-                continue
-            if core in first:
-                inv = first[core]
-                if e["replace"] != inv:
-                    e["replace"] = inv
-                    unified += 1
-            else:
-                first[core] = e["replace"]
+    for e in entries:
+        fs = forms_of(e)
+        inv = next((first[f] for f in fs if f in first), None)
+        if inv is not None and e["replace"] != inv:
+            e["replace"] = inv
+            unified += 1
+        for f in fs:
+            first.setdefault(f, e["replace"])
     rep["unified"] = unified
     return rep
 
@@ -1381,7 +1389,8 @@ def build_entries(ents, decisions):
             continue
         cat = (d.get("category") or "BRAND").upper()
         core = (d.get("core") or e["name"]).strip()
-        if sum(ch.isalpha() for ch in core) < 2:
+        if sum(ch.isalnum() for ch in core) <= 2 or \
+                not any(ch.isalpha() for ch in core):
             m["keep"].append(f"{e['name']} (core too short to match safely)")
             continue
         if e["type"] == "person":
@@ -1431,7 +1440,8 @@ def grow_mapping(ctx, items):
     m0 = __import__("yaml").safe_load(Path(ctx.a.mapping_path).read_text()) \
         or {}
     kept = {str(k).split(" (")[0].strip().lower()
-            for k in m0.get("keep") or [] if isinstance(k, str)}
+            for k in m0.get("keep") or [] if isinstance(k, str)
+            and "too short to match safely" not in k}
     kept |= ctx.keep_forms
     for f in ctx.work.glob("mapping_entities*.json"):
         for r in jload(f, []) or []:
@@ -1666,8 +1676,12 @@ class NameReplacer:
         return f"[{tag}]"
 
 
-def clean_name(ctx, comp, name_led, net):
-    """One path component with its detected spans replaced."""
+STUDY_CODE_RX = re.compile(r"^[A-Z]{1,4}[ _-]?\d{2,5}\b")
+
+
+def clean_name(ctx, comp, name_led, net, top=False):
+    """One path component with its detected spans replaced. A top-level
+    (study) folder's leading code ("IN 111") is a project code: kept."""
     idx = {t: i for i, t in enumerate(name_led["segs"])}
     i = idx.get(_name_text(comp))
     spans = [s for s in name_led["spans"] if s["seg"] == i] if i is not None \
@@ -1680,6 +1694,10 @@ def clean_name(ctx, comp, name_led, net):
             seg, kind="name")], ctx.em) if s["source"] == "mapping"]
     import office
     spans = office._dedupe([dict(s, seg=0) for s in spans])
+    if top:
+        m = STUDY_CODE_RX.match(comp)
+        if m:
+            spans = [s for s in spans if s["a"] >= m.end()]
     rep = NameReplacer(ctx)
     out = comp
     for s in sorted(spans, key=lambda s: -s["a"]):
@@ -1701,7 +1719,7 @@ def out_rel(ctx, it, name_led, net, cache={}):
                 ext = ".docx"
             new.append(clean_name(ctx, stem, name_led, net) + ext)
         else:
-            new.append(clean_name(ctx, p, name_led, net))
+            new.append(clean_name(ctx, p, name_led, net, top=(i == 0)))
     return "/".join(new)
 
 
