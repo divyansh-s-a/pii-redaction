@@ -803,6 +803,7 @@ def media_render(ctx, it, mapping, _retry=True):
     out = ctx.work / "media_out" / it["id"]
     log = ctx.work / "logs" / (f"render_{it['id']}.log" if _retry
                                else f"render_{it['id']}_remap.log")
+    log.parent.mkdir(parents=True, exist_ok=True)
     if _retry and ctx.mode == "replace" and mapping:
         mapping = file_mapping(ctx, it, mapping)
     replace = "pseudonym" if ctx.mode == "replace" else "beep"
