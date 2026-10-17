@@ -87,23 +87,42 @@ def resembles(e, text):
     return best
 
 
-def llm_spans(model, words, em, backend="gemini"):
+def _ask(model, em, sub, backend):
+    """One LLM read of a word range; a range whose answer overflows is split
+    in half (down to MIN_CHUNK words), then left to the deterministic net."""
     import detect_pii
-    out = []
-    CHUNK = 5000
-    for base in range(0, len(words), CHUNK):
-        sub = words[base: base + CHUNK]
-        prompt = (PROMPT + "\n\n" + em.prompt_block()
-                  + "\n\nTRANSCRIPT WORDS:\n"
-                  + detect_pii.words_as_prompt(sub, CHUNK))
+    prompt = (PROMPT + "\n\n" + em.prompt_block()
+              + "\n\nTRANSCRIPT WORDS:\n"
+              + detect_pii.words_as_prompt(sub, len(sub)))
+    try:
         if backend == "gpt":
             import judge_client
-            got = judge_client.judge_call(
+            return judge_client.judge_call(
                 prompt, GPT_SCHEMA, model=model,
                 log_engine="detector_gpt").get("spans", [])
-        else:
-            got = json.loads(common.generate(
-                model, [{"text": prompt}], SCHEMA)).get("spans", [])
+        return json.loads(common.generate(
+            model, [{"text": prompt}], SCHEMA)).get("spans", [])
+    except RuntimeError as exc:
+        if "truncated" not in str(exc):
+            raise
+        if len(sub) <= MIN_CHUNK:
+            print(f"  [mapped] words {sub[0]['i']}-{sub[-1]['i']}: answer "
+                  "too long even split; the deterministic net covers them")
+            return []
+        h = len(sub) // 2
+        return _ask(model, em, sub[:h], backend) + \
+            _ask(model, em, sub[h:], backend)
+
+
+CHUNK = 1200          # words per read (a dense focus group overflows 5000)
+MIN_CHUNK = 150
+
+
+def llm_spans(model, words, em, backend="gemini"):
+    out = []
+    for base in range(0, len(words), CHUNK):
+        sub = words[base: base + CHUNK]
+        got = _ask(model, em, sub, backend)
         lo, hi = sub[0]["i"], sub[-1]["i"]
         for s in got:
             try:
