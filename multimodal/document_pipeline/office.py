@@ -827,9 +827,12 @@ def raw_ooxml_text(blob):
                            " ", x)
                 x = re.sub(r'="https?://schemas\.[^"]*"', '=""', x)
                 x = re.sub(r"</w:p>|</a:p>|</si>|</row>|</c>", "\n", x)
+                # attribute values with letters only (numeric ones are ids,
+                # sizes and offsets: a 10-digit slide id is not a phone)
                 vals = ([] if n.startswith(("xl/worksheets/", "xl/styles",
                                             "xl/calcChain", "xl/tables/"))
-                        else re.findall(r'="([^"]*)"', x))
+                        else [v for v in re.findall(r'="([^"]*)"', x)
+                              if any(ch.isalpha() for ch in v)])
                 # a tag becomes a separator no pattern spans (a space would
                 # join neighbouring numbers into a phone-like run)
                 out.append(html.unescape(re.sub(r"<[^>]+>", "\x00", x)))
