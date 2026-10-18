@@ -2446,7 +2446,8 @@ def deliver(ctx, items, results, net):
         if it["route"] == "held":
             held.append({"rel_id": it["id"], "route": it["route"],
                          "reason": it.get("held_reason")})
-            if not str(it.get("held_reason", "")).startswith("media"):
+            if not str(it.get("held_reason", "")).startswith(("media",
+                                                               "skipped")):
                 # never delivered: the record still lists it (by id — its
                 # name never went through the name cleaner)
                 status_rows.append((f"[not delivered] item {it['id']}",
