@@ -2473,6 +2473,8 @@ def deliver(ctx, items, results, net):
                     r = results[m]
                     z.write(r["staged"], r["member_out"])
             delivered.append({"id": it["id"], "out": rel})
+            status_rows.append((rel, "zip", "clean",
+                                f"all {len(it['members'])} member(s) clean"))
             continue
         as_held = False
         if res["status"] != "ok":
