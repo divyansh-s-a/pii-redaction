@@ -144,9 +144,12 @@ def transcribe_file(model, original: Path, work_wav: Path, out_json: Path,
             utts.extend(ch_utts)
         split = True
     else:
-        mime = MIME.get(original.suffix.lower().lstrip("."), "audio/mpeg")
+        # the decoded work audio, not the original: an MP3's timeline can
+        # differ between ElevenLabs' decoder and ours (observed: +4 s drift
+        # over 2 h), and every beep is placed on OUR timeline
         utts = gemini_transcribe.sanity(
-            to_utterances(_post(original, mime, model_id, dur_ms / 1000.0)),
+            to_utterances(_post(work_wav, "audio/wav", model_id,
+                                dur_ms / 1000.0)),
             dur_ms)
         for u in utts:
             u["channel"] = None

@@ -320,6 +320,12 @@ class EntityMap:
                 # only; sound-alike keys would turn it into a common syllable
                 keyed = (e["forms"] if flags else
                          [f for f in e["forms"] if f not in lits])
+                # an alias the pattern already finds INSIDE it ("Notes-ZXQ",
+                # "Apparel|Orbix") is the core glued to other words: its
+                # regex hit covers it, and its sound-alike key would match
+                # the glued word alone ("Notes" ~ "noteszxq")
+                keyed = [f for f in keyed if not (
+                    e["rx"].search(f) and not e["rx"].fullmatch(f.strip()))]
                 e["keys"] = sorted({key(f) for f in keyed
                                     if len(key(f)) >= 2})
                 self.entries.append(e)
