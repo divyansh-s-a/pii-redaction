@@ -329,6 +329,15 @@ def deterministic(segs, em=None):
             for i0, i1, e, how in em.match_tokens([x[0] for x in toks]):
                 if e.get("context_only"):
                     continue     # an ordinary word: never matched blind
+                # a blind scan takes exact matches only: a sound-alike key
+                # ("price" ~ "Pryce", "like it" ~ "Lykitt") is for speech,
+                # where it may only beep; on text it rewrites ordinary words
+                if how == "fuzzy":
+                    continue
+                if how == "alias":
+                    got = re.sub(r"\W+", "", t[toks[i0][1]:toks[i1][2]]).lower()
+                    if got not in {re.sub(r"\W+", "", f).lower() for f in e["forms"]}:
+                        continue
                 cat = ("FULL_NAME" if e["category"] == "PERSON"
                        else _map_cat(e["category"]))
                 out.append({"seg": si, "a": toks[i0][1], "b": toks[i1][2],
