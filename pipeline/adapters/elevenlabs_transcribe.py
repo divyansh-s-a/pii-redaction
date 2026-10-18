@@ -70,10 +70,18 @@ def _post(media: Path, mime: str, model_id: str, audio_seconds: float) -> dict:
         fields, "file", media.name, media.read_bytes(), mime)
     headers = {"xi-api-key": adapters.env_key("ELEVENLABS_API_KEY"),
                "Content-Type": ctype}
+    # a long recording is answered only after the whole file is processed
+    # (a 2 h focus group can stay silent past 20 min): scale the read wait
+    wait_s = max(1200, int(audio_seconds) + 600)
+    timeouts = 0
     for attempt in range(4):
         status, _, raw = common._request(ENDPOINT, data=body, headers=headers,
-                                         timeout=1200)
+                                         timeout=wait_s)
         adapters.log_usage("elevenlabs", ENDPOINT, media, audio_seconds, status)
+        if status == 0 and b"timed out" in raw and timeouts == 0:
+            timeouts += 1              # one retry on a network-level timeout
+            print(f"  elevenlabs: {raw[:80]!r}, retrying once ...")
+            continue
         if status == 200:
             try:
                 return json.loads(raw)
