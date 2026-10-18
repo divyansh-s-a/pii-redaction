@@ -17,7 +17,7 @@ image pixels under a box are deleted, not hidden):
                  (classified once per image content) and faces on scans are
                  covered with neutral grey; document metadata is blanked.
 A standalone image whose whole content is a brand image or a person photo is
-greyed entirely (parity with the earlier study), otherwise boxed like a scan.
+greyed entirely (nothing on it is worth keeping), otherwise boxed like a scan.
 """
 import io
 import sys

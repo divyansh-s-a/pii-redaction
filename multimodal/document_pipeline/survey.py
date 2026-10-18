@@ -14,7 +14,7 @@ reads free text (open-ended answers, labels, question wording).
   respondent id / panel id                   -> ASSIGNED_ID, code R0001
   interviewer id / usercode / _submitted_by  -> ASSIGNED_ID, code INT01
 A plain running serial (SERIAL, 10001, 10002 ...) is a row key the tab files
-depend on and identifies no one: kept (owner decision 2026-10-15).
+depend on and identifies no one: kept.
 
 Text files keep their encoding (a BOM-marked UTF-16 file stays UTF-16, CRLF
 stays CRLF). Fixed-width data (.asc) keeps every column: a replacement is

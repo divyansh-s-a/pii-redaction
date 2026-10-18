@@ -67,7 +67,7 @@
    "name": "AGE_AND_SEX",
    "action": "KEEP",
    "enforcement": "model",
-   "definition": "IN: a respondent's age, age band, sex or gender. Kept: they are the analysis variables of the study (owner decision, parity with the earlier study). OUT: date of birth (G08); a child's age stays CHILD_INFO (G11).",
+   "definition": "IN: a respondent's age, age band, sex or gender. Kept: they are the analysis variables of the study. OUT: date of birth (G08); a child's age stays CHILD_INFO (G11).",
    "note": "Market-research override of the generic REDACT."
   },
   {
