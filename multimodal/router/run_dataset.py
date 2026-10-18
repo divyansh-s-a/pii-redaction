@@ -2389,7 +2389,10 @@ def scrub_text(ctx, text, net):
                   if s["source"] == "mapping"]
     spans = office._dedupe(spans)
     rp = NameReplacer(ctx)
-    for sp in sorted(spans, key=lambda s: (s["seg"], -s["a"])):
+    # from the END of the text backwards: every replacement changes the
+    # length, so an earlier one would shift the offsets of all later lines
+    for sp in sorted(spans, key=lambda s: -(segs[s["seg"]]["pieces"][0][0]
+                                            + s["a"])):
         a0 = segs[sp["seg"]]["pieces"][0][0]
         if SPEAKER_LABEL_RX.fullmatch(sp["text"]) and \
                 text[max(0, a0 + sp["a"] - 2):a0 + sp["a"]] == "] ":
