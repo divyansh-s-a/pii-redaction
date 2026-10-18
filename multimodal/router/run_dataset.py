@@ -2437,6 +2437,12 @@ def deliver(ctx, items, results, net):
         if it["route"] == "held":
             held.append({"rel_id": it["id"], "route": it["route"],
                          "reason": it.get("held_reason")})
+            if not str(it.get("held_reason", "")).startswith("media"):
+                # never delivered: the record still lists it (by id — its
+                # name never went through the name cleaner)
+                status_rows.append((f"[not delivered] item {it['id']}",
+                                    "held", "not delivered",
+                                    it.get("held_reason") or ""))
             continue
         if it.get("container") or res is None:
             continue
@@ -2466,6 +2472,9 @@ def deliver(ctx, items, results, net):
             if not (ctx.a.deliver_held and (res.get("staged")
                                             or res.get("bundle"))
                     and not major_problem(res)):
+                if res.get("out_rel"):
+                    status_rows.append((res["out_rel"], it["route"],
+                                        "not delivered", res["reason"]))
                 continue
             as_held = True
         rel = unique(res["out_rel"])
@@ -2511,8 +2520,8 @@ def deliver(ctx, items, results, net):
 
 
 def write_status(out, rows):
-    """DELIVERY/_redaction_status.csv: every delivered file, clean or held
-    (delivered as-is after the correction rounds), with the reason. Merged
+    """DELIVERY/_redaction_status.csv: every file, clean, held (delivered
+    as-is after the correction rounds) or not delivered, with the reason. Merged
     with an earlier record, so a pass over held files updates their rows."""
     import csv
     f = out / "_redaction_status.csv"
