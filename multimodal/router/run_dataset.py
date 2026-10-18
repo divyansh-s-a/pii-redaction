@@ -2375,6 +2375,9 @@ MEDIA_OUT_EXT = (".mp3", ".wav", ".mp4", ".m4a", ".mov", ".flac", ".aac",
                  ".ogg")
 
 
+SPEAKER_LABEL_RX = re.compile(r"(?:S|C\d+_S)\d{1,3}")
+
+
 def scrub_text(ctx, text, net):
     """A media bundle's side file: every dataset form (and in replace mode
     every mapped name) replaced, line by line."""
@@ -2387,10 +2390,13 @@ def scrub_text(ctx, text, net):
     spans = office._dedupe(spans)
     rp = NameReplacer(ctx)
     for sp in sorted(spans, key=lambda s: (s["seg"], -s["a"])):
+        a0 = segs[sp["seg"]]["pieces"][0][0]
+        if SPEAKER_LABEL_RX.fullmatch(sp["text"]) and \
+                text[max(0, a0 + sp["a"] - 2):a0 + sp["a"]] == "] ":
+            continue          # a transcript's speaker label ("S10"), not a name
         new = rp(sp)
         if new is None:
             continue
-        a0 = segs[sp["seg"]]["pieces"][0][0]
         text = text[:a0 + sp["a"]] + new + text[a0 + sp["b"]:]
     return text
 
