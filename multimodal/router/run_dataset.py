@@ -718,6 +718,24 @@ def qc_only(why):
     return bool(QC_ONLY_RX.match((why or "").strip()))
 
 
+def bundle_leaks(bundle):
+    """Leak evidence recorded in a media bundle's manifest: the judge audit's
+    confirmed findings and the mapped-entity audit's candidates. A file held
+    for QC edges is clean only when both are zero."""
+    try:
+        m = json.loads((Path(bundle) / "manifest.json").read_text())
+    except (OSError, ValueError, TypeError):
+        return ["manifest unreadable"]
+    out = []
+    ja = (m.get("judge_audit") or {}).get("leak_candidates") or 0
+    ma = (m.get("mapped_audit") or {}).get("leak_candidates") or 0
+    if ja:
+        out.append(f"leak audit: {ja} finding(s)")
+    if ma:
+        out.append(f"listen/mapped audit: {ma} candidate(s)")
+    return out
+
+
 def held_bundle(ctx, it):
     held = ctx.work / "media_out" / (it["id"] + "_held")
     if held.exists():
@@ -2298,6 +2316,10 @@ def stage_render(ctx, items, extra_forms=None, only=None, prior=None):
             futs = [ex.submit(rend, it) for it in media]
             for fut in cf.as_completed(futs):
                 it, bundle, why = fut.result()
+                leaks = (bundle_leaks(held_bundle(ctx, it))
+                         if bundle is None and held_bundle(ctx, it) else [])
+                if leaks and qc_only(why):
+                    why = "; ".join(leaks) + " (QC edge flags advisory)"
                 if bundle is None and qc_only(why) and \
                         not ctx.a.strict_qc and held_bundle(ctx, it):
                     # borderline QC edges only: delivered as clean, noted
@@ -2371,6 +2393,25 @@ def scrub_text(ctx, text, net):
         a0 = segs[sp["seg"]]["pieces"][0][0]
         text = text[:a0 + sp["a"]] + new + text[a0 + sp["b"]:]
     return text
+
+
+def scrub_json(ctx, text, net):
+    """A JSON side file scrubbed value by value, so it stays valid JSON (a
+    replacement over the raw text can swallow the quotes around a value)."""
+    try:
+        data = json.loads(text)
+    except ValueError:
+        return scrub_text(ctx, text, net)
+
+    def walk(o):
+        if isinstance(o, str):
+            return scrub_text(ctx, o, net)
+        if isinstance(o, list):
+            return [walk(x) for x in o]
+        if isinstance(o, dict):
+            return {walk(k): walk(v) for k, v in o.items()}
+        return o
+    return json.dumps(walk(data), indent=2, ensure_ascii=False)
 
 
 def deliver(ctx, items, results, net):
@@ -2454,7 +2495,10 @@ def deliver(ctx, items, results, net):
                     name = stem + "_manifest.json"
                 else:
                     name = stem + "_" + f.suffix.lstrip(".") + f.suffix
-                if f.suffix.lower() in (".txt", ".md", ".json"):
+                if f.suffix.lower() == ".json":
+                    (dst.parent / name).write_text(
+                        scrub_json(ctx, f.read_text(errors="replace"), net))
+                elif f.suffix.lower() in (".txt", ".md"):
                     (dst.parent / name).write_text(
                         scrub_text(ctx, f.read_text(errors="replace"), net))
                 else:
