@@ -124,6 +124,73 @@ def audio_shared_modules():
         rec("common.py else:raise", "shared", "FAIL", str(e)[:50])
 
 
+def openrouter_no_training():
+    """Every OpenRouter chat request asks for providers that keep no data.
+
+    Fails if: any of the four request builders (judge, Gemini fallback, audio
+    listener, report writer) posts a payload without
+    provider.data_collection == "deny", or the helper lets a caller's own
+    routing keys switch the deny off or get dropped. No request leaves the
+    machine: the transport is replaced by one that records and stops.
+    """
+    import importlib.util
+    import tempfile
+    import common
+    import judge_client
+    from adapters import openrouter_audio
+
+    class Sent(Exception):
+        pass
+
+    sent = {}
+
+    def capture(name):
+        def fake(url, data=None, headers=None, method=None, timeout=300):
+            sent[name] = json.loads(data)
+            raise Sent()
+        return fake
+
+    spec = importlib.util.spec_from_file_location(
+        "regress_final_report", PROJ / "generate_final_report.py")
+    report = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(report)
+    real_req, real_env = common._request, common._read_env_value
+    common._read_env_value = lambda name: "sk-test"
+    try:
+        with tempfile.TemporaryDirectory() as tmp:
+            wav = Path(tmp) / "x.wav"
+            wav.write_bytes(b"RIFF")
+            calls = [
+                ("judge_call", lambda: judge_client.judge_call(
+                    "p", {"type": "object"}, model="openai/gpt-5.6-sol")),
+                ("gemini fallback", lambda: common._generate_openrouter(
+                    "gemini-2.5-pro", [{"text": "p"}], None, 0, 100)),
+                ("audio listener", lambda: openrouter_audio._call(
+                    "openai/gpt-audio", wav)),
+                ("final report", lambda: report._openrouter_chat(
+                    "anthropic/claude-opus-4.8", "s", "u", 100)),
+            ]
+            for name, call in calls:
+                common._request = capture(name)
+                try:
+                    call()
+                except Sent:
+                    pass
+    finally:
+        common._request, common._read_env_value = real_req, real_env
+    checks = [(f"{name} sends deny",
+               (sent.get(name) or {}).get("provider", {})
+               .get("data_collection") == "deny")
+              for name, _ in calls]
+    merged = common.openrouter_provider(
+        {"order": ["a"], "data_collection": "allow"})
+    checks.append(("routing keys kept, deny not overridable",
+                   merged == {"order": ["a"], "data_collection": "deny"}))
+    bad = [n for n, ok in checks if not ok]
+    rec("openrouter no-training", "shared", "PASS" if not bad else "FAIL",
+        f"{len(checks)} checks" if not bad else f"BROKEN: {bad}")
+
+
 # -------------------------------------------------------------- taxonomy pack
 def qc_verdict_consistency():
     """A bundle's RECORDED verdict must match the report sitting next to it.
@@ -1290,6 +1357,7 @@ def main():
     selftests()
     print("\n== audio arm / shared modules ==")
     audio_shared_modules()
+    openrouter_no_training()
     qc_verdict_consistency()
     print("\n== taxonomy packs ==")
     pack_behaviour()

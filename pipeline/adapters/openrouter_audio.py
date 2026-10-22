@@ -107,6 +107,7 @@ def _call(model_id, wav_path: Path, context_text=""):
              "input_audio": {"data": b64, "format": "wav"}},
         ]}],
         "usage": {"include": True},
+        "provider": common.openrouter_provider(),
     }
     if use_schema:
         payload["response_format"] = {

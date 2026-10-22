@@ -71,6 +71,17 @@ def openrouter_key():
     return _read_env_value("OPENROUTER_API_KEY")
 
 
+def openrouter_provider(routing=None) -> dict:
+    """The `provider` object for every OpenRouter chat request: the caller's
+    own routing keys, plus data_collection='deny' so only providers that
+    neither store nor train on prompts may serve it. Requests carry claim and
+    study material, so the deny is applied last and no caller can turn it off.
+    """
+    out = dict(routing or {})
+    out["data_collection"] = "deny"
+    return out
+
+
 def api_key() -> str:
     k = gemini_key()
     if not k:
@@ -375,7 +386,8 @@ def _generate_openrouter(model, parts, response_schema, temperature,
     payload = {"model": or_model, "temperature": temperature,
                "max_tokens": min(int(max_output_tokens), 32000),
                "messages": [{"role": "user", "content": content}],
-               "usage": {"include": True}}
+               "usage": {"include": True},
+               "provider": openrouter_provider()}
     if response_schema is not None:
         payload["response_format"] = {
             "type": "json_schema",

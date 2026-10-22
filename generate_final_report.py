@@ -419,7 +419,8 @@ def _openrouter_chat(model, system, user, max_tokens, temperature=0.4):
     payload = {"model": model, "temperature": temperature,
                "max_tokens": max_tokens,
                "messages": [{"role": "system", "content": system},
-                            {"role": "user", "content": user}]}
+                            {"role": "user", "content": user}],
+               "provider": common.openrouter_provider()}
     status, _, body = common._request(
         url, data=json.dumps(payload).encode(),
         headers={"Authorization": f"Bearer {key}",
