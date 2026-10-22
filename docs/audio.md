@@ -79,7 +79,8 @@ twice, which is the main cost saving in a delivery.
     # edit .env and paste YOUR OWN keys (never share or commit this file):
     #   GEMINI_API_KEY        Google AI Studio
     #   ELEVEN_LABS_API_KEY   ElevenLabs
-    #   OPENROUTER_API_KEY    OpenRouter (judges / GPT detector / whisper)
+    #   OPENROUTER_API_KEY    OpenRouter (judges / GPT detector)
+    #   OPENAI_API_KEY        OpenAI (Whisper engine, direct only)
 
 ## Redact a file (the production workflow)
 

@@ -50,7 +50,8 @@ cover both; see System notes in the report). Full results:
     # edit .env and paste YOUR OWN keys (never share or commit this file):
     #   GEMINI_API_KEY        Google AI Studio
     #   ELEVEN_LABS_API_KEY   ElevenLabs
-    #   OPENROUTER_API_KEY    OpenRouter (judges / GPT detector / whisper)
+    #   OPENROUTER_API_KEY    OpenRouter (judges / GPT detector)
+    #   OPENAI_API_KEY        OpenAI (Whisper engine, direct only)
 
 ## Redact a file (the production workflow)
 
@@ -162,6 +163,7 @@ GEMINI_API_KEY=
 ELEVEN_LABS_API_KEY=
 ELEVENLABS_API_KEY=
 OPENROUTER_API_KEY=
+OPENAI_API_KEY=
 """
 
 GITIGNORE = """.env

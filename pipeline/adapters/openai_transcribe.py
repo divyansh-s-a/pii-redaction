@@ -26,25 +26,13 @@ import audio_utils
 import common
 import gemini_transcribe
 
-# Direct OpenAI when OPENAI_API_KEY is set; otherwise the OpenRouter proxy
-# (verified 2026-09-01: OpenRouter's /audio/transcriptions passes through
-# verbose_json + word timestamps for openai/whisper-1 and returns usage cost).
-ROUTES = [
-    ("OPENAI_API_KEY", "https://api.openai.com/v1/audio/transcriptions",
-     "whisper-1", "openai"),
-    ("OPENROUTER_API_KEY", "https://openrouter.ai/api/v1/audio/transcriptions",
-     "openai/whisper-1", "openai_via_openrouter"),
-]
-
-
-def _route():
-    last_err = None
-    for key_name, endpoint, default_model, engine in ROUTES:
-        try:
-            return adapters.env_key(key_name), endpoint, default_model, engine
-        except SystemExit as e:
-            last_err = e
-    raise last_err
+# Direct OpenAI only, never the OpenRouter proxy. Every OpenRouter request
+# must ask for providers that keep no data (provider.data_collection =
+# "deny"), and OpenRouter's multipart /audio/transcriptions endpoint takes no
+# provider preferences, so it cannot carry call audio.
+ENDPOINT = "https://api.openai.com/v1/audio/transcriptions"
+DEFAULT_MODEL = "whisper-1"
+ENGINE = "openai"
 MAX_UPLOAD_BYTES = 24 * 1024 * 1024
 MIME = {"mp3": "audio/mpeg", "m4a": "audio/mp4", "wav": "audio/wav",
         "mp4": "video/mp4"}
@@ -53,16 +41,16 @@ _FORMAT_ERR_MARKS = (b"response_format", b"verbose_json",
 
 
 def _post(media: Path, mime: str, model: str, audio_seconds: float) -> dict:
-    key, endpoint, default_model, engine = _route()
+    key = adapters.env_key("OPENAI_API_KEY")
     body, ctype = adapters.multipart_body(
-        {"model": model or default_model, "response_format": "verbose_json",
+        {"model": model or DEFAULT_MODEL, "response_format": "verbose_json",
          "timestamp_granularities[]": "word"},
         "file", media.name, media.read_bytes(), mime)
     headers = {"Authorization": "Bearer " + key, "Content-Type": ctype}
     for attempt in range(4):
-        status, _, raw = common._request(endpoint, data=body, headers=headers,
+        status, _, raw = common._request(ENDPOINT, data=body, headers=headers,
                                          timeout=1200)
-        adapters.log_usage(engine, endpoint, media, audio_seconds, status)
+        adapters.log_usage(ENGINE, ENDPOINT, media, audio_seconds, status)
         if status == 200:
             try:
                 return json.loads(raw)
@@ -132,7 +120,7 @@ def to_utterances(resp) -> list:
 def transcribe_file(model, original: Path, work_wav: Path, out_json: Path,
                     channel_wavs=None):
     """Mirror of gemini_transcribe.transcribe_file for OpenAI Whisper."""
-    model_id = model or _route()[2]
+    model_id = model or DEFAULT_MODEL
     dur_ms = audio_utils.duration_ms(work_wav)
     if channel_wavs:
         utts = []

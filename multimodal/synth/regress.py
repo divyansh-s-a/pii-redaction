@@ -129,15 +129,17 @@ def openrouter_no_training():
 
     Fails if: any of the four request builders (judge, Gemini fallback, audio
     listener, report writer) posts a payload without
-    provider.data_collection == "deny", or the helper lets a caller's own
-    routing keys switch the deny off or get dropped. No request leaves the
+    provider.data_collection == "deny", the helper lets a caller's own
+    routing keys switch the deny off or get dropped, or Whisper, with only an
+    OpenRouter key set, sends audio anywhere instead of stopping (its
+    OpenRouter endpoint takes no provider preferences). No request leaves the
     machine: the transport is replaced by one that records and stops.
     """
     import importlib.util
     import tempfile
     import common
     import judge_client
-    from adapters import openrouter_audio
+    from adapters import openai_transcribe, openrouter_audio
 
     class Sent(Exception):
         pass
@@ -146,7 +148,7 @@ def openrouter_no_training():
 
     def capture(name):
         def fake(url, data=None, headers=None, method=None, timeout=300):
-            sent[name] = json.loads(data)
+            sent[name] = data
             raise Sent()
         return fake
 
@@ -176,12 +178,30 @@ def openrouter_no_training():
                     call()
                 except Sent:
                     pass
+            common._read_env_value = (
+                lambda name: None if name == "OPENAI_API_KEY" else "sk-test")
+            common._request = capture("whisper")
+            try:
+                openai_transcribe._post(wav, "audio/wav", None, 1.0)
+                whisper_stopped = False
+            except SystemExit:
+                whisper_stopped = "whisper" not in sent
+            except Sent:
+                whisper_stopped = False
     finally:
         common._request, common._read_env_value = real_req, real_env
+    def provider(name):
+        try:
+            return json.loads(sent[name]).get("provider") or {}
+        except (KeyError, ValueError, AttributeError):
+            return {}
+
     checks = [(f"{name} sends deny",
-               (sent.get(name) or {}).get("provider", {})
-               .get("data_collection") == "deny")
+               provider(name).get("data_collection") == "deny")
               for name, _ in calls]
+    checks.append(("whisper without OpenAI key stops, sends nothing",
+                   whisper_stopped
+                   and "openrouter" not in openai_transcribe.ENDPOINT))
     merged = common.openrouter_provider(
         {"order": ["a"], "data_collection": "allow"})
     checks.append(("routing keys kept, deny not overridable",

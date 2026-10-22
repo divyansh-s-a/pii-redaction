@@ -29,6 +29,9 @@ ROOT = Path(__file__).resolve().parent.parent
 # ----------------------------------------------------------------- prices
 EL_PER_HR = 0.22            # published scribe_v2 rate (keyterms ~ +$0.05/hr)
 WHISPER_PER_HR = 0.36       # measured via OpenRouter per-call pricing
+# Whisper usage-row labels: "openai" (direct, the only route now) and
+# "openai_via_openrouter" (older logs, from the retired OpenRouter route)
+WHISPER_ENGINES = ("openai", "openai_via_openrouter")
 GEMINI_PRO_IN = 2.00        # $/1M prompt tokens   (reproduces v1's $0.58/4min)
 GEMINI_PRO_OUT = 12.00      # $/1M output+thinking tokens
 GEMINI_FLASH_IN = 0.30      # $/1M — edge-verify snippet ASR (estimate)
@@ -120,7 +123,7 @@ def collect(rows):
 
     for r in rows:
         eng = r.get("engine")
-        if eng in ("elevenlabs", "elevenlabs_entity", "openai_via_openrouter"):
+        if eng in ("elevenlabs", "elevenlabs_entity") + WHISPER_ENGINES:
             f = r.get("file") or ""
             if "_probe" in f or not r.get("audio_seconds"):
                 continue
@@ -177,7 +180,7 @@ def build(agg, hours):
             tr += secs / 3600.0 * EL_PER_HR
         if cfg.startswith("openai"):
             secs = sum(v for (e, f), v in agg["audio_seconds"].items()
-                       if e == "openai_via_openrouter")
+                       if e in WHISPER_ENGINES)
             tr += secs / 3600.0 * WHISPER_PER_HR
         per_config[cfg] = {"label": label, "transcription_usd": tr,
                            "detection_usd": det, "total_usd": tr + det}
@@ -249,9 +252,10 @@ def self_test():
     rows = [
         # EL audio: 600 s
         {"engine": "elevenlabs", "file": "x/abc.mp3", "audio_seconds": 600},
-        # whisper audio: 600 s
+        # whisper audio: 600 s, half on the old OpenRouter label
+        {"engine": "openai", "file": "x/abc.mp3", "audio_seconds": 300},
         {"engine": "openai_via_openrouter", "file": "x/abc.mp3",
-         "audio_seconds": 600},
+         "audio_seconds": 300},
         # gemini transcription for the gemini config: 10k in, 40k out+think
         {"engine": "gemini", "model": "gemini-3.1-pro-preview",
          "context": "transcribe:abc", "prompt_tokens": 10000,
