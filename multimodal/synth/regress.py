@@ -127,8 +127,9 @@ def audio_shared_modules():
 def openrouter_no_training():
     """Every OpenRouter chat request asks for providers that keep no data.
 
-    Fails if: any of the four request builders (judge, Gemini fallback, audio
-    listener, report writer) posts a payload without
+    Fails if: any of the five request builders (judge, Gemini fallback, audio
+    listener, report writer, the documents' visual leftover pass) posts a
+    payload without
     provider.data_collection == "deny", the helper lets a caller's own
     routing keys switch the deny off or get dropped, or Whisper, with only an
     OpenRouter key set, sends audio anywhere instead of stopping (its
@@ -188,6 +189,34 @@ def openrouter_no_training():
                 whisper_stopped = "whisper" not in sent
             except Sent:
                 whisper_stopped = False
+            # the documents' visual leftover pass posts with its own urlopen
+            # and retries on any Exception, so its stop is a BaseException
+            import urllib.request
+            from PIL import Image
+
+            class Stop(BaseException):
+                pass
+
+            def fake_urlopen(req, timeout=None):
+                sent["visual leftover pass"] = req.data
+                raise Stop()
+            path = list(sys.path)
+            spec = importlib.util.spec_from_file_location(
+                "regress_visual_verify",
+                ROOT / "document_pipeline" / "visual_verify.py")
+            vv = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(vv)
+            sys.path[:] = path
+            real_open, urllib.request.urlopen = (urllib.request.urlopen,
+                                                 fake_urlopen)
+            try:
+                vv.Asker("anthropic/claude-opus-5.5", 1)(
+                    "p", Image.new("RGB", (4, 4)))
+            except Stop:
+                pass
+            finally:
+                urllib.request.urlopen = real_open
+            calls.append(("visual leftover pass", None))
     finally:
         common._request, common._read_env_value = real_req, real_env
     def provider(name):

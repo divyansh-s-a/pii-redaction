@@ -10,7 +10,10 @@ plumbing and nothing else.
 > that contains text the original never had is making claims of its own, and
 > every such claim is a new way to be wrong. This is enforced as an invariant,
 > not a convention: `actions.added_text(before, after)` must be empty for every
-> page, and the verifier fails the run otherwise.
+> page, and the verifier fails the run otherwise. The one exception is opt-in:
+> `--replace` (below) writes a short code on each removed value's box and a legend
+> after the last page; those codes are then the only text the output gains, and
+> none of them holds a value.
 
 ## Why it is separate from the audio arm
 
@@ -340,6 +343,65 @@ Two properties worth knowing:
 * **It is bounded.** A round that fixes nothing stops immediately. If
   re-redacting the same box did not remove the value, a third attempt will not
   either, and the honest outcome is to report it rather than spin.
+
+## Code-based replacement (`--replace`)
+
+Opt-in. The redaction is unchanged and finishes first (with `--verify` /
+`--remediate` if given); then every value the run removed gets ONE short code
+for the whole file, written on a small white label over its black box:
+
+    python3 document_pipeline/run_document.py IN.pdf --out OUT.pdf --replace \
+            --codes-sidecar KEYS/IN.codes.json
+
+| Code | Stands for |
+|---|---|
+| `Pt1`, `Prop1`, `Per1`, `Dr1` | the patient, the insured or proposer, another person, a clinician |
+| `Hosp1`, `Ins1` | a provider; an insurer or TPA |
+| `HPID1 ...4821`, `Pol1 ...4410`, `Aad1 ...3312`, `PAN1 ...674P`, `ID1`, `Acct1`, `Reg1`, `Emp1`, `Doc1`, `Dev1` | identifiers by kind, with only the last four characters |
+| `Ph1`, `Em1`, `Addr1`, `DOB1` | a phone, an email, an address, a date of birth |
+| `(v2)`, `(v3)` after a code | the same value written another way (initials, word order, a misread letter or digit) |
+| `[sig]`, `[nm]`, `[age/sex]` | a signature, a name in another script, an age / sex / relationship field |
+
+* **One code per value.** The same person, organisation or identifier gets the
+  same code on every page; which boxes share a code is decided by the token
+  store (OCR-tolerant for people and identifiers, by core word for
+  organisations; a name in running prose takes the code of the person it
+  matches). Codes are numbered per family in order of first appearance.
+* **Nothing readable is written.** A label shows no value beyond an
+  identifier's last four characters; a label that would is not written. A box
+  too small for a 7 pt label, a face, QR code, stamp, logo, pen-ink region,
+  any box whose value no detector read, and every box on a rotated page stay
+  plain black.
+* **A legend** (code = the kind of value it stands for, never the value) is
+  appended after the last page, so page numbers do not change.
+* **The key stays apart.** The code -> real value key is written to
+  `--codes-sidecar` (default `<workdir>/<file>.codes.json`). It is a
+  re-identification key: store it apart from the output, never ship it with it.
+
+## Visual leftover pass (`--visual-verify`)
+
+Opt-in. `--verify` reads the TEXT of the output; it cannot see a signature,
+stamp, logo, seal or ID photo only partly covered, handwriting that runs past a
+box, or a name the detector never read. This pass looks at every page of the
+finished output as a person would and blacks out what is still readable:
+
+    python3 document_pipeline/run_document.py IN.pdf --out OUT.pdf \
+            --visual-verify --visual-rounds 2 --visual-spend-cap 100
+
+| Step | What happens |
+|---|---|
+| find | a vision model (`--visual-model`, default Claude Opus 5.5 via OpenRouter with data collection off) sees the whole page on a lettered grid and lists every item the pack's rules say must go that is still readable |
+| fine | per item, a zoomed crop on a fine grid; the model lists every cell the item touches |
+| cover | each connected run of cells becomes one box, tightened to the ink inside (faint stamps and show-through count), so a stroke across several cells is covered whole |
+| verify | the model sees the proposed boxes and vetoes any that would also destroy kept content (clinical text, amounts, episode dates, printed labels) or that miss the item; a vetoed run falls back to per-cell boxes, verified the same way |
+| check | find again on the fixed page; at most `--visual-rounds` fix rounds, then one last look that only reports |
+
+New boxes are true redactions placed in the page's unrotated space, so they
+land correctly on rotated pages; the pass can only add boxes. A per-page report
+(`<workdir>/<file>.visual_verify.jsonl`) lists every box and anything still
+seen after the last round. It runs before `--replace`, so its boxes stay plain
+black. Cost: about one vision call per page, plus a crop and a check per item
+found; it reduces what survives, it does not prove zero.
 
 Every claim is checked against the artifact, never asserted:
 
