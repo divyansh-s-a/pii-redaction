@@ -169,7 +169,11 @@ def numeric_table(doc):
         amounts.append(amt)
     pg.insert_text((380, 152 + 5 * 20 + 6), "TOTAL", fontsize=10, fontname="hebo")
     pg.insert_text((460, 152 + 5 * 20 + 6), "14260", fontsize=10, fontname="hebo")
+    # A pack contract (every bill particular is the agent's data), so the case
+    # names its pack: under generic_document a billed health service is G21
+    # and is removed by design; regress.py reads this key.
     return {"expect": "the patient name goes; EVERY figure and particular stays",
+            "taxonomy": "insurance_medical",
             "values": [NAME], "must_survive": amounts + ["14260", "Surgeon",
                                                          "GST", "Patient gown",
                                                          "Package discount"]}

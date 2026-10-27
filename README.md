@@ -24,6 +24,9 @@ what the file is, saying so is better:
 
     python3 multimodal/router/dispatch.py call.mp3  --audio
     python3 multimodal/router/dispatch.py claim.pdf --insurance
+    # opt-in on the insurance arm: one code per value instead of plain black boxes (--replace)
+    # and a visual leftover pass over every page (--visual-verify)
+    python3 multimodal/router/dispatch.py claim.pdf --insurance -- --replace --visual-verify
     python3 multimodal/router/dispatch.py notes.pdf --generic
 
     # long forms

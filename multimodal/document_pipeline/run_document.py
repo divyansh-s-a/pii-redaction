@@ -286,6 +286,26 @@ def main():
     ap.add_argument("--max-rounds", type=int, default=3,
                     help="bound on --remediate; a loop that cannot terminate "
                          "is worse than a miss (default 3)")
+    # Two opt-in steps after redaction (owner's request, 2026-10-22). Without them the output is
+    # exactly the redaction-only output: nothing is ever written into a box.
+    ap.add_argument("--replace", action="store_true",
+                    help="code-based replacement: each removed value gets one short code for the "
+                         "whole file (Pt1, Dr2, HPID1 ...4821, (v2) for another written form) on a "
+                         "white label over its black box, and a legend after the last page; the "
+                         "code -> value key goes to --codes-sidecar, never beside the output")
+    ap.add_argument("--codes-sidecar", default=None,
+                    help="with --replace: where the code -> real value key is written (default: "
+                         "<workdir>/<file>.codes.json); store it apart from the output")
+    ap.add_argument("--visual-verify", action="store_true",
+                    help="after redaction, a vision model looks at every page of the output and "
+                         "blacks out what is still readable (signatures, stamps, logos, photos, "
+                         "handwriting past a box): find, fine grid, cover, verify, check")
+    ap.add_argument("--visual-model", default="anthropic/claude-opus-5.5",
+                    help="the vision model of --visual-verify (OpenRouter, data collection off)")
+    ap.add_argument("--visual-rounds", type=int, default=2,
+                    help="fix rounds per page of --visual-verify, then one last look that only reports")
+    ap.add_argument("--visual-spend-cap", type=float, default=100.0,
+                    help="dollars after which --visual-verify stops calling the model")
     ap.add_argument("--workers", type=int, default=6,
                     help="pages detected concurrently (detection is the "
                          "bottleneck: ~7-40s/page depending on PII density)")
@@ -673,6 +693,27 @@ def main():
     rc = 0
     if args.verify or args.remediate:
         rc = _verify_and_maybe_fix(src, args, per_page, pack, toks, audit)
+    if args.visual_verify:
+        vv = _load("visual_verify")
+        rep = Path(args.workdir) / f"{src.stem}.visual_verify.jsonl"
+        Path(args.workdir).mkdir(parents=True, exist_ok=True)
+        vst = vv.run(args.out, pack=pack, report=rep, model=args.visual_model, rounds=args.visual_rounds,
+                     workers=args.workers, cap=args.visual_spend_cap)
+        print(f"  visual verify: {vst['boxes']} box(es) on {vst['pages_cut']} of {vst['pages']} page(s); "
+              f"still seen on {len(vst['pages_still_seen'])} page(s) {vst['pages_still_seen'][:10]}; "
+              f"${vst['usd']} in {vst['calls']} calls, {vst['minutes']} min -> {rep}")
+        if vst["errors"]:
+            print(f"  VISUAL VERIFY ERRORS on page(s) {vst['errors']}: those pages were not looked at")
+    if args.replace:
+        cl = _load("code_labels")
+        side = Path(args.codes_sidecar) if args.codes_sidecar else Path(args.workdir) / f"{src.stem}.codes.json"
+        tmp = Path(args.out).with_suffix(".codes.pdf")
+        cst = cl.label_document(args.out, per_page, tmp, pack=pack, sidecar=side, bundle=src.stem)
+        tmp.replace(args.out)
+        print(f"  replace (codes): {cst.get('codes', 0)} codes, {cst.get('labelled', 0)} labelled box group(s), "
+              f"{cst.get('generic', 0)} generic, {cst.get('no_room', 0)} too small (black), "
+              f"{cst.get('rotated_page_left_black', 0)} on rotated pages (black); legend appended")
+        print(f"  code key (RE-IDENTIFICATION KEY, keep apart from the output): {side}")
     print(f"  -> {args.out}")
     return rc
 
