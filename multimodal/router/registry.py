@@ -17,7 +17,7 @@ EXTENSIONS = {
     "mp3": "audio", "wav": "audio", "m4a": "audio", "ogg": "audio",
     "flac": "audio", "aac": "audio", "opus": "audio", "wma": "audio",
     "mpeg": "audio", "mpga": "audio", "mp2": "audio", "amr": "audio",
-    # --- video: audio pipeline extracts the track ---
+    # --- video: the video arm (its audio track goes through the audio arm) ---
     "mp4": "video", "mov": "video", "m4v": "video", "avi": "video",
     "mkv": "video", "webm": "video",
     # --- page-based documents ---
@@ -63,8 +63,9 @@ MAGIC = [
 
 MODALITIES = {
     "audio":        {"pipeline": "audio_pii",        "ready": True},
-    "video":        {"pipeline": "audio_pii",        "ready": True,
-                     "note": "audio track extracted; no video-frame redaction"},
+    "video":        {"pipeline": "video_pipeline",   "ready": True,
+                     "note": "audio track via the audio arm; frames: logos, "
+                             "brand text, faces, numbers blurred"},
     "document":     {"pipeline": "document_pipeline",  "ready": True},
     "image":        {"pipeline": "document_pipeline",  "ready": True,
                      "note": "wrapped as a single-page document"},

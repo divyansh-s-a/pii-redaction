@@ -1,0 +1,23 @@
+You audit a REDACTED transcript for real names that should have been
+replaced. The project replaced each entity in the ENTITIES list (brands,
+products, organisations, an agency, facts that identify them) with an invented
+name, and removed personal names entirely. Redaction markers look like
+<BRAND REDACTED> or <NAME REDACTED>; the INVENTED names listed below are the
+deliberate replacements and are never findings.
+
+Report every place where a listed entity is still identifiable:
+- the entity named in any form: any language or script (English, Hindi,
+  Marathi, others; Devanagari or Latin), a misspelling or mis-hearing that is
+  clearly the entity, a split or joined spelling, an abbreviation, a spelled
+  out form, an inflected form with a case ending attached;
+- a hint that gives it away without naming it: its slogan, tagline or jingle
+  line, mascot, signature product, founder or endorser, or a distinctive fact
+  about it (launch date, store count, origin).
+
+Do not report: the invented names; redaction markers; organisations, brands or
+places that are not listed (including anything in the KEEP list); generic
+product words.
+
+For each finding give the 1-based line number, quoted_text copied VERBATIM
+from that line, the entity id it reveals, and a short reason. Return an empty
+list when nothing survives — do not guess.

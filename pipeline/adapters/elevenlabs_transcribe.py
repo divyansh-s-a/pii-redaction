@@ -39,12 +39,25 @@ def _keyterms():
     import langpack
     pack_terms = langpack.keyterms()
     if pack_terms:
-        return pack_terms      # active language pack replaces the base list
-    f = common.ROOT / "prompts" / "keyterms_india_v1.txt"
-    if not f.exists():
-        return None
-    terms = [t.strip() for t in f.read_text().splitlines() if t.strip()]
-    return terms[:100] or None
+        terms = pack_terms     # active language pack replaces the base list
+    else:
+        f = common.ROOT / "prompts" / "keyterms_india_v1.txt"
+        if not f.exists():
+            return _with_mapped(None)
+        terms = [t.strip() for t in f.read_text().splitlines() if t.strip()]
+    return _with_mapped(terms[:100] or None)
+
+
+def _with_mapped(terms):
+    """With a mapping active, its real spoken forms go FIRST (the 100-term
+    cap then trims the generic tail): a listener that spells a brand the
+    same way every time is one the entity matcher can find."""
+    import entity_map
+    em = entity_map.active()
+    if em is None:
+        return terms
+    merged = list(dict.fromkeys(em.keyterms() + (terms or [])))
+    return merged[:100] or None
 
 
 def _post(media: Path, mime: str, model_id: str, audio_seconds: float) -> dict:
@@ -57,10 +70,18 @@ def _post(media: Path, mime: str, model_id: str, audio_seconds: float) -> dict:
         fields, "file", media.name, media.read_bytes(), mime)
     headers = {"xi-api-key": adapters.env_key("ELEVENLABS_API_KEY"),
                "Content-Type": ctype}
+    # a long recording is answered only after the whole file is processed
+    # (a 2 h focus group can stay silent past 20 min): scale the read wait
+    wait_s = max(1200, int(audio_seconds) + 600)
+    timeouts = 0
     for attempt in range(4):
         status, _, raw = common._request(ENDPOINT, data=body, headers=headers,
-                                         timeout=1200)
+                                         timeout=wait_s)
         adapters.log_usage("elevenlabs", ENDPOINT, media, audio_seconds, status)
+        if status == 0 and b"timed out" in raw and timeouts == 0:
+            timeouts += 1              # one retry on a network-level timeout
+            print(f"  elevenlabs: {raw[:80]!r}, retrying once ...")
+            continue
         if status == 200:
             try:
                 return json.loads(raw)
@@ -123,9 +144,12 @@ def transcribe_file(model, original: Path, work_wav: Path, out_json: Path,
             utts.extend(ch_utts)
         split = True
     else:
-        mime = MIME.get(original.suffix.lower().lstrip("."), "audio/mpeg")
+        # the decoded work audio, not the original: an MP3's timeline can
+        # differ between ElevenLabs' decoder and ours (observed: +4 s drift
+        # over 2 h), and every beep is placed on OUR timeline
         utts = gemini_transcribe.sanity(
-            to_utterances(_post(original, mime, model_id, dur_ms / 1000.0)),
+            to_utterances(_post(work_wav, "audio/wav", model_id,
+                                dur_ms / 1000.0)),
             dur_ms)
         for u in utts:
             u["channel"] = None

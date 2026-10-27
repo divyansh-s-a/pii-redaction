@@ -1,0 +1,19 @@
+# The market_research pack's rules for the audio arm (audio and the sound of
+# video). The audio taxonomy (pipeline/policy.py) is fixed; this profile says
+# which of its categories the pack keeps and tells the detector what the
+# pack means. Brands, products, dealers and the agency are found through the
+# dataset's mapping (replace mode) or the beep-only list (redact mode) that
+# run_dataset.py builds from the detections — never through this profile.
+name: market_research
+# kept: a respondent's age and gender are analysis data in this pack
+annotate_only: [AGE]
+detection_supplement: |
+  A respondent's own age is kept (it is analysis data in this project);
+  still mark it as AGE. A child's age is CHILD_INFO + AGE as usual.
+  Brands, banks, shops, dealers and agencies a respondent buys from, banks
+  with or talks about are research content handled by the project's
+  mapping: do NOT mark them ORGANIZATION_PERSON_LINKED. Still mark a
+  person's employer, workplace or school, and a specific branch or clinic
+  that would identify them. City and town names are kept; a street address,
+  a locality that pins down where someone lives, phone numbers, emails and
+  ID numbers are marked as usual.

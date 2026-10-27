@@ -6,6 +6,7 @@
 
     # force an arm / a taxonomy
     python3 router/dispatch.py INPUT --audio
+    python3 router/dispatch.py INPUT --video
     python3 router/dispatch.py INPUT --insurance
     python3 router/dispatch.py INPUT --generic
 
@@ -59,6 +60,7 @@ tax_registry = _by_path("tax_registry", PKG / "taxonomies" / "registry.py")
 import analyze                          # noqa: E402
 
 AUDIO_TOOL = PROJ / "tools" / "redact.py"
+VIDEO_TOOL = PKG / "video_pipeline" / "run_video.py"
 DOC_TOOL = PKG / "document_pipeline" / "run_document.py"
 
 
@@ -66,15 +68,17 @@ def decide(path, pipeline, taxonomy):
     """-> (arm, taxonomy_id_or_None, basis) without running anything."""
     if pipeline == "audio":
         return "audio", None, "explicit_override"
+    if pipeline == "video":
+        return "video", None, "explicit_override"
     if pipeline == "document":
         return "document", (None if taxonomy == "auto" else taxonomy), \
                "explicit_override"
 
     info = analyze.analyze(str(path))
     modality = info.get("modality", "unknown")
-    arm = "audio" if modality in ("audio", "video") else "document"
-    if arm == "audio":
-        return "audio", None, f"modality={modality}"
+    arm = {"audio": "audio", "video": "video"}.get(modality, "document")
+    if arm in ("audio", "video"):
+        return arm, None, f"modality={modality}"
     if taxonomy != "auto":
         return "document", taxonomy, "explicit_override"
     return "document", None, f"modality={modality}; taxonomy chosen at run time"
@@ -84,17 +88,19 @@ def main():
     ap = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("input")
-    ap.add_argument("--pipeline", choices=["auto", "audio", "document"],
+    ap.add_argument("--pipeline", choices=["auto", "audio", "video",
+                                           "document"],
                     default="auto")
     ap.add_argument("--taxonomy", default="auto",
                     help="pack id, or 'auto' to select from the document's signals")
     ap.add_argument("--audio", action="store_true", help="= --pipeline audio")
+    ap.add_argument("--video", action="store_true", help="= --pipeline video")
     ap.add_argument("--insurance", action="store_true",
                     help="= --pipeline document --taxonomy insurance_medical")
     ap.add_argument("--generic", action="store_true",
                     help="= --pipeline document --taxonomy generic_document")
     ap.add_argument("--out", help="output PDF (document arm)")
-    ap.add_argument("--outdir", help="output directory (audio arm)")
+    ap.add_argument("--outdir", help="output directory (audio/video arm)")
     ap.add_argument("--dry-run", action="store_true",
                     help="print the decision and the command; run nothing")
     # Split on the literal `--` OURSELVES. argparse.REMAINDER after a
@@ -108,11 +114,14 @@ def main():
         mine, passthrough = argv, []
     a = ap.parse_args(mine)
 
-    shorthand = sum((a.audio, a.insurance, a.generic))
+    shorthand = sum((a.audio, a.video, a.insurance, a.generic))
     if shorthand > 1:
-        ap.error("--audio, --insurance and --generic are mutually exclusive")
+        ap.error("--audio, --video, --insurance and --generic are mutually "
+                 "exclusive")
     if a.audio:
         a.pipeline = "audio"
+    elif a.video:
+        a.pipeline = "video"
     elif a.insurance:
         a.pipeline, a.taxonomy = "document", "insurance_medical"
     elif a.generic:
@@ -130,8 +139,9 @@ def main():
 
     arm, pack, basis = decide(src, a.pipeline, a.taxonomy)
 
-    if arm == "audio":
-        cmd = [sys.executable, str(AUDIO_TOOL), str(src)]
+    if arm in ("audio", "video"):
+        tool = AUDIO_TOOL if arm == "audio" else VIDEO_TOOL
+        cmd = [sys.executable, str(tool), str(src)]
         if a.outdir:
             cmd += ["--outdir", a.outdir]
         cwd = PROJ
@@ -152,7 +162,7 @@ def main():
 
     print(f"  input     : {src}")
     print(f"  arm       : {arm}   ({basis})")
-    print(f"  taxonomy  : {pack or ('n/a' if arm == 'audio' else 'selected at run time')}")
+    print(f"  taxonomy  : {pack or ('n/a' if arm in ('audio', 'video') else 'selected at run time')}")
     print(f"  command   : {' '.join(cmd)}")
     if a.dry_run:
         return 0
@@ -170,12 +180,16 @@ def self_test():
         d = fitz.open(); d.new_page().insert_text((60, 60), "hello"); d.save(pdf); d.close()
         mp3 = Path(td) / "y.mp3"
         mp3.write_bytes(b"ID3" + b"\0" * 64)
+        mp4 = Path(td) / "z.mp4"
+        mp4.write_bytes(b"\0\0\0\x18ftypmp42" + b"\0" * 64)
         cases = [
             (pdf, "auto", "auto", "document", None),
             (pdf, "document", "generic_document", "document", "generic_document"),
             (pdf, "document", "insurance_medical", "document", "insurance_medical"),
             (pdf, "audio", "auto", "audio", None),       # override beats modality
             (mp3, "auto", "auto", "audio", None),
+            (mp4, "auto", "auto", "video", None),
+            (mp4, "audio", "auto", "audio", None),      # audio-only override
         ]
         for path, pl, tx, want_arm, want_pack in cases:
             arm, pack, basis = decide(path, pl, tx)

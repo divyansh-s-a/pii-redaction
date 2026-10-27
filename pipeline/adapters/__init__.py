@@ -23,13 +23,11 @@ import common
 
 
 def env_key(name):
-    """Read NAME=value from .env at the project root; SystemExit when absent."""
-    env = common.ROOT / ".env"
-    if env.exists():
-        for line in env.read_text().splitlines():
-            line = line.strip()
-            if line.startswith(name + "=") and line.split("=", 1)[1]:
-                return line.split("=", 1)[1].strip()
+    """Read NAME=value from .env at the project root (then PII_ENV_FILE,
+    then the process environment); SystemExit when absent."""
+    val = common._read_env_value(name)
+    if val:
+        return val
     raise SystemExit(
         f"{name} missing: put {name}=<key> in .env at the project root")
 
@@ -83,7 +81,7 @@ def group_words(words, gap_ms=1500):
 
 def log_usage(engine, endpoint, file, audio_seconds, http_status):
     """Append one JSON usage line to output/api_usage.jsonl (no timestamps)."""
-    p = common.ROOT / "output" / "api_usage.jsonl"
+    p = common.OUTPUT_ROOT / "api_usage.jsonl"
     p.parent.mkdir(parents=True, exist_ok=True)
     with open(p, "a") as f:
         f.write(json.dumps({"engine": engine, "endpoint": endpoint,

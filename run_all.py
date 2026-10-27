@@ -36,7 +36,7 @@ def find_work_dir(fid, engine, delivered=None):
     """The engine-fallback path leaves an abandoned <fid>__<engine> dir
     (transcript only) next to the real <fid> dir; prefer the manifest's
     engine record, then any dir with BOTH transcript and render."""
-    out = ROOT / "output"
+    out = common.OUTPUT_ROOT
     cands = []
     mf = (Path(delivered) / "manifest.json") if delivered else None
     if mf and mf.exists():

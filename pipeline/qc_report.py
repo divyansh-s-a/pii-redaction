@@ -17,6 +17,67 @@ import audio_utils
 import common
 
 
+def check_voiced(out_dir: Path, check_wav: Path, voiced, freq: int):
+    """Signal checks for pseudonym-mode slots, on the rendered OUTPUT:
+    (a) no beep tone in the slot, (b) the ORIGINAL speech is gone — the
+    output's slot interior does not correlate with the source's (a leaked
+    original correlates near 1; a synthetic voice over room tone near 0),
+    (c) loudness within 4 dB of the speech it replaced."""
+    import numpy as np
+    import pseudonym_render as pr
+    problems, notes = [], []
+
+    def load(path):
+        pcm, fs, ch = audio_utils.read_wav(path)
+        x = np.frombuffer(pcm.tobytes(), dtype="<i2").astype(np.float32)
+        return x.reshape(-1, ch) / 32768.0, fs
+
+    out, fs = load(check_wav)
+    src_mono, _ = load(out_dir / "work_16k.wav")
+    worst_corr, worst_db = 0.0, 0.0
+    for v in voiced:
+        s, e, chn = v["start_ms"], v["end_ms"], v.get("channel")
+        cov = audio_utils.tone_coverage(check_wav, s, e, freq, channel=chn)
+        if cov > 0.3:
+            problems.append(f"voiced slot {s}-{e}ms carries beep tone "
+                            f"(coverage {cov:.2f})")
+        edge = int(fs * 0.03)
+        a, b = int(s * fs / 1000) + edge, int(e * fs / 1000) - edge
+        if b - a < int(fs * 0.05):
+            continue
+        if chn is not None and chn < out.shape[1]:
+            o = out[a:b, chn]
+            chf = out_dir / f"work_16k_ch{chn}.wav"
+            ref = load(chf)[0][a:b, 0] if chf.exists() else src_mono[a:b, 0]
+        else:
+            o = out[a:b].mean(axis=1)
+            ref = src_mono[a:b, 0]
+        n = min(len(o), len(ref))
+        o, ref = o[:n] - o[:n].mean(), ref[:n] - ref[:n].mean()
+        den = float(np.sqrt(np.sum(o ** 2) * np.sum(ref ** 2)))
+        lag = int(fs * 0.005)
+        corr = 0.0
+        if den > 1e-9:
+            full = np.correlate(o, ref[lag:n - lag] if n > 3 * lag else ref,
+                                mode="valid")
+            corr = float(np.max(np.abs(full))) / den if len(full) else 0.0
+        worst_corr = max(worst_corr, corr)
+        if corr > 0.35:
+            problems.append(f"voiced slot {s}-{e}ms: original audio still "
+                            f"present (correlation {corr:.2f})")
+        tgt = v.get("target_db")
+        if tgt is not None and tgt > -60:
+            got = pr.speech_db(o, fs)
+            worst_db = max(worst_db, abs(got - tgt))
+            if abs(got - tgt) > 4.0:
+                problems.append(f"voiced slot {s}-{e}ms: level {got:.1f} dB "
+                                f"vs replaced speech {tgt:.1f} dB")
+    notes.append(f"{len(voiced)} voiced slot(s) verified: no tone, original "
+                 f"removed (max correlation {worst_corr:.2f}), level within "
+                 f"{worst_db:.1f} dB of the replaced speech")
+    return problems, notes
+
+
 def qc_file(out_dir: Path, file_id: str, transcript_path: Path,
             intervals_path: Path, freq: int):
     problems, notes = [], []
@@ -85,6 +146,13 @@ def qc_file(out_dir: Path, file_id: str, transcript_path: Path,
                         f"interval {s}-{e}ms leaked beep onto channel {other} "
                         f"(coverage {oc:.2f}) — other speaker's audio lost")
     notes.append(f"{len(merged)} rendered intervals verified for tone coverage")
+
+    # 1b. pseudonym mode: every voiced slot really replaced the original
+    voiced = rendered.get("rendered_voiced") or []
+    if voiced:
+        vp, vn = check_voiced(out_dir, check_wav, voiced, freq)
+        problems += vp
+        notes += vn
     for s, e, chn in merged:
         if e - s > 45000:
             problems.append(f"rendered beep {s}-{e}ms is {(e-s)/1000:.0f}s long "
@@ -180,6 +248,14 @@ def qc_file(out_dir: Path, file_id: str, transcript_path: Path,
     words = detect_pii.flatten_words(transcript)
     data = common.load_json(intervals_path)
     beeped = [iv for iv in data["intervals"]]
+    # new modes record which intervals a profile KEEPS; a digit beside a
+    # kept value (e.g. an age) is not a partial leak of it. Voiced slots
+    # removed their audio and count as plan. (Absent keys: unchanged.)
+    kept_ids = set(rendered.get("annotate_only_ids") or [])
+    if kept_ids:
+        beeped = [iv for iv in beeped if iv["annotation_id"] not in kept_ids]
+    plan = list(merged) + [(v["start_ms"], v["end_ms"], v.get("channel"))
+                           for v in voiced]
     digit_edges = []
     for iv in beeped:
         for w in words:
@@ -188,7 +264,7 @@ def qc_file(out_dir: Path, file_id: str, transcript_path: Path,
             near_start = iv["start_ms"] - 400 <= w["end_ms"] <= iv["start_ms"]
             near_end = iv["end_ms"] <= w["start_ms"] <= iv["end_ms"] + 400
             inside_plan = any(s <= w["start_ms"] and w["end_ms"] <= e
-                              for s, e, _c in merged)
+                              for s, e, _c in plan)
             if (near_start or near_end) and not inside_plan:
                 problems.append(
                     f"digit word '{w['w']}' at {w['start_ms']}ms borders "

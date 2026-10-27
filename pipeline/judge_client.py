@@ -115,6 +115,8 @@ def judge_call(prompt: str, schema: dict, model: str = DEFAULT_JUDGE,
         # USD cost of the call, so judge/detector spend is measured, never
         # estimated from price sheets
         "usage": {"include": True},
+        # only providers that neither store nor train on the prompt
+        "provider": common.openrouter_provider(),
     }
     for attempt in range(4):
         status, _, body = common._request(
@@ -124,7 +126,8 @@ def judge_call(prompt: str, schema: dict, model: str = DEFAULT_JUDGE,
         if status == 200:
             resp = json.loads(body)
             usage = resp.get("usage", {})
-            log = common.ROOT / "output" / "api_usage.jsonl"
+            log = common.OUTPUT_ROOT / "api_usage.jsonl"
+            log.parent.mkdir(parents=True, exist_ok=True)
             with open(log, "a") as f:
                 f.write(json.dumps({
                     "engine": log_engine, "model": model,

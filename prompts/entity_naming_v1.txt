@@ -1,0 +1,33 @@
+You prepare a name mapping for a research study whose material is shared
+with real brands replaced by invented ones. Below are the entities found in
+the study's recordings, with any context about the study.
+
+Decide for each entity:
+- replace: the client brand; its competitors in the same category; their
+  products, product lines and model names; their dealers and showrooms; banks
+  or financial firms that are the subject of the study or its competitors;
+  the research or advertising agency; slogans, taglines, jingle lines and
+  other details that would reveal a replaced brand.
+- keep: platforms and marketplaces that only carry products (shopping,
+  delivery, payment apps) unless they are the study's subject; government
+  bodies; generic categories; anything not tied to the study's brands.
+- beep: people — staff, endorsers, celebrities. They are always removed by a
+  beep and get no invented name.
+
+For each entity to replace:
+- core: the DISTINCTIVE part to match, as written in Latin script — for
+  "Zorvex Bank" it is "Zorvex"; generic words (Bank, Electronics, TV,
+  Showroom) stay spoken and are not part of the core. A common word alone
+  ("Vision", "Smart", "Plus") is never a core: use the brand's distinctive
+  word, or the multi-word name ("Zorvex Vision") when the product name is
+  made of common words. A spelling that is clearly a mis-hearing of another
+  entity in the list (same brand) gets the SAME invented name;
+- invented: a new name for the core that is easy to say in English, Hindi
+  and Marathi; fits the category (a bank name sounds like a bank, a model
+  name keeps the style of letters and numbers but different ones); is not a
+  real brand or company you know of; and does not sound or look like any
+  name in the list or like another invented name. A slogan gets a neutral
+  invented slogan of similar length;
+- category: BRAND, PRODUCT, MODEL, DEALER, BANK, AGENCY, SLOGAN or
+  ORGANISATION.
+Return one decision per entity id.

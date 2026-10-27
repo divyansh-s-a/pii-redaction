@@ -109,6 +109,15 @@ def numbered_lines(text):
 def build_prompt(text):
     base = PROMPT_PATH.read_text()
     lines, numbered = numbered_lines(text)
+    import entity_map
+    em = entity_map.active()
+    if em is not None:
+        # with a mapping, brand/organisation names in the transcript are
+        # INVENTED replacements, not values that survived redaction
+        base += ("\n\nINVENTED NAMES: the project replaced brands, products, "
+                 "dealers and organisations with these invented names. They "
+                 "are deliberate replacements and never findings: "
+                 + "; ".join(em.invented_terms()) + "\n")
     prompt = (base + "\n\n=== REDACTED TRANSCRIPT (numbered lines) ===\n"
               + numbered)
     return lines, prompt
@@ -269,6 +278,8 @@ def classify_by_profile(findings, profile):
     its categories is annotate_only under the file's render profile. The
     judge's own profile_dependent assertion is retained for audit only."""
     import policy
+    import profiles
+    profiles.ensure(profile)      # a custom profile file (PII_PROFILE_FILE)
     for f in findings:
         f["kept_by_profile"] = (
             policy.action_for(f["categories"], False, profile) == "annotate_only")
@@ -457,10 +468,13 @@ def discover_fids(pred_root):
 
 
 def run_audit(args):
-    pred_root = Path(args.pred_root)
+    import common
+    # defaults follow the stage-cache root (PII_WORK_DIR when set)
+    pred_root = Path(args.pred_root) if args.pred_root else common.OUTPUT_ROOT
     if not pred_root.is_absolute():
         pred_root = ROOT / pred_root
-    out_dir = Path(args.out)
+    out_dir = (Path(args.out) if args.out
+               else common.OUTPUT_ROOT / "judge" / "leak_audit")
     if not out_dir.is_absolute():
         out_dir = ROOT / out_dir
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -856,10 +870,13 @@ def main():
     ap.add_argument("--verify-model", default=judge_client.DEFAULT_VERIFIER,
                     help="OpenRouter verifier model (default %s)"
                          % judge_client.DEFAULT_VERIFIER)
-    ap.add_argument("--out", default="output/judge/leak_audit",
-                    help="cache + report directory")
-    ap.add_argument("--pred-root", default="output",
-                    help="directory holding <fid><engine-suffix>/ dirs")
+    ap.add_argument("--out", default=None,
+                    help="cache + report directory (default "
+                         "<stage-cache root>/judge/leak_audit)")
+    ap.add_argument("--pred-root", default=None,
+                    help="directory holding <fid><engine-suffix>/ dirs "
+                         "(default: the stage-cache root, output/ or "
+                         "PII_WORK_DIR)")
     ap.add_argument("--profile", default=None,
                     help="override the render profile for counterfactual "
                          "scoring (default: read per file from its "

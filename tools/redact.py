@@ -75,7 +75,7 @@ def union_assurance(fid, el_dir: Path, media: Path, work: Path, model,
         print("  [assurance] gemini transcription ...")
         gemini_transcribe.transcribe_file(model, media, work, tr,
                                           channel_wavs=channel_wavs)
-    if not iv.exists():
+    if not iv.exists() or run_pipeline.detect_stale(iv):
         # attribute assurance-side detection separately, or its cost lands in
         # an unlabelled bucket and $/audio-hour for union mode is unmeasurable
         common.set_usage_context(f"detect_assurance:{fid}")
@@ -85,6 +85,22 @@ def union_assurance(fid, el_dir: Path, media: Path, work: Path, model,
         finally:
             common.set_usage_context("")
     return common.load_json(iv)["intervals"]
+
+
+def gating(findings, profile):
+    """Audit findings that count as leak candidates under the file's render
+    profile — the SAME code-side rule the audit report applies
+    (judge_leak_audit.classify_by_profile): a finding is kept only when every
+    one of its categories is annotate_only under the profile. The judge's own
+    profile_dependent flag is audit metadata, never the gate: when it
+    disagreed with the profile, the report and the confirm step used to count
+    different findings."""
+    import policy
+    import profiles
+    profiles.ensure(profile)      # a custom profile file (--profile-file)
+    return [f for f in findings
+            if policy.action_for(f.get("categories", []), False, profile)
+            != "annotate_only"]
 
 
 def _remediate_audit_findings(src_dir, fid, media, profile, findings,
@@ -205,14 +221,23 @@ def _remediate_audit_findings(src_dir, fid, media, profile, findings,
 def deliver(media: Path, profile: str, outdir: Path, assurance: bool,
             audit: bool, model: str, edge_verify_on: bool = False,
             auto_extend: bool = True, remediate_audit: bool = False,
-            seed_findings=None, force_stages=None):
+            seed_findings=None, force_stages=None, listen_check=None,
+            quarantine_dir=None, display_name=None):
+    import entity_map
+    em = entity_map.active()
+    if listen_check is None:
+        listen_check = em is not None
+    quarantine_dir = Path(quarantine_dir) if quarantine_dir else ROOT / "quarantine"
     fid = run_pipeline.file_id_for(media)
+    # with a mapping, deliverables never carry a real name in their FILE
+    # names either (study folders and file names often hold the brand)
+    out_fid = em.pseudonymise(fid) if em is not None else fid
     engine_used = ENGINE
     fallback_note = None
     try:
         res = run_pipeline.run_file(media, model, profile,
                                     set(force_stages or []), ENGINE, None)
-        src_dir = ROOT / "output" / f"{fid}__{ENGINE}"
+        src_dir = common.OUTPUT_ROOT / f"{fid}__{ENGINE}"
     except (RuntimeError, SystemExit) as e:
         print(f"  !! elevenlabs stage failed ({str(e)[:120]}) — "
               "FALLING BACK to Gemini transcription (higher cost)")
@@ -220,7 +245,7 @@ def deliver(media: Path, profile: str, outdir: Path, assurance: bool,
         fallback_note = f"elevenlabs unavailable: {str(e)[:200]}"
         res = run_pipeline.run_file(media, model, profile,
                                     set(force_stages or []), "gemini", None)
-        src_dir = ROOT / "output" / fid
+        src_dir = common.OUTPUT_ROOT / fid
 
     # ---- clean AFB slate on re-runs ----
     # audit-feedback intervals are derived state from THIS run's audit; a
@@ -253,30 +278,95 @@ def deliver(media: Path, profile: str, outdir: Path, assurance: bool,
     if assurance:
         prep = common.load_json(src_dir / "prepare.json")
         channel_wavs = [src_dir / n for n in prep.get("channel_wavs", [])] or None
+        # ---- clean union slate on re-runs ----
+        # union-only intervals are derived state from a previous run. Left in
+        # place they would keep that run's placement, and the coverage check
+        # below would count their beeps as covering values — so strip them
+        # and re-render the primary-only baseline first, as the audit-
+        # feedback slate above does
+        data_a = common.load_json(src_dir / "intervals.json")
+        keep_a = [iv for iv in data_a["intervals"]
+                  if iv.get("source") != "assurance_gemini"]
+        if len(keep_a) != len(data_a["intervals"]):
+            print(f"  [assurance] stripped "
+                  f"{len(data_a['intervals']) - len(keep_a)} union-only "
+                  "interval(s) from a prior run — re-rendering baseline")
+            data_a["intervals"] = keep_a
+            common.save_json(src_dir / "intervals.json", data_a)
+            redact_mod.redact_file(media, src_dir / "work_16k.wav",
+                                   src_dir / "intervals.json",
+                                   src_dir / "transcript.json",
+                                   src_dir, fid, profile,
+                                   channel_wavs=channel_wavs)
+            res["qc"], _ = qc_report.qc_file(
+                src_dir, fid, src_dir / "transcript.json",
+                src_dir / "intervals.json", common.CONFIG["beep_freq_hz"])
         a_ivs = union_assurance(fid, src_dir, media, src_dir / "work_16k.wav",
                                 model, channel_wavs)
+        # The second listener's intervals carry ITS word indices and ITS
+        # clock. Map them onto the primary transcript's words and times by
+        # aligning the two transcripts (pipeline/align_listeners.py) BEFORE
+        # the coverage check: at the second listener's own times a value can
+        # look covered when it is not, and its indices would redact the wrong
+        # primary words. Each interval is then CHECKED (align_listeners.
+        # place): the position whose primary words match the value's own
+        # text wins; when neither wins, both stretches are beeped, so the
+        # audio is never covered less than at the second listener's times.
+        import align_listeners
+        p_words = detect_pii.flatten_words(
+            common.load_json(src_dir / "transcript.json"))
+        s_words = detect_pii.flatten_words(
+            common.load_json(src_dir / "assurance" / "transcript.json"))
+        amap = align_listeners.align(p_words, s_words)
+        a_ivs = [x for iv in a_ivs
+                 for x in align_listeners.place(iv, amap, p_words, s_words)]
         el_ivs = common.load_json(src_dir / "intervals.json")["intervals"]
         rendered = common.load_json(src_dir / "rendered_intervals.json")
         merged = [(r["start_ms"], r["end_ms"]) for r in rendered["rendered_merged"]]
+        # a voiced slot (pseudonym mode) has removed its audio just as a beep
+        # has; without this every invented name would be beeped over
+        merged += [(r["start_ms"], r["end_ms"])
+                   for r in rendered.get("rendered_voiced") or []]
 
         def covered(s, e):
             got = sum(max(0, min(e, b) - max(s, a)) for a, b in merged)
             return e <= s or got / (e - s) >= 0.95
 
         import policy
+        new_modes = redact_mod._new_modes_active()
+        voiced_spans = [(r["start_ms"], r["end_ms"])
+                        for r in rendered.get("rendered_voiced") or []]
         for ivn in a_ivs:
             if policy.action_for(ivn["categories"], ivn.get("public_figure", False),
                                  profile) != "beep":
                 continue
-            if not covered(ivn["start_ms"], ivn["end_ms"]):
-                extra_beeps.append(ivn)
+            if covered(ivn["start_ms"], ivn["end_ms"]):
+                continue
+            # the second listener times a mapped mention a little differently;
+            # where it overlaps a voiced slot, that slot already replaced it
+            # (and the listen check verifies by ear) — beeping it again would
+            # turn every invented name into a beep
+            if new_modes and "MAPPED_ENTITY" in ivn["categories"] and any(
+                    ivn["start_ms"] < b and a < ivn["end_ms"]
+                    for a, b in voiced_spans):
+                continue
+            extra_beeps.append(ivn)
         if extra_beeps:
             print(f"  [assurance] {len(extra_beeps)} union-only interval(s) "
                   "added to audio beeps")
-            all_ivs = el_ivs + [dict(iv, source="assurance_gemini")
-                                for iv in extra_beeps]
+            # union-only mapped mentions are beeped, never voiced: only the
+            # second listener heard them, so the mention is not confirmed
+            extras = [dict(iv, source="assurance_gemini",
+                           **({"render": "beep"} if "render" in iv else {}))
+                      for iv in extra_beeps]
+            all_ivs = el_ivs + extras
             data = {"file_id": fid, "taxonomy_version": "0.2",
                     "intervals": all_ivs}
+            # keep the mode record, or the next run thinks detection is stale
+            prev = common.load_json(src_dir / "intervals.json")
+            for k in ("mapping", "profile_file_sha256"):
+                if k in prev:
+                    data[k] = prev[k]
             common.save_json(src_dir / "intervals.json", data)
             redact_mod.redact_file(media, src_dir / "work_16k.wav",
                                    src_dir / "intervals.json",
@@ -323,20 +413,9 @@ def deliver(media: Path, profile: str, outdir: Path, assurance: bool,
                                  "interval": ed["interval_id"]})
             dur = common.load_json(src_dir / "prepare.json")["duration_ms"]
             merged_ae = audio_utils.pad_and_merge(spans, 0, dur)
-            native = src_dir / "_ae_native.wav"
-            beeped_w = src_dir / "_ae_beeped.wav"
-            audio_utils.decode_to_wav(media, native)
-            audio_utils.mix_beeps(native, beeped_w, merged_ae,
-                                  common.CONFIG["beep_freq_hz"],
-                                  common.CONFIG["beep_gain_db"])
-            audio_utils.encode_audio(beeped_w,
-                                     src_dir / common.beeped_name(fid))
-            native.unlink(missing_ok=True)
-            beeped_w.unlink(missing_ok=True)
-            rendered["rendered_merged"] = [
-                {"start_ms": s0, "end_ms": e0, "channel": c0}
-                for s0, e0, c0 in merged_ae]
-            common.save_json(src_dir / "rendered_intervals.json", rendered)
+            # through the shared renderer: voiced slots (pseudonym mode)
+            # must survive a re-render, or the original audio returns
+            redact_mod.rerender(src_dir, fid, media, merged_ae, "_ae")
             print(f"  [auto-extend] {len(auto_ext)} digit-boundary "
                   "extension(s) applied -> re-QC + targeted edge listen")
             st2, _ = qc_report.qc_file(src_dir, fid,
@@ -388,9 +467,8 @@ def deliver(media: Path, profile: str, outdir: Path, assurance: bool,
             print(f"  [audit] leak candidates: {audit_summary['leak_candidates']}")
             pf0 = src_dir / "audit" / f"{fid}__{engine_used}.json"
             if pf0.exists():
-                audit_summary["_findings_first_read"] = [
-                    f for f in json.loads(pf0.read_text()).get("findings", [])
-                    if not f.get("profile_dependent")]
+                audit_summary["_findings_first_read"] = gating(
+                    json.loads(pf0.read_text()).get("findings", []), profile)
             if audit_summary.get("leak_candidates"):
                 # confirm-on-second-audit (owner decision 2026-09-10): the
                 # audit judge is unstable on borderline classes (observed 0 ->
@@ -409,8 +487,8 @@ def deliver(media: Path, profile: str, outdir: Path, assurance: bool,
                     def _k(f):
                         return " ".join(str(f.get("quoted_text", ""))
                                         .lower().split())
-                    f1 = [f for f in json.loads(pf1.read_text())
-                          .get("findings", []) if not f.get("profile_dependent")]
+                    f1 = gating(json.loads(pf1.read_text())
+                                .get("findings", []), profile)
                     f2 = json.loads(pf2.read_text()).get("findings", [])
                     confirmed = [f for f in f1 if any(
                         _k(f) == _k(g)
@@ -437,8 +515,8 @@ def deliver(media: Path, profile: str, outdir: Path, assurance: bool,
     # is evidence worth beeping — more redaction, never less checking
     if remediate_audit and seed_findings:
         try:
-            seeds = [f for f in json.loads(Path(seed_findings).read_text())
-                     .get("findings", []) if not f.get("profile_dependent")]
+            seeds = gating(json.loads(Path(seed_findings).read_text())
+                           .get("findings", []), profile)
         except Exception as exc:
             seeds = []
             print(f"  [remediate] seed findings unreadable: {exc}")
@@ -500,21 +578,7 @@ def deliver(media: Path, profile: str, outdir: Path, assurance: bool,
                     dur2 = common.load_json(
                         src_dir / "prepare.json")["duration_ms"]
                     m2 = audio_utils.pad_and_merge(spans2, 0, dur2)
-                    nat2 = src_dir / "_ae2_native.wav"
-                    bp2 = src_dir / "_ae2_beeped.wav"
-                    audio_utils.decode_to_wav(media, nat2)
-                    audio_utils.mix_beeps(nat2, bp2, m2,
-                                          common.CONFIG["beep_freq_hz"],
-                                          common.CONFIG["beep_gain_db"])
-                    audio_utils.encode_audio(
-                        bp2, src_dir / common.beeped_name(fid))
-                    nat2.unlink(missing_ok=True)
-                    bp2.unlink(missing_ok=True)
-                    rendered2["rendered_merged"] = [
-                        {"start_ms": a2, "end_ms": b2, "channel": c2}
-                        for a2, b2, c2 in m2]
-                    common.save_json(src_dir / "rendered_intervals.json",
-                                     rendered2)
+                    redact_mod.rerender(src_dir, fid, media, m2, "_ae2")
                     print(f"  [auto-extend] {len(edges2)} post-remediation "
                           "digit-boundary extension(s)")
                     st4, _ = qc_report.qc_file(
@@ -552,9 +616,8 @@ def deliver(media: Path, profile: str, outdir: Path, assurance: bool,
                         def _k2(f):
                             return " ".join(str(f.get("quoted_text", ""))
                                             .lower().split())
-                        g1 = [f for f in json.loads(pf1.read_text())
-                              .get("findings", [])
-                              if not f.get("profile_dependent")]
+                        g1 = gating(json.loads(pf1.read_text())
+                                    .get("findings", []), profile)
                         g2 = json.loads(pf2.read_text()).get("findings", [])
                         n_conf = sum(1 for f in g1 if any(
                             _k2(f) == _k2(g)
@@ -566,6 +629,28 @@ def deliver(media: Path, profile: str, outdir: Path, assurance: bool,
                 print(f"  [remediate] post-remediation confirmed "
                       f"candidates: {audit_summary['leak_candidates']}")
 
+    # ---- mapped-entity audit (a mapping is active): real names readable in
+    # the transcript (matcher + confirmed judge read) or audible in the
+    # delivered audio (listen check) ----
+    mapped_audit_summary = None
+    if em is not None:
+        import mapped_audit
+        ma = mapped_audit.run(src_dir, fid, do_listen=listen_check,
+                              do_judge=audit)
+        lst = ma.get("listen") or {}
+        # counts only: quotes of a leak would put the real name into the
+        # manifest, which is a deliverable; details stay in the work dir
+        mapped_audit_summary = {
+            "leak_candidates": ma["leak_candidates"],
+            "transcript_hits": len(ma["transcript_hits"]),
+            "judge_confirmed": len(ma["judge"]["confirmed"]),
+            "judge_first_read": len(ma["judge"]["first_read"]),
+            "listen_check": bool(lst),
+            "listen_hits": len(lst.get("hits", [])) if lst else None,
+            "listen_suspected": len(lst.get("suspected", [])) if lst else None,
+            "invented_name_heard_rate": lst.get("invented_name_heard_rate"),
+        }
+
     # ---- gate: QC must PASS; with --audit, zero leak candidates too ----
     quarantined_reason = None
     if res["qc"] != "PASS":
@@ -575,11 +660,15 @@ def deliver(media: Path, profile: str, outdir: Path, assurance: bool,
     elif audit_summary and audit_summary.get("leak_candidates", 0):
         quarantined_reason = (f"judge audit found "
                               f"{audit_summary['leak_candidates']} leak candidate(s)")
-    base = (ROOT / "quarantine") if quarantined_reason else outdir
-    dst = base / fid
+    elif mapped_audit_summary and mapped_audit_summary["leak_candidates"]:
+        quarantined_reason = (f"mapped-entity audit found "
+                              f"{mapped_audit_summary['leak_candidates']} "
+                              "real-name leak candidate(s)")
+    base = quarantine_dir if quarantined_reason else outdir
+    dst = base / out_fid
     # a re-run can flip the verdict: drop the OPPOSITE side's stale bundle,
     # or the old copy keeps presenting the file under its previous verdict
-    other = (outdir if quarantined_reason else ROOT / "quarantine") / fid
+    other = (outdir if quarantined_reason else quarantine_dir) / out_fid
     if (other / "manifest.json").exists():
         stale_sha = json.loads(
             (other / "manifest.json").read_text()).get("source_sha256")
@@ -593,12 +682,17 @@ def deliver(media: Path, profile: str, outdir: Path, assurance: bool,
     if mf.exists():
         prev = json.loads(mf.read_text()).get("source_sha256")
         if prev and prev != sha(media):
-            dst = base / f"{fid}-{sha(media)[:8]}"
+            dst = base / f"{out_fid}-{sha(media)[:8]}"
     dst.mkdir(parents=True, exist_ok=True)
-    beeped_name = common.beeped_name(fid)
-    shutil.copy2(src_dir / beeped_name, dst / beeped_name)
-    shutil.copy2(src_dir / f"{fid}_redacted.txt", dst / f"{fid}_redacted.txt")
+    beeped_name = common.beeped_name(out_fid)
+    shutil.copy2(src_dir / common.beeped_name(fid), dst / beeped_name)
+    shutil.copy2(src_dir / f"{fid}_redacted.txt",
+                 dst / f"{out_fid}_redacted.txt")
     shutil.copy2(src_dir / "qc_report.md", dst / "qc_report.md")
+    if out_fid != fid:
+        # the QC report names the work id; rewrite it under the output name
+        qc_txt = (dst / "qc_report.md").read_text()
+        (dst / "qc_report.md").write_text(em.pseudonymise(qc_txt))
 
     import policy
     policy_file = policy.POLICY_PROMPT_FILE
@@ -636,9 +730,31 @@ def deliver(media: Path, profile: str, outdir: Path, assurance: bool,
         "auto_extensions": auto_ext,
         "audit_remediation": remediation,
         "languages": res.get("languages"),
-        "deliverables": [beeped_name, f"{fid}_redacted.txt",
+        "deliverables": [beeped_name, f"{out_fid}_redacted.txt",
                          "qc_report.md"],
     }
+    ri = common.load_json(src_dir / "rendered_intervals.json")
+    if "replace_mode" in ri:
+        import profiles
+        pdef = profiles.active()
+        manifest["replacement"] = {
+            "mode": ri["replace_mode"],
+            "mapping": em.summary() if em is not None else None,
+            "voiced": ri.get("voiced_intervals", 0),
+            "voice_fallbacks_beeped": len(ri.get("voice_fallbacks") or []),
+            "tts": sorted({(v.get("engine"), v.get("voice"))
+                           for v in ri.get("rendered_voiced") or []}),
+            "speaker_voice_buckets": {k: v.get("bucket") for k, v in
+                                      (ri.get("speaker_voices") or {}).items()},
+        }
+        manifest["profile_file"] = ({"name": pdef["name"],
+                                     "sha256": pdef["sha256"],
+                                     "annotate_only": pdef["annotate_only"]}
+                                    if pdef else None)
+        manifest["mapped_audit"] = mapped_audit_summary
+    if em is not None:
+        # the source path names the study; keep the hash, drop the path
+        manifest["source_file"] = display_name or em.pseudonymise(media.name)
     (dst / "manifest.json").write_text(json.dumps(manifest, indent=2,
                                                   ensure_ascii=False))
     if quarantined_reason:
@@ -710,7 +826,56 @@ def main():
                     help="run empirical beep-edge verification (OFF by "
                          "default; slow — re-transcribes audio around every "
                          "beep edge)")
+    ap.add_argument("--mapping", default=None,
+                    help="YAML mapping of real names (brands, products, "
+                         "organisations, agency) to invented ones: turns on "
+                         "mapped-entity detection, the mapped-entity audit "
+                         "and pseudonymised output names")
+    ap.add_argument("--replace", default="beep", choices=["beep", "pseudonym"],
+                    help="beep (default): every redaction is a 1 kHz beep. "
+                         "pseudonym: confirmed mapped mentions are replaced "
+                         "by a stock synthetic voice saying the invented "
+                         "name; everything else is still beeped. Needs "
+                         "--mapping")
+    ap.add_argument("--tts", default=None, choices=["elevenlabs", "say"],
+                    help="voice for --replace pseudonym (default from "
+                         "config 'pseudonym.engine', else elevenlabs stock "
+                         "voices; 'say' = macOS, offline)")
+    ap.add_argument("--profile-file", default=None,
+                    help="custom render profile (YAML/JSON: name, "
+                         "annotate_only, detection_supplement); overrides "
+                         "--profile")
+    ap.add_argument("--listen-check", dest="listen_check", default=None,
+                    action="store_true",
+                    help="re-transcribe the delivered audio and scan it for "
+                         "real mapped names (default ON with --mapping)")
+    ap.add_argument("--no-listen-check", dest="listen_check",
+                    action="store_false")
+    ap.add_argument("--quarantine-dir", default=None,
+                    help="where held files go (default quarantine/ in this "
+                         "checkout)")
     args = ap.parse_args()
+
+    # mode settings travel by environment so the audit subprocesses agree
+    import os
+    if args.mapping:
+        os.environ["PII_MAPPING_FILE"] = str(Path(args.mapping).resolve())
+        import entity_map
+        em0 = entity_map.active()           # validates; fails fast
+        sm = em0.summary()
+        print(f"mapping: {sm['entries']} entities {sm['by_category']}, "
+              f"{sm['voiced']} voiceable"
+              + (f" | warnings: {len(sm['warnings'])}" if sm["warnings"]
+                 else ""))
+    if args.replace == "pseudonym" and not args.mapping:
+        ap.error("--replace pseudonym needs --mapping")
+    os.environ["PII_REPLACE_MODE"] = args.replace
+    if args.tts:
+        os.environ["PII_TTS_ENGINE"] = args.tts
+    if args.profile_file:
+        os.environ["PII_PROFILE_FILE"] = str(Path(args.profile_file).resolve())
+        import profiles
+        args.profile = profiles.active()["name"]
 
     if args.mono:
         common.CONFIG["channel_split"] = "never"
@@ -726,7 +891,8 @@ def main():
     model = common.resolve_model()
     import policy as _policy
     print(f"workflow: EL scribe_v2 (+keyterms) -> Gemini {model} "
-          f"({_policy.POLICY_PROMPT_FILE}) | profile {args.profile}")
+          f"({_policy.POLICY_PROMPT_FILE}) | profile {args.profile}"
+          + (f" | replace {args.replace}" if args.mapping else ""))
     outdir = Path(args.outdir)
     for m in args.media:
         p = Path(m).resolve()
@@ -737,7 +903,9 @@ def main():
         try:
             deliver(p, args.profile, outdir, args.assurance, args.audit, model,
                     args.edge_verify, args.auto_extend,
-                    args.remediate_audit, args.seed_findings, forces)
+                    args.remediate_audit, args.seed_findings, forces,
+                    listen_check=args.listen_check,
+                    quarantine_dir=args.quarantine_dir)
         except Exception as e:
             print(f"  ERROR {p.name}: {str(e)[:200]} — continuing with next file")
 
